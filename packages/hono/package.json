@@ -1,0 +1,62 @@
+{
+  "name": "@agentgate/hono",
+  "version": "0.1.0",
+  "description": "Hono middleware for AgentGate - works on Cloudflare Workers, Deno, Bun, and Node.js",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware.d.ts",
+      "import": "./dist/middleware.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentgate/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "hono": ">=4"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0",
+    "hono": "^4.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentgate/agentgate",
+    "directory": "packages/hono"
+  },
+  "keywords": [
+    "agentgate",
+    "hono",
+    "middleware",
+    "cloudflare-workers",
+    "deno",
+    "bun",
+    "agent",
+    "auth",
+    "edge"
+  ]
+}

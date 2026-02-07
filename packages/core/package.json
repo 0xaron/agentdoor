@@ -1,0 +1,66 @@
+{
+  "name": "@agentgate/core",
+  "version": "0.1.0",
+  "description": "Core shared library for AgentGate - agent registration, auth, and discovery",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./storage": {
+      "types": "./dist/storage/interface.d.ts",
+      "import": "./dist/storage/interface.js"
+    },
+    "./storage/memory": {
+      "types": "./dist/storage/memory.d.ts",
+      "import": "./dist/storage/memory.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
+    "nanoid": "^5.0.0",
+    "zod": "^3.23.0",
+    "jose": "^5.9.0",
+    "@noble/secp256k1": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentgate/agentgate",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "agentgate",
+    "agent",
+    "auth",
+    "registration",
+    "x402",
+    "a2a",
+    "mcp",
+    "ed25519"
+  ]
+}
