@@ -1,0 +1,30 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*
+
+# Keys (never commit)
+*.pem
+keys.json

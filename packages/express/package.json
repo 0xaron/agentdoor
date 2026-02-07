@@ -1,0 +1,57 @@
+{
+  "name": "@agentgate/express",
+  "version": "0.1.0",
+  "description": "Express.js middleware adapter for AgentGate - make your Express API agent-ready in 3 lines",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentgate/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "express": ">=4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "express": "^4.21.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentgate/agentgate",
+    "directory": "packages/express"
+  },
+  "keywords": [
+    "agentgate",
+    "express",
+    "middleware",
+    "agent",
+    "auth",
+    "registration",
+    "x402"
+  ]
+}
