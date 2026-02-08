@@ -1,0 +1,11 @@
+{
+  "name": "@agentgate/fastapi",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Python package - use pip install -e .'",
+    "test": "echo 'Python package - use pytest'",
+    "typecheck": "echo 'Python package - use mypy'",
+    "clean": "rm -rf dist build *.egg-info"
+  }
+}

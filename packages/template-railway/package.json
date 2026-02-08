@@ -1,0 +1,12 @@
+{
+  "name": "@agentgate/template-railway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Railway deployment template - Agent-Ready Express API with AgentGate",
+  "scripts": {
+    "build": "echo 'Template package - deploy with Railway'",
+    "test": "echo 'Template package'",
+    "typecheck": "echo 'Template package'",
+    "clean": "echo 'clean'"
+  }
+}
