@@ -12,6 +12,7 @@ import {
   DEFAULT_REPUTATION,
 } from "@agentgate/core";
 import type { ResolvedConfig } from "@agentgate/core";
+import type { P1Services } from "../middleware.js";
 
 /**
  * Pending registration data stored between step 1 (register) and step 2 (verify).
@@ -40,7 +41,8 @@ const pendingRegistrations = new Map<string, PendingRegistration>();
  */
 export function createRegisterRouter(
   config: ResolvedConfig,
-  store: AgentStore
+  store: AgentStore,
+  p1Services?: P1Services,
 ): Router {
   const router = Router();
 
@@ -252,6 +254,19 @@ export function createRegisterRouter(
       if (config.onAgentRegistered) {
         Promise.resolve(config.onAgentRegistered(agent)).catch((err) => {
           console.error("[agentgate] onAgentRegistered callback error:", err);
+        });
+      }
+
+      // P1: Emit webhook event for agent registration
+      if (p1Services?.webhookEmitter) {
+        p1Services.webhookEmitter.emit("agent.registered", {
+          agent_id,
+          public_key: pending.publicKey,
+          scopes_granted: pending.scopesRequested,
+          x402_wallet: pending.x402Wallet,
+          metadata: pending.metadata,
+        }).catch((err) => {
+          console.error("[agentgate] Webhook emit error:", err);
         });
       }
 
