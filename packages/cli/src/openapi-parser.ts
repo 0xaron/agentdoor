@@ -130,7 +130,7 @@ function parseYaml(input: string): unknown {
   const result: Record<string, unknown> = {};
   const lines = input.split("\n");
   let currentKey = "";
-  let currentIndent = 0;
+  void 0; // _currentIndent removed (was unused)
   let inPaths = false;
   const paths: Record<string, Record<string, Record<string, unknown>>> = {};
   let currentPath = "";
@@ -152,7 +152,7 @@ function parseYaml(input: string): unknown {
       const value = content.slice(colonIdx + 1).trim();
 
       currentKey = key;
-      currentIndent = 0;
+      // indent tracking removed
       inPaths = key === "paths";
 
       if (value && !value.startsWith("{") && !value.startsWith("[")) {

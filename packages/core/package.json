@@ -17,6 +17,14 @@
     "./storage/memory": {
       "types": "./dist/storage/memory.d.ts",
       "import": "./dist/storage/memory.js"
+    },
+    "./storage/sqlite": {
+      "types": "./dist/storage/sqlite.d.ts",
+      "import": "./dist/storage/sqlite.js"
+    },
+    "./storage/postgres": {
+      "types": "./dist/storage/postgres.d.ts",
+      "import": "./dist/storage/postgres.js"
     }
   },
   "files": [
@@ -39,10 +47,16 @@
     "jose": "^5.9.0",
     "@noble/secp256k1": "^2.0.0"
   },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.0.0",
+    "pg": "^8.0.0"
+  },
   "devDependencies": {
     "typescript": "^5.7.0",
     "vitest": "^2.1.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/better-sqlite3": "^7.0.0",
+    "@types/pg": "^8.0.0"
   },
   "engines": {
     "node": ">=18"

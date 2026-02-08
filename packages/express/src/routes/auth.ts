@@ -1,10 +1,12 @@
 import { Router } from "express";
-import type { AgentGateConfig, AgentStore } from "@agentgate/core";
+import type { AgentStore, AgentContext } from "@agentgate/core";
 import {
   verifySignature,
   issueToken,
+  computeExpirationDate,
   AgentGateError,
 } from "@agentgate/core";
+import type { ResolvedConfig } from "@agentgate/core";
 
 /**
  * Maximum allowed clock skew between agent timestamp and server time.
@@ -20,22 +22,9 @@ const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000; // 5 minutes
  * registration and want to obtain a fresh JWT token. The agent proves
  * identity by signing a message containing their agent_id + timestamp
  * with their Ed25519 private key.
- *
- * Request body:
- *   {
- *     "agent_id": "ag_xxx",
- *     "timestamp": "2026-02-08T12:30:00Z",
- *     "signature": "base64-signature-of-agentgate:auth:agent_id:timestamp"
- *   }
- *
- * Response:
- *   {
- *     "token": "eyJhbGci...",
- *     "expires_at": "2026-02-08T13:30:00Z"
- *   }
  */
 export function createAuthRouter(
-  config: AgentGateConfig,
+  config: ResolvedConfig,
   store: AgentStore
 ): Router {
   const router = Router();
@@ -90,7 +79,7 @@ export function createAuthRouter(
       }
 
       // Look up the agent
-      const agent = await store.findAgentById(agent_id);
+      const agent = await store.getAgent(agent_id);
       if (!agent) {
         res.status(404).json({
           error: "agent_not_found",
@@ -122,14 +111,24 @@ export function createAuthRouter(
       }
 
       // Issue a fresh JWT
-      const tokenResult = await issueToken({
-        agentId: agent_id,
+      const agentContext: AgentContext = {
+        id: agent.id,
+        publicKey: agent.publicKey,
         scopes: agent.scopesGranted,
-        jwtConfig: config.jwt,
-      });
+        rateLimit: agent.rateLimit,
+        reputation: agent.reputation,
+        metadata: agent.metadata,
+      };
+
+      const token = await issueToken(
+        agentContext,
+        config.jwt.secret,
+        config.jwt.expiresIn,
+      );
+      const tokenExpiresAt = computeExpirationDate(config.jwt.expiresIn);
 
       // Update last auth timestamp
-      await store.updateAgentLastAuth(agent_id, new Date());
+      await store.updateAgent(agent_id, { lastAuthAt: new Date() });
 
       // Fire the onAgentAuthenticated callback if configured
       if (config.onAgentAuthenticated) {
@@ -139,8 +138,8 @@ export function createAuthRouter(
       }
 
       res.status(200).json({
-        token: tokenResult.token,
-        expires_at: tokenResult.expiresAt,
+        token,
+        expires_at: tokenExpiresAt.toISOString(),
       });
     } catch (err) {
       if (err instanceof AgentGateError) {

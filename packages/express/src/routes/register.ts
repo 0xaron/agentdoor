@@ -1,20 +1,34 @@
 import { Router } from "express";
-import type { AgentGateConfig, AgentStore } from "@agentgate/core";
+import type { AgentStore, AgentContext } from "@agentgate/core";
 import {
-  generateChallenge,
-  formatChallengeMessage,
+  createChallenge,
   verifySignature,
   issueToken,
+  computeExpirationDate,
   generateApiKey,
   hashApiKey,
   generateAgentId,
   AgentGateError,
-  AGENTGATE_VERSION,
+  DEFAULT_REPUTATION,
 } from "@agentgate/core";
+import type { ResolvedConfig } from "@agentgate/core";
 
 /**
- * Creates a router with the full agent registration + challenge-response
- * flow per PRD section 18.4:
+ * Pending registration data stored between step 1 (register) and step 2 (verify).
+ * Keyed by agent_id.
+ */
+interface PendingRegistration {
+  publicKey: string;
+  scopesRequested: string[];
+  x402Wallet?: string;
+  metadata: Record<string, string>;
+}
+
+/** Module-level map for pending registration data. */
+const pendingRegistrations = new Map<string, PendingRegistration>();
+
+/**
+ * Creates a router with the full agent registration + challenge-response flow:
  *
  * POST /agentgate/register
  *   Agent sends public_key + scopes_requested + optional x402_wallet + metadata.
@@ -25,7 +39,7 @@ import {
  *   Server verifies signature, creates the agent record, issues API key + JWT.
  */
 export function createRegisterRouter(
-  config: AgentGateConfig,
+  config: ResolvedConfig,
   store: AgentStore
 ): Router {
   const router = Router();
@@ -73,7 +87,7 @@ export function createRegisterRouter(
       }
 
       // Check for duplicate public key
-      const existingAgent = await store.findAgentByPublicKey(public_key);
+      const existingAgent = await store.getAgentByPublicKey(public_key);
       if (existingAgent) {
         res.status(409).json({
           error: "already_registered",
@@ -85,16 +99,17 @@ export function createRegisterRouter(
 
       // --- Generate agent ID and challenge ---
       const agentId = generateAgentId();
-      const challenge = generateChallenge(agentId);
+      const challenge = createChallenge(agentId, config.challengeExpirySeconds);
 
-      // Store the pending registration with the challenge
-      await store.storePendingRegistration({
-        agentId,
+      // Store the challenge in the agent store
+      await store.createChallenge(challenge);
+
+      // Store the pending registration data in memory
+      pendingRegistrations.set(agentId, {
         publicKey: public_key,
         scopesRequested: scopes_requested,
         x402Wallet: x402_wallet,
         metadata: metadata || {},
-        challenge,
       });
 
       // Return challenge for the agent to sign
@@ -103,7 +118,7 @@ export function createRegisterRouter(
         challenge: {
           nonce: challenge.nonce,
           message: challenge.message,
-          expires_at: challenge.expiresAt,
+          expires_at: challenge.expiresAt.toISOString(),
         },
       });
     } catch (err) {
@@ -150,9 +165,9 @@ export function createRegisterRouter(
         return;
       }
 
-      // Retrieve the pending registration
-      const pending = await store.getPendingRegistration(agent_id);
-      if (!pending) {
+      // Retrieve the pending challenge
+      const challenge = await store.getChallenge(agent_id);
+      if (!challenge) {
         res.status(404).json({
           error: "not_found",
           message: "No pending registration found for this agent_id. It may have expired.",
@@ -160,10 +175,20 @@ export function createRegisterRouter(
         return;
       }
 
+      // Retrieve the pending registration data
+      const pending = pendingRegistrations.get(agent_id);
+      if (!pending) {
+        res.status(404).json({
+          error: "not_found",
+          message: "No pending registration data found for this agent_id.",
+        });
+        return;
+      }
+
       // Check if challenge has expired
-      const now = new Date();
-      if (now > new Date(pending.challenge.expiresAt)) {
-        await store.deletePendingRegistration(agent_id);
+      if (Date.now() > challenge.expiresAt.getTime()) {
+        await store.deleteChallenge(agent_id);
+        pendingRegistrations.delete(agent_id);
         res.status(410).json({
           error: "challenge_expired",
           message: "The registration challenge has expired. Please register again.",
@@ -173,7 +198,7 @@ export function createRegisterRouter(
 
       // Verify the signature against the challenge message using the agent's public key
       const isValid = verifySignature(
-        pending.challenge.message,
+        challenge.message,
         signature,
         pending.publicKey
       );
@@ -187,11 +212,10 @@ export function createRegisterRouter(
       }
 
       // --- Signature is valid: create the agent ---
-      const apiKey = generateApiKey();
+      const apiKey = generateApiKey(config.mode);
       const apiKeyHash = hashApiKey(apiKey);
 
-      // Determine rate limit: use config defaults or scope-specific limits
-      const rateLimit = config.rateLimit ?? { requests: 1000, window: "1h" };
+      const rateLimit = config.rateLimit;
 
       const agent = await store.createAgent({
         id: agent_id,
@@ -204,18 +228,28 @@ export function createRegisterRouter(
       });
 
       // Issue a JWT token for the agent
-      const tokenResult = await issueToken({
-        agentId: agent_id,
+      const agentContext: AgentContext = {
+        id: agent_id,
+        publicKey: pending.publicKey,
         scopes: pending.scopesRequested,
-        jwtConfig: config.jwt,
-      });
+        rateLimit,
+        reputation: DEFAULT_REPUTATION,
+        metadata: pending.metadata,
+      };
+
+      const token = await issueToken(
+        agentContext,
+        config.jwt.secret,
+        config.jwt.expiresIn,
+      );
+      const tokenExpiresAt = computeExpirationDate(config.jwt.expiresIn);
 
       // Clean up the pending registration
-      await store.deletePendingRegistration(agent_id);
+      await store.deleteChallenge(agent_id);
+      pendingRegistrations.delete(agent_id);
 
       // Fire the onAgentRegistered callback if provided
       if (config.onAgentRegistered) {
-        // Fire-and-forget: don't block the response
         Promise.resolve(config.onAgentRegistered(agent)).catch((err) => {
           console.error("[agentgate] onAgentRegistered callback error:", err);
         });
@@ -226,8 +260,8 @@ export function createRegisterRouter(
         agent_id,
         api_key: apiKey,
         scopes_granted: pending.scopesRequested,
-        token: tokenResult.token,
-        token_expires_at: tokenResult.expiresAt,
+        token,
+        token_expires_at: tokenExpiresAt.toISOString(),
         rate_limit: rateLimit,
       };
 

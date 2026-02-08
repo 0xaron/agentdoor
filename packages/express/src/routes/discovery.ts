@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { AgentGateConfig } from "@agentgate/core";
+import type { ResolvedConfig } from "@agentgate/core";
 import { generateDiscoveryDocument } from "@agentgate/core";
 
 /**
@@ -13,7 +13,7 @@ import { generateDiscoveryDocument } from "@agentgate/core";
  * Response is served with Cache-Control: public, max-age=3600 so
  * CDNs and agents can cache it for up to 1 hour.
  */
-export function createDiscoveryRouter(config: AgentGateConfig): Router {
+export function createDiscoveryRouter(config: ResolvedConfig): Router {
   const router = Router();
 
   // Pre-generate the discovery document at startup so we avoid

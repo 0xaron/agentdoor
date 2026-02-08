@@ -46,4 +46,5 @@ export type {
   X402Config,
   RateLimitConfig,
   AgentStore,
+  ResolvedConfig,
 } from "@agentgate/core";

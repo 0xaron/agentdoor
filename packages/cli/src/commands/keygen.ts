@@ -12,7 +12,7 @@ import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { randomBytes } from "node:crypto";
+import { randomBytes as _randomBytes } from "node:crypto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,10 +40,11 @@ async function generateEd25519Keypair(): Promise<{ publicKey: Uint8Array; secret
   // Use the Web Crypto API if available (Node 20+, Deno, Bun).
   if (typeof globalThis.crypto?.subtle?.generateKey === "function") {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const keyPair = await crypto.subtle.generateKey("Ed25519", true, [
         "sign",
         "verify",
-      ]);
+      ]) as any;
 
       const publicKeyRaw = new Uint8Array(
         await crypto.subtle.exportKey("raw", keyPair.publicKey),
