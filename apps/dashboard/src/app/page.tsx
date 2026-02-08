@@ -1,12 +1,12 @@
 import {
-  overviewStats,
-  agents,
   trafficData,
   revenueData,
   frameworkBreakdown,
   scopeUsage,
   rateLimitEvents,
+  overviewStats as mockOverviewStats,
 } from "@/lib/mock-data";
+import { getAllAgentsFromStore } from "@/lib/store";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -239,11 +239,108 @@ function StackedBarChart({
 }
 
 // ---------------------------------------------------------------------------
-// Page
+// Registrations Per Day Bar Chart (Phase 3.2)
 // ---------------------------------------------------------------------------
 
-export default function DashboardPage() {
-  const sortedAgents = [...agents].sort(
+function RegistrationsBarChart({
+  data,
+}: {
+  data: { date: string; count: number }[];
+}) {
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {data.map((d) => {
+        const widthPct = Math.max((d.count / maxCount) * 100, 2);
+        // Format the date label: show only MM-DD
+        const dateLabel = d.date.slice(5); // "01-03" from "2026-01-03"
+        return (
+          <div key={d.date} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                fontSize: "0.75rem",
+                color: "#6b7280",
+                width: 48,
+                textAlign: "right",
+                fontVariantNumeric: "tabular-nums",
+                flexShrink: 0,
+              }}
+            >
+              {dateLabel}
+            </span>
+            <div
+              style={{
+                flex: 1,
+                height: 24,
+                background: "#f3f4f6",
+                borderRadius: 4,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  width: `${widthPct}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                  borderRadius: 4,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  paddingRight: 8,
+                  minWidth: 28,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.6875rem",
+                    fontWeight: 600,
+                    color: "#fff",
+                  }}
+                >
+                  {d.count}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page (async Server Component - Phase 3.1 + 3.2)
+// ---------------------------------------------------------------------------
+
+export default async function DashboardPage() {
+  // Read agents from the real AgentStore (seeded with mock data if empty)
+  const storeAgents = await getAllAgentsFromStore();
+
+  // Compute live overview stats from the store
+  const totalAgents = storeAgents.length;
+  const activeAgents = storeAgents.filter((a) => a.status === "active").length;
+  const totalRequests = storeAgents.reduce((s, a) => s + a.totalRequests, 0);
+  const totalRevenue = storeAgents.reduce((s, a) => s + a.totalX402Paid, 0);
+  const avgReputation =
+    totalAgents > 0
+      ? Math.round(storeAgents.reduce((s, a) => s + a.reputation, 0) / totalAgents)
+      : mockOverviewStats.avgReputation;
+
+  // Build registrations-per-day data for the bar chart (Phase 3.2)
+  const regDayCounts: Record<string, number> = {};
+  for (const a of storeAgents) {
+    const created = a.createdAt instanceof Date ? a.createdAt : new Date(String(a.createdAt));
+    const dayKey = created.toISOString().slice(0, 10);
+    regDayCounts[dayKey] = (regDayCounts[dayKey] || 0) + 1;
+  }
+  const registrationData = Object.entries(regDayCounts)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+
+  // Build sorted agents list for the table (use store data with mock-compatible shape)
+  const sortedAgents = [...storeAgents].sort(
     (a, b) => b.totalRequests - a.totalRequests,
   );
 
@@ -258,6 +355,19 @@ export default function DashboardPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <a
+            href="/config"
+            style={{
+              fontSize: "0.8125rem",
+              color: "#6366f1",
+              padding: "4px 12px",
+              borderRadius: 8,
+              border: "1px solid #e0e7ff",
+              background: "#eef2ff",
+            }}
+          >
+            Configuration
+          </a>
           <span
             style={{
               ...styles.badge,
@@ -277,28 +387,52 @@ export default function DashboardPage() {
       <div style={styles.grid4}>
         <StatCard
           label="Total Agents"
-          value={overviewStats.totalAgents.toString()}
-          delta="+34 this week"
+          value={totalAgents.toString()}
+          delta={`${activeAgents} active`}
           deltaUp
         />
         <StatCard
           label="Active Agents"
-          value={overviewStats.activeAgents.toString()}
-          delta="76.5% of total"
+          value={activeAgents.toString()}
+          delta={totalAgents > 0 ? `${Math.round((activeAgents / totalAgents) * 100)}% of total` : "0%"}
           deltaUp
         />
         <StatCard
           label="Total Requests"
-          value={formatNumber(overviewStats.totalRequests)}
-          delta={`${formatNumber(overviewStats.requestsToday)} today`}
+          value={formatNumber(totalRequests)}
+          delta={`avg ${formatNumber(totalAgents > 0 ? Math.round(totalRequests / totalAgents) : 0)}/agent`}
           deltaUp
         />
         <StatCard
           label="Total Revenue (x402)"
-          value={formatCurrency(overviewStats.totalRevenue)}
-          delta={`${formatCurrency(overviewStats.revenueThisMonth)} this month`}
+          value={formatCurrency(totalRevenue)}
+          delta={`avg rep: ${avgReputation}/100`}
           deltaUp
         />
+      </div>
+
+      {/* Registrations Per Day Bar Chart (Phase 3.2) */}
+      <div style={{ ...styles.card, marginBottom: 32 }}>
+        <h2 style={styles.sectionTitle}>Agent Registrations Per Day</h2>
+        {registrationData.length > 0 ? (
+          <RegistrationsBarChart data={registrationData} />
+        ) : (
+          <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+            No registration data available yet.
+          </div>
+        )}
+        <div
+          style={{
+            marginTop: 12,
+            padding: "8px 12px",
+            background: "#eef2ff",
+            borderRadius: 8,
+            fontSize: "0.8125rem",
+            color: "#4338ca",
+          }}
+        >
+          {totalAgents} total registrations across {registrationData.length} day{registrationData.length !== 1 ? "s" : ""}
+        </div>
       </div>
 
       {/* Traffic + Revenue Charts */}
@@ -357,8 +491,8 @@ export default function DashboardPage() {
               color: "#4338ca",
             }}
           >
-            {overviewStats.agentTrafficPercent}% of traffic is from agents
-            &mdash; {overviewStats.unregisteredAgentPercent}% unregistered
+            {mockOverviewStats.agentTrafficPercent}% of traffic is from agents
+            &mdash; {mockOverviewStats.unregisteredAgentPercent}% unregistered
           </div>
         </div>
 
@@ -505,7 +639,7 @@ export default function DashboardPage() {
         >
           <h2 style={styles.sectionTitle}>Registered Agents</h2>
           <span style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
-            {agents.length} agents
+            {totalAgents} agents
           </span>
         </div>
         <div style={{ overflowX: "auto" }}>
@@ -525,12 +659,18 @@ export default function DashboardPage() {
             <tbody>
               {sortedAgents.map((agent) => {
                 const sc = statusColor(agent.status);
+                const lastAuth = agent.lastAuthAt instanceof Date
+                  ? agent.lastAuthAt.toISOString()
+                  : String(agent.lastAuthAt);
                 return (
                   <tr key={agent.id}>
                     <td style={styles.td}>
-                      <div style={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                        {agent.name}
-                      </div>
+                      <a
+                        href={`/agents/${agent.id}`}
+                        style={{ fontWeight: 500, fontSize: "0.875rem", color: "#6366f1" }}
+                      >
+                        {agent.metadata.name || agent.id}
+                      </a>
                       <div
                         style={{
                           fontSize: "0.75rem",
@@ -543,9 +683,9 @@ export default function DashboardPage() {
                     </td>
                     <td style={styles.td}>
                       <span style={{ fontSize: "0.8125rem" }}>
-                        {agent.framework}{" "}
+                        {agent.metadata.framework || "Unknown"}{" "}
                         <span style={{ color: "#9ca3af" }}>
-                          v{agent.version}
+                          v{agent.metadata.version || "?"}
                         </span>
                       </span>
                     </td>
@@ -626,7 +766,7 @@ export default function DashboardPage() {
                         color: "#6b7280",
                       }}
                     >
-                      {relativeTime(agent.lastAuthAt)}
+                      {relativeTime(lastAuth)}
                     </td>
                   </tr>
                 );
@@ -706,12 +846,24 @@ export default function DashboardPage() {
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Reputation Distribution</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {[
-              { range: "90-100 (Excellent)", count: 3, color: "#22c55e" },
-              { range: "70-89 (Good)", count: 3, color: "#84cc16" },
-              { range: "40-69 (Fair)", count: 1, color: "#eab308" },
-              { range: "0-39 (Poor)", count: 1, color: "#ef4444" },
-            ].map((tier) => (
+            {(() => {
+              // Compute reputation tiers from real store data
+              const tiers = [
+                { range: "90-100 (Excellent)", min: 90, max: 100, color: "#22c55e", count: 0 },
+                { range: "70-89 (Good)", min: 70, max: 89, color: "#84cc16", count: 0 },
+                { range: "40-69 (Fair)", min: 40, max: 69, color: "#eab308", count: 0 },
+                { range: "0-39 (Poor)", min: 0, max: 39, color: "#ef4444", count: 0 },
+              ];
+              for (const agent of storeAgents) {
+                for (const tier of tiers) {
+                  if (agent.reputation >= tier.min && agent.reputation <= tier.max) {
+                    tier.count++;
+                    break;
+                  }
+                }
+              }
+              return tiers;
+            })().map((tier) => (
               <div key={tier.range}>
                 <div
                   style={{
@@ -727,7 +879,7 @@ export default function DashboardPage() {
                 <div style={styles.barBg}>
                   <div
                     style={{
-                      width: `${(tier.count / agents.length) * 100}%`,
+                      width: `${totalAgents > 0 ? (tier.count / totalAgents) * 100 : 0}%`,
                       height: "100%",
                       background: tier.color,
                       borderRadius: 4,
@@ -747,7 +899,7 @@ export default function DashboardPage() {
               color: "#166534",
             }}
           >
-            Average reputation: {overviewStats.avgReputation}/100
+            Average reputation: {avgReputation}/100
           </div>
         </div>
       </div>

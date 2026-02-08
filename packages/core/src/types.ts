@@ -212,6 +212,14 @@ export interface ChallengeData {
   expiresAt: Date;
   /** When this challenge was created */
   createdAt: Date;
+  /** Pending registration data — persisted alongside the challenge so it
+   *  survives process restarts. */
+  pendingRegistration?: {
+    publicKey: string;
+    scopesRequested: string[];
+    x402Wallet?: string;
+    metadata: Record<string, string>;
+  };
 }
 
 // ---------------------------------------------------------------------------

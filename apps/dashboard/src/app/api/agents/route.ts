@@ -10,10 +10,12 @@
  * - order: Sort order (asc, desc)
  * - limit: Max number of results
  * - offset: Pagination offset
+ *
+ * Phase 3.1: Reads from real MemoryStore (seeded with mock data as fallback).
  */
 
 import { NextResponse } from "next/server";
-import { agents as mockAgents } from "@/lib/mock-data";
+import { getAllAgentsFromStore } from "@/lib/store";
 import type { ApiResponse, DashboardAgent } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -25,7 +27,9 @@ export async function GET(request: Request) {
   const offset = parseInt(searchParams.get("offset") || "0", 10);
 
   try {
-    let agentList: DashboardAgent[] = mockAgents.map((a) => ({
+    const storeAgents = await getAllAgentsFromStore();
+
+    let agentList: DashboardAgent[] = storeAgents.map((a) => ({
       id: a.id,
       publicKey: a.publicKey,
       status: a.status,
@@ -33,10 +37,10 @@ export async function GET(request: Request) {
       reputation: a.reputation,
       totalRequests: a.totalRequests,
       totalRevenue: a.totalX402Paid,
-      framework: a.framework,
-      lastActiveAt: a.lastAuthAt,
-      createdAt: a.createdAt,
-      metadata: {},
+      framework: a.metadata.framework,
+      lastActiveAt: a.lastAuthAt instanceof Date ? a.lastAuthAt.toISOString() : String(a.lastAuthAt),
+      createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+      metadata: a.metadata,
     }));
 
     // Filter by status

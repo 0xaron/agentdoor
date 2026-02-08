@@ -245,3 +245,119 @@ class TestAgentRequest:
         agent = Agent()
         with pytest.raises(RuntimeError, match="connect"):
             await agent.request("GET", "/data")
+
+    @pytest.mark.asyncio
+    async def test_request_attaches_bearer_token(self) -> None:
+        agent = Agent(config=AgentConfig(agent_name="test-agent"))
+
+        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentgate.discovery import parse_discovery_document
+
+            mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
+            await agent.connect("https://example.com")
+
+        from agentgate.crypto import generate_keypair
+
+        pub, sec = generate_keypair()
+        agent._credential = Credential(
+            service_url="https://example.com",
+            agent_id="agent-42",
+            public_key=pub,
+            secret_key=sec,
+            api_key="apikey-xyz",
+            token="existing-token",
+            token_expires_at=time.time() + 3600,
+        )
+
+        data_response = _make_response(200, {"result": "ok"})
+        captured_headers: dict = {}
+
+        async def mock_request(method: str, path: str, **kwargs):
+            captured_headers.update(kwargs.get("headers", {}))
+            return data_response
+
+        assert agent._client is not None
+        agent._client.request = mock_request  # type: ignore[assignment]
+
+        resp = await agent.request("GET", "/data")
+        assert resp.status_code == 200
+        assert captured_headers["Authorization"] == "Bearer existing-token"
+
+        await agent.close()
+
+    @pytest.mark.asyncio
+    async def test_request_retries_on_401(self) -> None:
+        agent = Agent(config=AgentConfig(agent_name="test-agent"))
+
+        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentgate.discovery import parse_discovery_document
+
+            mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
+            await agent.connect("https://example.com")
+
+        from agentgate.crypto import generate_keypair
+
+        pub, sec = generate_keypair()
+        agent._credential = Credential(
+            service_url="https://example.com",
+            agent_id="agent-42",
+            public_key=pub,
+            secret_key=sec,
+            api_key="apikey-xyz",
+            token="stale-token",
+            token_expires_at=time.time() + 3600,
+        )
+
+        # First request returns 401, second returns 200 after token refresh
+        call_count = 0
+
+        async def mock_request(method: str, path: str, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return _make_response(401, {"error": "expired"})
+            return _make_response(200, {"result": "ok"})
+
+        # Mock authenticate to return a fresh token after invalidation
+        auth_response = _make_response(200, {
+            "token": "fresh-token",
+            "expires_in": 3600,
+        })
+
+        async def mock_post(url: str, **kwargs):
+            return auth_response
+
+        assert agent._client is not None
+        agent._client.request = mock_request  # type: ignore[assignment]
+        agent._client.post = mock_post  # type: ignore[assignment]
+
+        resp = await agent.request("GET", "/data")
+        # Should have retried after 401 and gotten 200
+        assert resp.status_code == 200
+        assert call_count == 2
+
+        await agent.close()
+
+
+class TestAgentClose:
+    """Tests for Agent.close()."""
+
+    @pytest.mark.asyncio
+    async def test_close_cleans_up_client(self) -> None:
+        agent = Agent()
+
+        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentgate.discovery import parse_discovery_document
+
+            mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
+            await agent.connect("https://example.com")
+
+        assert agent._client is not None
+        await agent.close()
+        assert agent._client is None
+
+    @pytest.mark.asyncio
+    async def test_close_when_not_connected(self) -> None:
+        agent = Agent()
+        # Should not raise
+        await agent.close()

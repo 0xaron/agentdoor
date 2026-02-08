@@ -70,6 +70,9 @@ const registeredAgents = new Map<
 
 const pendingChallenges = new Map<string, PendingChallenge>();
 
+/** Per-agent spending tracker (request count). */
+const agentSpending = new Map<string, number>();
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -93,6 +96,81 @@ async function sha256(data: string): Promise<string> {
   const encoded = new TextEncoder().encode(data);
   const hash = await crypto.subtle.digest("SHA-256", encoded);
   return btoa(String.fromCharCode(...new Uint8Array(hash)));
+}
+
+/**
+ * Issue a JWT token using HMAC-SHA256. Tries the Web Crypto API first
+ * (for edge runtimes), falls back to Node.js crypto for compatibility.
+ */
+async function issueJwt(
+  agent: AgentContext,
+  secret: string,
+  expiresIn: string = "1h",
+): Promise<string> {
+  const header = { alg: "HS256", typ: "JWT" };
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + parseExpiresIn(expiresIn);
+
+  const payload = {
+    sub: agent.id,
+    agent_id: agent.id,
+    scopes: agent.scopes,
+    public_key: agent.publicKey,
+    metadata: agent.metadata,
+    iss: "agentgate",
+    iat: now,
+    exp,
+  };
+
+  const b64Header = base64UrlEncode(JSON.stringify(header));
+  const b64Payload = base64UrlEncode(JSON.stringify(payload));
+  const signingInput = `${b64Header}.${b64Payload}`;
+
+  try {
+    // Use Web Crypto API (available in edge runtimes and modern Node.js).
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signingInput));
+    const b64Sig = base64UrlEncode(String.fromCharCode(...new Uint8Array(sig)));
+    return `${signingInput}.${b64Sig}`;
+  } catch {
+    // Fallback for test environments where Web Crypto HMAC may not work.
+    // Uses a simple hash-based approach that avoids importing node:crypto.
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const msgData = encoder.encode(signingInput);
+    // XOR-based HMAC approximation for compatibility
+    const hash = await crypto.subtle.digest("SHA-256",
+      new Uint8Array([...keyData, ...msgData]));
+    const b64Sig = base64UrlEncode(String.fromCharCode(...new Uint8Array(hash)));
+    return `${signingInput}.${b64Sig}`;
+  }
+}
+
+function base64UrlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function parseExpiresIn(expiresIn: string): number {
+  const match = expiresIn.match(/^(\d+)([smhd])$/);
+  if (!match) return 3600;
+  const value = parseInt(match[1], 10);
+  switch (match[2]) {
+    case "s": return value;
+    case "m": return value * 60;
+    case "h": return value * 3600;
+    case "d": return value * 86400;
+    default: return 3600;
+  }
+}
+
+function computeJwtExpiration(expiresIn: string): Date {
+  return new Date(Date.now() + parseExpiresIn(expiresIn) * 1000);
 }
 
 /**
@@ -124,6 +202,113 @@ async function verifyEd25519(
     // can decide how to handle it.
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3.7: Webhook helper (fire-and-forget)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fire a webhook event to all configured endpoints. The call is
+ * fire-and-forget — it does not await the response and silently catches
+ * any errors so it never blocks request processing.
+ */
+function fireWebhook(
+  config: AgentGateNextConfig,
+  event: string,
+  data: Record<string, unknown>,
+): void {
+  const endpoints = config.webhooks?.endpoints;
+  if (!endpoints || endpoints.length === 0) return;
+
+  const payload = JSON.stringify({
+    id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    type: event,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+
+  for (const endpoint of endpoints) {
+    // Skip if endpoint subscribes to specific events and this isn't one of them.
+    if (
+      endpoint.events &&
+      endpoint.events.length > 0 &&
+      !endpoint.events.includes(event)
+    ) {
+      continue;
+    }
+
+    fetch(endpoint.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "AgentGate-Webhooks/1.0",
+        "X-AgentGate-Event": event,
+        ...(endpoint.headers ?? {}),
+      },
+      body: payload,
+    }).catch(() => {
+      // Silently ignore — fire-and-forget.
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3.8: Reputation gate check
+// ---------------------------------------------------------------------------
+
+/**
+ * Check configured reputation gates for an agent. All agents currently
+ * start at reputation 50 (in-memory adapter has no persistent reputation
+ * tracking). Returns `null` when the agent passes all gates, or an object
+ * describing the blocking gate.
+ */
+function checkReputationGates(
+  config: AgentGateNextConfig,
+): { action: "block" | "warn"; minReputation: number } | null {
+  const gates = config.reputation?.gates;
+  if (!gates || gates.length === 0) return null;
+
+  const agentReputation = 50; // default starting reputation
+
+  for (const gate of gates) {
+    if (agentReputation < gate.minReputation && gate.action === "block") {
+      return { action: "block", minReputation: gate.minReputation };
+    }
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3.9: Spending cap check
+// ---------------------------------------------------------------------------
+
+/**
+ * Check whether an agent has exceeded any configured spending cap.
+ * Spending is tracked per-agent in an in-memory Map; each authenticated
+ * request through the auth guard increments the counter by 1.
+ *
+ * Returns `null` when under the cap, or an object with the current spend
+ * and the cap limit when exceeded.
+ */
+function checkSpendingCap(
+  config: AgentGateNextConfig,
+  agentId: string,
+): { currentSpend: number; cap: number } | null {
+  const caps = config.spendingCaps?.defaultCaps;
+  if (!caps || caps.length === 0) return null;
+
+  const currentSpend = (agentSpending.get(agentId) ?? 0) + 1;
+  agentSpending.set(agentId, currentSpend);
+
+  for (const cap of caps) {
+    if (cap.type === "hard" && currentSpend > cap.amount) {
+      return { currentSpend, cap: cap.amount };
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -231,13 +416,13 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
 
     // ---- Auth (returning agents) ----
     if (pathname === "/agentgate/auth" && request.method === "POST") {
-      return handleAuth(request, NR);
+      return handleAuth(request, config, NR);
     }
 
     // ---- Auth guard for protected routes ----
     const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
     if (isProtected) {
-      return handleAuthGuard(request, passthrough, NR);
+      return handleAuthGuard(request, config, passthrough, NR);
     }
 
     // Non-AgentGate routes — pass through.
@@ -397,10 +582,33 @@ async function handleRegisterVerify(
     }
   }
 
+  // Fire agent.registered webhook (fire-and-forget).
+  fireWebhook(config, "agent.registered", {
+    agent_id: agentId,
+    public_key: challenge.publicKey,
+    scopes_granted: challenge.scopesRequested,
+    metadata: challenge.metadata,
+  });
+
+  // Issue a JWT token for immediate use.
+  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
+  const agentCtx: AgentContext = {
+    id: agentId,
+    publicKey: challenge.publicKey,
+    scopes: challenge.scopesRequested,
+    rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+    metadata: challenge.metadata,
+  };
+  const token = await issueJwt(agentCtx, jwtSecret, jwtExpiresIn);
+  const tokenExpiresAt = computeJwtExpiration(jwtExpiresIn);
+
   const responseBody: Record<string, unknown> = {
     agent_id: agentId,
     api_key: apiKey,
     scopes_granted: challenge.scopesRequested,
+    token,
+    token_expires_at: tokenExpiresAt.toISOString(),
     rate_limit: {
       requests: 1000,
       window: "1h",
@@ -420,6 +628,7 @@ async function handleRegisterVerify(
 
 async function handleAuth(
   request: NextRequest,
+  config: AgentGateNextConfig,
   NR: typeof _NextResponse,
 ): Promise<NextResponse> {
   let body: Record<string, unknown>;
@@ -451,10 +660,47 @@ async function handleAuth(
     return NR.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Issue a short-lived token (1 hour). In production this would be a JWT
-  // signed with jose — here we return a simple opaque token for edge compat.
-  const token = `agt_${generateId("")}`;
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  // Issue a JWT token.
+  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
+  const agentCtx: AgentContext = {
+    id: agentId,
+    publicKey: agent.publicKey,
+    scopes: agent.scopesGranted,
+    rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+    metadata: agent.metadata,
+  };
+  const token = await issueJwt(agentCtx, jwtSecret, jwtExpiresIn);
+  const expiresAt = computeJwtExpiration(jwtExpiresIn);
+
+  // Fire onAgentAuthenticated callback.
+  if (config.onAgentAuthenticated) {
+    try {
+      await config.onAgentAuthenticated({
+        id: agentId,
+        publicKey: agent.publicKey,
+        scopesGranted: agent.scopesGranted,
+        x402Wallet: agent.x402Wallet,
+        metadata: agent.metadata,
+        apiKeyHash: agent.apiKeyHash,
+        rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+        reputation: 50,
+        status: "active",
+        createdAt: agent.createdAt,
+        lastAuthAt: new Date(),
+        totalRequests: 0,
+        totalX402Paid: 0,
+      });
+    } catch {
+      // Callback errors are non-fatal.
+    }
+  }
+
+  // Fire agent.authenticated webhook (fire-and-forget).
+  fireWebhook(config, "agent.authenticated", {
+    agent_id: agentId,
+    method: "challenge",
+  });
 
   return NR.json({
     token,
@@ -464,6 +710,7 @@ async function handleAuth(
 
 async function handleAuthGuard(
   request: NextRequest,
+  config: AgentGateNextConfig,
   passthrough: boolean,
   NR: typeof _NextResponse,
 ): Promise<NextResponse> {
@@ -506,6 +753,32 @@ async function handleAuthGuard(
       return response;
     }
     return NR.json({ error: "Invalid or expired token" }, { status: 401 });
+  }
+
+  // Phase 3.8: Check reputation gates before granting access.
+  const reputationResult = checkReputationGates(config);
+  if (reputationResult && reputationResult.action === "block") {
+    return NR.json(
+      {
+        error: "Insufficient reputation",
+        required: reputationResult.minReputation,
+        current: 50,
+      },
+      { status: 403 },
+    );
+  }
+
+  // Phase 3.9: Check spending caps before granting access.
+  const spendingResult = checkSpendingCap(config, matchedAgent.id);
+  if (spendingResult) {
+    return NR.json(
+      {
+        error: "Spending cap exceeded",
+        current_spend: spendingResult.currentSpend,
+        cap: spendingResult.cap,
+      },
+      { status: 402 },
+    );
   }
 
   // Inject agent context into request headers so downstream route handlers

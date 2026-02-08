@@ -48,3 +48,28 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and test python-sdk
+        working-directory: packages/python-sdk
+        run: |
+          pip install -e ".[dev]"
+          pytest
+
+      - name: Install and test fastapi-adapter
+        working-directory: packages/fastapi-adapter
+        run: |
+          pip install -e ".[dev]"
+          pytest
