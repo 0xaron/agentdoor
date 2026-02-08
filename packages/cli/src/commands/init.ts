@@ -32,18 +32,6 @@ interface InitOptions {
 
 type FrameworkChoice = "nextjs" | "express" | "hono" | "fastapi" | "other";
 
-interface InitAnswers {
-  framework: FrameworkChoice;
-  hasOpenapi: boolean;
-  openapiPath?: string;
-  scopes: Array<{ id: string; description: string; price?: string }>;
-  enableX402: boolean;
-  x402Wallet?: string;
-  x402Network?: string;
-  serviceName: string;
-  serviceDescription: string;
-}
-
 // ---------------------------------------------------------------------------
 // Framework detection
 // ---------------------------------------------------------------------------

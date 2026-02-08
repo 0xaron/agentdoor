@@ -23,9 +23,9 @@ export function createHealthRouter(store: AgentStore): Router {
     let storageStatus: "connected" | "error" = "connected";
     let storageError: string | undefined;
 
-    // Probe storage to verify connectivity
+    // Probe storage to verify connectivity by performing a lightweight read
     try {
-      await store.healthCheck();
+      await store.getAgent("__health_check__");
     } catch (err) {
       storageStatus = "error";
       storageError = err instanceof Error ? err.message : "Unknown storage error";

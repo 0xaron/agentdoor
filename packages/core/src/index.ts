@@ -56,6 +56,7 @@ export {
   PACKAGE_VERSION,
   // Prefixes
   AGENT_ID_PREFIX,
+  API_KEY_PREFIX,
   API_KEY_LIVE_PREFIX,
   API_KEY_TEST_PREFIX,
   // Lengths
@@ -207,6 +208,8 @@ export { RateLimiter, parseWindow } from "./rate-limiter.js";
 
 export type { AgentStore, CreateAgentInput, UpdateAgentInput } from "./storage/interface.js";
 export { MemoryStore } from "./storage/memory.js";
+export { SQLiteStore } from "./storage/sqlite.js";
+export { PostgresStore } from "./storage/postgres.js";
 
 // ---------------------------------------------------------------------------
 // Discovery

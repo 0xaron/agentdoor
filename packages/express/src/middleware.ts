@@ -1,7 +1,7 @@
 import { Router, json } from "express";
 import type { AgentGateConfig, AgentStore } from "@agentgate/core";
 import {
-  validateConfig,
+  resolveConfig,
   MemoryStore,
   AGENTGATE_VERSION,
 } from "@agentgate/core";
@@ -66,10 +66,9 @@ export interface AgentGateExpressOptions extends AgentGateConfig {
  * @returns Express Router to mount with app.use()
  */
 export function agentgate(options: AgentGateExpressOptions): Router {
-  // Validate the config using core's zod schema. This will throw
-  // a descriptive error if the config is invalid, failing fast
-  // at server startup rather than at request time.
-  const config = validateConfig(options);
+  // Resolve the config: validates via zod and applies all defaults.
+  // This ensures JWT secret, rate limits, and other values are always present.
+  const resolved = resolveConfig(options);
 
   // Create or use the provided storage backend
   const store: AgentStore = options.store ?? new MemoryStore();
@@ -89,13 +88,13 @@ export function agentgate(options: AgentGateExpressOptions): Router {
 
   // Log initialization
   console.log(
-    `[agentgate] v${AGENTGATE_VERSION} initialized with ${config.scopes.length} scope(s)`
+    `[agentgate] v${AGENTGATE_VERSION} initialized with ${resolved.scopes.length} scope(s)`
   );
 
   // Mount route handlers
-  router.use(createDiscoveryRouter(config));
-  router.use(createRegisterRouter(config, store));
-  router.use(createAuthRouter(config, store));
+  router.use(createDiscoveryRouter(resolved));
+  router.use(createRegisterRouter(resolved, store));
+  router.use(createAuthRouter(resolved, store));
   router.use(createHealthRouter(store));
 
   // Apply auth guard to all routes that pass through this router.
@@ -103,7 +102,7 @@ export function agentgate(options: AgentGateExpressOptions): Router {
   // does NOT block unauthenticated requests. SaaS app handlers
   // decide access policy.
   if (enableAuthGuard) {
-    router.use(createAuthGuard(config, store));
+    router.use(createAuthGuard(store, resolved.jwt.secret));
   }
 
   return router;

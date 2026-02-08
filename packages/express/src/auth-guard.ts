@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import type { AgentGateConfig, AgentStore, AgentContext } from "@agentgate/core";
+import type { AgentStore, AgentContext } from "@agentgate/core";
 import {
   verifyToken,
   hashApiKey,
@@ -42,10 +42,10 @@ const AGENTGATE_PATHS = new Set([
  * through the same handlers, checking req.isAgent when needed.
  */
 export function createAuthGuard(
-  config: AgentGateConfig,
-  store: AgentStore
+  store: AgentStore,
+  jwtSecret: string,
 ): (req: Request, res: Response, next: NextFunction) => void {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     // Initialize defaults on every request
     req.isAgent = false;
     req.agent = undefined;
@@ -79,7 +79,7 @@ export function createAuthGuard(
         agentContext = await resolveApiKey(token, store);
       } else if (token.startsWith("eyJ")) {
         // --- JWT authentication ---
-        agentContext = await resolveJwt(token, config);
+        agentContext = await resolveJwt(token, jwtSecret);
       }
 
       if (agentContext) {
@@ -106,7 +106,7 @@ async function resolveApiKey(
   store: AgentStore
 ): Promise<AgentContext | undefined> {
   const keyHash = hashApiKey(apiKey);
-  const agent = await store.findAgentByApiKeyHash(keyHash);
+  const agent = await store.getAgentByApiKeyHash(keyHash);
 
   if (!agent) {
     return undefined;
@@ -127,25 +127,16 @@ async function resolveApiKey(
 }
 
 /**
- * Resolves a JWT token by verifying it and extracting the agent
- * claims (agent_id, scopes).
+ * Resolves a JWT token by verifying it and extracting the agent context.
  */
 async function resolveJwt(
   token: string,
-  config: AgentGateConfig
+  jwtSecret: string,
 ): Promise<AgentContext | undefined> {
-  const claims = await verifyToken(token, config.jwt);
-
-  if (!claims) {
+  try {
+    const result = await verifyToken(token, jwtSecret);
+    return result.agent;
+  } catch {
     return undefined;
   }
-
-  return {
-    id: claims.agentId,
-    publicKey: claims.publicKey ?? "",
-    scopes: claims.scopes,
-    rateLimit: claims.rateLimit ?? { requests: 1000, window: "1h" },
-    reputation: claims.reputation,
-    metadata: claims.metadata ?? {},
-  };
 }

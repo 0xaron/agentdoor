@@ -90,8 +90,8 @@ async function verifyEd25519(
 function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
   return {
     agentgate_version: "1.0",
-    service_name: config.serviceName ?? "AgentGate Service",
-    service_description: config.serviceDescription ?? "",
+    service_name: config.service?.name ?? "AgentGate Service",
+    service_description: config.service?.description ?? "",
     registration_endpoint: "/agentgate/register",
     auth_endpoint: "/agentgate/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
@@ -112,7 +112,7 @@ function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown
       : undefined,
     rate_limits: {
       registration: "10/hour",
-      default: config.rateLimit?.default ?? "1000/hour",
+      default: config.rateLimit ? `${config.rateLimit.requests}/${config.rateLimit.window}` : "1000/1h",
     },
   };
 }
@@ -292,7 +292,7 @@ export function createAuthGuardMiddleware(
       id: matchedAgent.id,
       publicKey: matchedAgent.publicKey,
       scopes: matchedAgent.scopesGranted,
-      rateLimit: config.rateLimit ?? { default: "1000/hour" },
+      rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
       metadata: matchedAgent.metadata,
     };
 
@@ -392,7 +392,7 @@ export function createAgentGateMiddleware(
         id: matchedAgent.id,
         publicKey: matchedAgent.publicKey,
         scopes: matchedAgent.scopesGranted,
-        rateLimit: config.rateLimit ?? { default: "1000/hour" },
+        rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
         metadata: matchedAgent.metadata,
       };
 
@@ -539,10 +539,14 @@ async function handleRegisterVerify(
         scopesGranted: challenge.scopesRequested,
         x402Wallet: challenge.x402Wallet,
         metadata: challenge.metadata,
-        apiKey,
-        rateLimit: config.rateLimit ?? { default: "1000/hour" },
+        apiKeyHash: apiKeyHash,
+        rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+        reputation: 50,
+        status: "active",
         createdAt: new Date(),
         lastAuthAt: new Date(),
+        totalRequests: 0,
+        totalX402Paid: 0,
       };
       await config.onAgentRegistered(agentRecord);
     } catch {

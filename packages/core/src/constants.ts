@@ -21,6 +21,9 @@ export const PACKAGE_VERSION = "0.1.0";
 /** Prefix for agent IDs */
 export const AGENT_ID_PREFIX = "ag_";
 
+/** Common prefix for all API keys (used for token type detection) */
+export const API_KEY_PREFIX = "agk_";
+
 /** Prefix for live API keys */
 export const API_KEY_LIVE_PREFIX = "agk_live_";
 
