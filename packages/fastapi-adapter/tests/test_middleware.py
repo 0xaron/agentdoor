@@ -430,3 +430,89 @@ class TestProtectedRoutes:
         )
         assert resp.status_code == 403
         assert "admin" in resp.json()["detail"]
+
+    def test_expired_token_rejected(self) -> None:
+        """An expired token should return 401."""
+        app = FastAPI()
+        cfg = AgentGateConfig(
+            service_name="Test",
+            scopes=[{"name": "read", "description": "Read"}],
+            token_ttl_seconds=0,  # Tokens expire immediately
+        )
+        gate = AgentGate(app, config=cfg)
+
+        @app.get("/protected")
+        async def protected(
+            agent: AgentContext = Depends(gate.agent_required())
+        ):
+            return {"ok": True}
+
+        client = TestClient(app)
+        pub, _, signing_key = _generate_keypair()
+
+        # Full registration
+        reg_resp = client.post("/agentgate/register", json={
+            "agent_name": "test-agent",
+            "public_key": pub,
+            "scopes": ["read"],
+        })
+        reg_data = reg_resp.json()
+        challenge = reg_data["challenge"]
+        sig = _sign(challenge, signing_key)
+        verify_resp = client.post("/agentgate/register/verify", json={
+            "registration_id": reg_data["registration_id"],
+            "challenge": challenge,
+            "signature": sig,
+        })
+        verify_data = verify_resp.json()
+
+        timestamp = str(int(time.time()))
+        ts_sig = _sign(timestamp, signing_key)
+        auth_resp = client.post("/agentgate/auth", json={
+            "agent_id": verify_data["agent_id"],
+            "api_key": verify_data["api_key"],
+            "timestamp": timestamp,
+            "signature": ts_sig,
+        })
+        token = auth_resp.json()["token"]
+
+        # Wait for token to expire (TTL is 0)
+        time.sleep(0.1)
+
+        resp = client.get(
+            "/protected",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 401
+
+
+class TestCustomRoutePrefix:
+    """Tests for custom route prefix configuration."""
+
+    def test_custom_prefix(self) -> None:
+        """Routes should use the custom prefix."""
+        app = FastAPI()
+        cfg = AgentGateConfig(
+            service_name="Custom",
+            scopes=[{"name": "read", "description": "Read"}],
+            route_prefix="/custom/auth",
+        )
+        AgentGate(app, config=cfg)
+
+        client = TestClient(app)
+
+        # Discovery should reflect custom prefix
+        resp = client.get("/.well-known/agentgate.json")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["registration_endpoint"] == "/custom/auth/register"
+        assert data["auth_endpoint"] == "/custom/auth/auth"
+
+        # Register should work at custom path
+        pub, _, _ = _generate_keypair()
+        reg_resp = client.post("/custom/auth/register", json={
+            "agent_name": "test-agent",
+            "public_key": pub,
+            "scopes": ["read"],
+        })
+        assert reg_resp.status_code == 200

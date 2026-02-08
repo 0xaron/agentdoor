@@ -157,6 +157,23 @@ app.use("*", agentgate({
 }));
 ```
 
+### FastAPI (Python)
+
+```python
+from fastapi import Depends, FastAPI
+from agentgate_fastapi import AgentGate, AgentGateConfig, AgentContext
+
+app = FastAPI()
+gate = AgentGate(app, config=AgentGateConfig(
+    service_name="My API",
+    scopes=[{"name": "read", "description": "Read access"}],
+))
+
+@app.get("/protected")
+async def protected(agent: AgentContext = Depends(gate.agent_required())):
+    return {"agent": agent.agent_id}
+```
+
 ---
 
 ## Agent Traffic Detection
@@ -254,6 +271,8 @@ One AgentGate integration auto-generates companion protocol files:
 | `@agentgate/sdk` | Agent-side TypeScript SDK | P0 |
 | `@agentgate/detect` | Agent traffic detection middleware | P0 |
 | `@agentgate/cli` | CLI tool (`npx agentgate init`) | P0 |
+| `agentgate` (Python) | Python Agent SDK | P0 |
+| `agentgate-fastapi` (Python) | FastAPI middleware adapter | P0 |
 | `@agentgate/dashboard` | Agent analytics dashboard (Next.js) | P1 |
 
 ---
@@ -267,15 +286,18 @@ agentgate/
 │   ├── express/              # Express.js middleware
 │   ├── next/                 # Next.js adapter
 │   ├── hono/                 # Hono middleware
-│   ├── sdk/                  # Agent-side SDK
+│   ├── sdk/                  # Agent-side TypeScript SDK
 │   ├── detect/               # Agent traffic detection
-│   └── cli/                  # CLI tool
+│   ├── cli/                  # CLI tool
+│   ├── python-sdk/           # Python Agent SDK (agentgate)
+│   └── fastapi-adapter/      # FastAPI middleware (agentgate-fastapi)
 ├── apps/
 │   └── dashboard/            # Agent dashboard (Next.js)
 ├── examples/
 │   ├── express-weather-api/  # Express example
 │   ├── nextjs-saas/          # Next.js example
 │   ├── hono-cloudflare/      # Cloudflare Workers example
+│   ├── python-fastapi/       # Python FastAPI example
 │   ├── agent-typescript/     # Agent SDK example
 │   └── agent-langchain/      # LangChain integration
 ├── docs/                     # Documentation
@@ -463,6 +485,16 @@ X-PAYMENT: <x402-payment-payload>   (optional)
 | `zod` | Schema validation | Config + API input |
 | `nanoid` | ID generation | Agent IDs + nonces |
 | `@noble/secp256k1` | x402 wallet compat | Pure JS |
+
+---
+
+## Documentation
+
+- [Quick Start Guide](./docs/quickstart.md)
+- [Configuration Reference](./docs/configuration.md)
+- [API Reference](./docs/api-reference.md)
+- [Agent SDK Guide](./docs/agent-sdk.md)
+- [FAQ](./docs/faq.md)
 
 ---
 

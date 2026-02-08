@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
+import respx
 
-from agentgate.discovery import DiscoveryDocument, ScopeDefinition, parse_discovery_document
+from agentgate.discovery import (
+    DiscoveryDocument,
+    ScopeDefinition,
+    discover,
+    parse_discovery_document,
+)
 
 
 class TestParseDiscoveryDocument:
@@ -86,3 +93,66 @@ class TestParseDiscoveryDocument:
         data = {**self._minimal_doc(), "scopes": []}
         doc = parse_discovery_document(data)
         assert doc.scopes == []
+
+
+class TestDiscover:
+    """Tests for the async discover() function."""
+
+    _DOC = {
+        "agentgate_version": "0.1",
+        "service_name": "Remote Service",
+        "registration_endpoint": "/agentgate/register",
+        "verification_endpoint": "/agentgate/register/verify",
+        "auth_endpoint": "/agentgate/auth",
+        "scopes": [{"name": "read", "description": "Read access"}],
+        "token_ttl_seconds": 7200,
+    }
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_discover_fetches_and_parses(self) -> None:
+        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+            return_value=httpx.Response(200, json=self._DOC)
+        )
+        doc = await discover("https://api.example.com")
+        assert isinstance(doc, DiscoveryDocument)
+        assert doc.service_name == "Remote Service"
+        assert doc.token_ttl_seconds == 7200
+        assert len(doc.scopes) == 1
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_discover_strips_trailing_slash(self) -> None:
+        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+            return_value=httpx.Response(200, json=self._DOC)
+        )
+        doc = await discover("https://api.example.com/")
+        assert doc.service_name == "Remote Service"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_discover_with_provided_client(self) -> None:
+        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+            return_value=httpx.Response(200, json=self._DOC)
+        )
+        async with httpx.AsyncClient() as client:
+            doc = await discover("https://api.example.com", client=client)
+        assert doc.service_name == "Remote Service"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_discover_raises_on_http_error(self) -> None:
+        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+            return_value=httpx.Response(404)
+        )
+        with pytest.raises(httpx.HTTPStatusError):
+            await discover("https://api.example.com")
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_discover_raises_on_missing_fields(self) -> None:
+        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+            return_value=httpx.Response(200, json={"service_name": "incomplete"})
+        )
+        with pytest.raises(KeyError):
+            await discover("https://api.example.com")

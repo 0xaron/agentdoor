@@ -103,10 +103,17 @@ export function createRegisterRouter(
       const agentId = generateAgentId();
       const challenge = createChallenge(agentId, config.challengeExpirySeconds);
 
-      // Store the challenge in the agent store
+      // Persist challenge and pending registration data together in the store.
+      // This ensures pending registrations survive process restarts.
+      challenge.pendingRegistration = {
+        publicKey: public_key,
+        scopesRequested: scopes_requested,
+        x402Wallet: x402_wallet,
+        metadata: metadata || {},
+      };
       await store.createChallenge(challenge);
 
-      // Store the pending registration data in memory
+      // Also keep in memory for backward compatibility
       pendingRegistrations.set(agentId, {
         publicKey: public_key,
         scopesRequested: scopes_requested,
@@ -177,8 +184,12 @@ export function createRegisterRouter(
         return;
       }
 
-      // Retrieve the pending registration data
-      const pending = pendingRegistrations.get(agent_id);
+      // Retrieve the pending registration data. Try in-memory first, then
+      // fall back to the persisted data in the challenge (survives restarts).
+      let pending = pendingRegistrations.get(agent_id);
+      if (!pending && challenge.pendingRegistration) {
+        pending = challenge.pendingRegistration;
+      }
       if (!pending) {
         res.status(404).json({
           error: "not_found",

@@ -857,7 +857,8 @@ describe("createAgentGateMiddleware", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.token).toBeDefined();
-      expect(body.token).toMatch(/^agt_/);
+      // Token should be a JWT (base64url.base64url.base64url) now
+      expect(body.token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
       expect(body.expires_at).toBeDefined();
       // Token should expire roughly 1 hour from now.
       const expiresAt = new Date(body.expires_at).getTime();

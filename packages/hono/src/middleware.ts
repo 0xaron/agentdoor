@@ -34,6 +34,9 @@ interface StoredAgent {
 const registeredAgents = new Map<string, StoredAgent>();
 const pendingChallenges = new Map<string, PendingChallenge>();
 
+/** Per-agent spending tracker (request count). */
+const agentSpending = new Map<string, number>();
+
 // ---------------------------------------------------------------------------
 // Crypto helpers (Web Crypto API — works on CF Workers, Deno, Bun, Node 20+)
 // ---------------------------------------------------------------------------
@@ -59,6 +62,69 @@ async function sha256(data: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(hash)));
 }
 
+/**
+ * Issue a JWT token using HMAC-SHA256. Edge-compatible implementation
+ * using the Web Crypto API (no jose dependency needed at the edge).
+ */
+async function issueJwt(
+  agent: AgentContext,
+  secret: string,
+  expiresIn: string = "1h",
+): Promise<string> {
+  const header = { alg: "HS256", typ: "JWT" };
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + parseExpiresIn(expiresIn);
+
+  const payload = {
+    sub: agent.id,
+    agent_id: agent.id,
+    scopes: agent.scopes,
+    public_key: agent.publicKey,
+    metadata: agent.metadata,
+    iss: "agentgate",
+    iat: now,
+    exp,
+  };
+
+  const b64Header = base64UrlEncode(JSON.stringify(header));
+  const b64Payload = base64UrlEncode(JSON.stringify(payload));
+  const signingInput = `${b64Header}.${b64Payload}`;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signingInput));
+  const b64Sig = base64UrlEncode(String.fromCharCode(...new Uint8Array(sig)));
+
+  return `${signingInput}.${b64Sig}`;
+}
+
+function base64UrlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function parseExpiresIn(expiresIn: string): number {
+  const match = expiresIn.match(/^(\d+)([smhd])$/);
+  if (!match) return 3600;
+  const value = parseInt(match[1], 10);
+  switch (match[2]) {
+    case "s": return value;
+    case "m": return value * 60;
+    case "h": return value * 3600;
+    case "d": return value * 86400;
+    default: return 3600;
+  }
+}
+
+function computeJwtExpiration(expiresIn: string): Date {
+  return new Date(Date.now() + parseExpiresIn(expiresIn) * 1000);
+}
+
 async function verifyEd25519(
   message: string,
   signatureB64: string,
@@ -81,6 +147,113 @@ async function verifyEd25519(
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3.7: Webhook helper (fire-and-forget)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fire a webhook event to all configured endpoints. The call is
+ * fire-and-forget — it does not await the response and silently catches
+ * any errors so it never blocks request processing.
+ */
+function fireWebhook(
+  config: AgentGateHonoConfig,
+  event: string,
+  data: Record<string, unknown>,
+): void {
+  const endpoints = config.webhooks?.endpoints;
+  if (!endpoints || endpoints.length === 0) return;
+
+  const payload = JSON.stringify({
+    id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    type: event,
+    timestamp: new Date().toISOString(),
+    data,
+  });
+
+  for (const endpoint of endpoints) {
+    // Skip if endpoint subscribes to specific events and this isn't one of them.
+    if (
+      endpoint.events &&
+      endpoint.events.length > 0 &&
+      !endpoint.events.includes(event)
+    ) {
+      continue;
+    }
+
+    fetch(endpoint.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "AgentGate-Webhooks/1.0",
+        "X-AgentGate-Event": event,
+        ...(endpoint.headers ?? {}),
+      },
+      body: payload,
+    }).catch(() => {
+      // Silently ignore — fire-and-forget.
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3.8: Reputation gate check
+// ---------------------------------------------------------------------------
+
+/**
+ * Check configured reputation gates for an agent. All agents currently
+ * start at reputation 50 (in-memory adapter has no persistent reputation
+ * tracking). Returns `null` when the agent passes all gates, or an object
+ * describing the blocking gate.
+ */
+function checkReputationGates(
+  config: AgentGateHonoConfig,
+): { action: "block" | "warn"; minReputation: number } | null {
+  const gates = config.reputation?.gates;
+  if (!gates || gates.length === 0) return null;
+
+  const agentReputation = 50; // default starting reputation
+
+  for (const gate of gates) {
+    if (agentReputation < gate.minReputation && gate.action === "block") {
+      return { action: "block", minReputation: gate.minReputation };
+    }
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3.9: Spending cap check
+// ---------------------------------------------------------------------------
+
+/**
+ * Check whether an agent has exceeded any configured spending cap.
+ * Spending is tracked per-agent in an in-memory Map; each authenticated
+ * request through the auth guard increments the counter by 1.
+ *
+ * Returns `null` when under the cap, or an object with the current spend
+ * and the cap limit when exceeded.
+ */
+function checkSpendingCap(
+  config: AgentGateHonoConfig,
+  agentId: string,
+): { currentSpend: number; cap: number } | null {
+  const caps = config.spendingCaps?.defaultCaps;
+  if (!caps || caps.length === 0) return null;
+
+  const currentSpend = (agentSpending.get(agentId) ?? 0) + 1;
+  agentSpending.set(agentId, currentSpend);
+
+  for (const cap of caps) {
+    if (cap.type === "hard" && currentSpend > cap.amount) {
+      return { currentSpend, cap: cap.amount };
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,7 +384,7 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
 
   // Auth endpoint (returning agents).
   app.post(`${base}/agentgate/auth`, async (c: Context) => {
-    return handleAuth(c);
+    return handleAuth(c, config);
   });
 
   // Auth guard middleware for protected paths.
@@ -288,6 +461,32 @@ export function createAuthGuardMiddleware(
       return c.json({ error: "Invalid or expired token" }, 401);
     }
 
+    // Phase 3.8: Check reputation gates before granting access.
+    const reputationResult = checkReputationGates(config);
+    if (reputationResult && reputationResult.action === "block") {
+      return c.json(
+        {
+          error: "Insufficient reputation",
+          required: reputationResult.minReputation,
+          current: 50,
+        },
+        403,
+      );
+    }
+
+    // Phase 3.9: Check spending caps before granting access.
+    const spendingResult = checkSpendingCap(config, matchedAgent.id);
+    if (spendingResult) {
+      return c.json(
+        {
+          error: "Spending cap exceeded",
+          current_spend: spendingResult.currentSpend,
+          cap: spendingResult.cap,
+        },
+        402,
+      );
+    }
+
     const agentContext: AgentContext = {
       id: matchedAgent.id,
       publicKey: matchedAgent.publicKey,
@@ -350,7 +549,7 @@ export function createAgentGateMiddleware(
 
     // Auth.
     if (pathname === `${base}/agentgate/auth` && method === "POST") {
-      return handleAuth(c);
+      return handleAuth(c, config);
     }
 
     // Auth guard for protected paths.
@@ -386,6 +585,32 @@ export function createAgentGateMiddleware(
           return;
         }
         return c.json({ error: "Invalid or expired token" }, 401);
+      }
+
+      // Phase 3.8: Check reputation gates before granting access.
+      const reputationResult = checkReputationGates(config);
+      if (reputationResult && reputationResult.action === "block") {
+        return c.json(
+          {
+            error: "Insufficient reputation",
+            required: reputationResult.minReputation,
+            current: 50,
+          },
+          403,
+        );
+      }
+
+      // Phase 3.9: Check spending caps before granting access.
+      const spendingResult = checkSpendingCap(config, matchedAgent.id);
+      if (spendingResult) {
+        return c.json(
+          {
+            error: "Spending cap exceeded",
+            current_spend: spendingResult.currentSpend,
+            cap: spendingResult.cap,
+          },
+          402,
+        );
       }
 
       const agentContext: AgentContext = {
@@ -554,10 +779,33 @@ async function handleRegisterVerify(
     }
   }
 
+  // Fire agent.registered webhook (fire-and-forget).
+  fireWebhook(config, "agent.registered", {
+    agent_id: agentId,
+    public_key: challenge.publicKey,
+    scopes_granted: challenge.scopesRequested,
+    metadata: challenge.metadata,
+  });
+
+  // Issue a JWT token for immediate use.
+  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
+  const agentCtx: AgentContext = {
+    id: agentId,
+    publicKey: challenge.publicKey,
+    scopes: challenge.scopesRequested,
+    rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+    metadata: challenge.metadata,
+  };
+  const token = await issueJwt(agentCtx, jwtSecret, jwtExpiresIn);
+  const tokenExpiresAt = computeJwtExpiration(jwtExpiresIn);
+
   const responseBody: Record<string, unknown> = {
     agent_id: agentId,
     api_key: apiKey,
     scopes_granted: challenge.scopesRequested,
+    token,
+    token_expires_at: tokenExpiresAt.toISOString(),
     rate_limit: {
       requests: 1000,
       window: "1h",
@@ -575,7 +823,7 @@ async function handleRegisterVerify(
   return c.json(responseBody, 200);
 }
 
-async function handleAuth(c: Context): Promise<Response> {
+async function handleAuth(c: Context, config: AgentGateHonoConfig): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = await c.req.json<Record<string, unknown>>();
@@ -605,8 +853,48 @@ async function handleAuth(c: Context): Promise<Response> {
     return c.json({ error: "Invalid signature" }, 400);
   }
 
-  const token = `agt_${generateId("")}`;
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  // Issue a JWT token.
+  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
+  const agentCtx: AgentContext = {
+    id: agentId,
+    publicKey: agent.publicKey,
+    scopes: agent.scopesGranted,
+    rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+    metadata: agent.metadata,
+  };
+  const token = await issueJwt(agentCtx, jwtSecret, jwtExpiresIn);
+  const expiresAt = computeJwtExpiration(jwtExpiresIn);
+
+  // Fire onAgentAuthenticated callback.
+  if (config.onAgentAuthenticated) {
+    try {
+      const agentRecord: Agent = {
+        id: agentId,
+        publicKey: agent.publicKey,
+        scopesGranted: agent.scopesGranted,
+        x402Wallet: agent.x402Wallet,
+        metadata: agent.metadata,
+        apiKeyHash: agent.apiKeyHash,
+        rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
+        reputation: 50,
+        status: "active",
+        createdAt: agent.createdAt,
+        lastAuthAt: new Date(),
+        totalRequests: 0,
+        totalX402Paid: 0,
+      };
+      await config.onAgentAuthenticated(agentRecord);
+    } catch {
+      // Callback errors are non-fatal.
+    }
+  }
+
+  // Fire agent.authenticated webhook (fire-and-forget).
+  fireWebhook(config, "agent.authenticated", {
+    agent_id: agentId,
+    method: "challenge",
+  });
 
   return c.json({
     token,
