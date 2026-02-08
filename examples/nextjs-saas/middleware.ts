@@ -1,4 +1,4 @@
-import { agentgate } from "@agentgate/next";
+import { createAgentGateMiddleware } from "@agentgate/next";
 
 // AgentGate Next.js middleware — 3 lines to make your SaaS agent-ready.
 //
@@ -11,7 +11,7 @@ import { agentgate } from "@agentgate/next";
 //
 // Human traffic passes through unaffected. Agents get full self-service onboarding.
 
-export default agentgate({
+export default createAgentGateMiddleware({
   scopes: [
     {
       id: "data.read",
@@ -30,7 +30,7 @@ export default agentgate({
     "data.read": "$0.001/req",
     "data.write": "$0.01/req",
   },
-  rateLimit: { default: "1000/hour" },
+  rateLimit: { requests: 1000, window: "1h" },
   x402: {
     network: "base",
     currency: "USDC",

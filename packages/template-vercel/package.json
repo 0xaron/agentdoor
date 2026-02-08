@@ -1,0 +1,12 @@
+{
+  "name": "@agentgate/template-vercel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vercel deployment template - Agent-Ready API Starter with Next.js + AgentGate",
+  "scripts": {
+    "build": "echo 'Template package - deploy with Vercel'",
+    "test": "echo 'Template package'",
+    "typecheck": "echo 'Template package'",
+    "clean": "echo 'clean'"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@agentgate/fastify",
+  "version": "0.1.0",
+  "description": "Fastify plugin for AgentGate - agent authentication with schema validation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": { "@agentgate/core": "workspace:*" },
+  "peerDependencies": { "fastify": ">=4" },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0",
+    "fastify": "^4.28.0"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

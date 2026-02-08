@@ -1,0 +1,51 @@
+{
+  "name": "@agentgate/next-auth",
+  "version": "0.1.0",
+  "description": "NextAuth.js companion plugin for AgentGate - adds agent provider to NextAuth",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentgate/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentgate/agentgate",
+    "directory": "packages/next-auth"
+  },
+  "keywords": [
+    "agentgate",
+    "next-auth",
+    "nextauth",
+    "auth",
+    "agent",
+    "companion"
+  ]
+}
