@@ -100,6 +100,47 @@ export interface AgentGateConfig {
   onAgentRegistered?: (agent: Agent) => void | Promise<void>;
   /** Callback invoked when an agent successfully authenticates */
   onAgentAuthenticated?: (agent: Agent) => void | Promise<void>;
+
+  // P1 Features
+  /** Webhook configuration for agent lifecycle events */
+  webhooks?: {
+    /** Webhook endpoints to deliver events to */
+    endpoints?: Array<{
+      url: string;
+      events?: string[];
+      secret?: string;
+      headers?: Record<string, string>;
+      maxRetries?: number;
+      timeoutMs?: number;
+    }>;
+    enabled?: boolean;
+  };
+  /** Reputation system configuration */
+  reputation?: {
+    enabled?: boolean;
+    initialScore?: number;
+    minScore?: number;
+    maxScore?: number;
+    weights?: Record<string, number>;
+    gates?: Array<{
+      minReputation: number;
+      scopes?: string[];
+      action: "block" | "warn";
+    }>;
+    flagThreshold?: number;
+    suspendThreshold?: number;
+  };
+  /** Spending caps configuration */
+  spendingCaps?: {
+    enabled?: boolean;
+    defaultCaps?: Array<{
+      amount: number;
+      currency: string;
+      period: "daily" | "monthly";
+      type: "hard" | "soft";
+    }>;
+    warningThreshold?: number;
+  };
 }
 
 // ---------------------------------------------------------------------------

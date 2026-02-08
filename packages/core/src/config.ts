@@ -94,6 +94,60 @@ export const ServiceConfigSchema = z.object({
   supportEmail: z.string().email("support email must be a valid email").optional(),
 });
 
+// ---------------------------------------------------------------------------
+// P1 Schemas: Webhooks, Reputation, Spending Caps
+// ---------------------------------------------------------------------------
+
+/** Schema for webhook endpoint configuration (P1). */
+export const WebhookEndpointSchema = z.object({
+  url: z.string().url("Webhook endpoint must be a valid URL"),
+  events: z.array(z.string()).optional(),
+  secret: z.string().optional(),
+  headers: z.record(z.string()).optional(),
+  maxRetries: z.number().int().min(0).max(10).optional(),
+  timeoutMs: z.number().int().min(1000).max(60000).optional(),
+});
+
+/** Schema for webhooks configuration (P1). */
+export const WebhooksConfigSchema = z.object({
+  endpoints: z.array(WebhookEndpointSchema).optional(),
+  enabled: z.boolean().optional(),
+});
+
+/** Schema for reputation gate configuration (P1). */
+export const ReputationGateSchema = z.object({
+  minReputation: z.number().min(0).max(100),
+  scopes: z.array(z.string()).optional(),
+  action: z.enum(["block", "warn"]),
+});
+
+/** Schema for reputation configuration (P1). */
+export const ReputationConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  initialScore: z.number().min(0).max(100).optional(),
+  minScore: z.number().min(0).optional(),
+  maxScore: z.number().max(100).optional(),
+  weights: z.record(z.number()).optional(),
+  gates: z.array(ReputationGateSchema).optional(),
+  flagThreshold: z.number().min(0).max(100).optional(),
+  suspendThreshold: z.number().min(0).max(100).optional(),
+});
+
+/** Schema for spending cap rule (P1). */
+export const SpendingCapRuleSchema = z.object({
+  amount: z.number().positive("Spending cap amount must be positive"),
+  currency: z.string().min(1),
+  period: z.enum(["daily", "monthly"]),
+  type: z.enum(["hard", "soft"]),
+});
+
+/** Schema for spending caps configuration (P1). */
+export const SpendingCapsConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  defaultCaps: z.array(SpendingCapRuleSchema).optional(),
+  warningThreshold: z.number().min(0).max(1).optional(),
+});
+
 /** Full schema for AgentGateConfig. */
 export const AgentGateConfigSchema = z.object({
   scopes: z
@@ -117,6 +171,10 @@ export const AgentGateConfigSchema = z.object({
   // Callbacks cannot be validated by zod, handled separately
   onAgentRegistered: z.function().optional(),
   onAgentAuthenticated: z.function().optional(),
+  // P1 features
+  webhooks: WebhooksConfigSchema.optional(),
+  reputation: ReputationConfigSchema.optional(),
+  spendingCaps: SpendingCapsConfigSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -149,6 +207,42 @@ export interface ResolvedConfig {
   mode: "live" | "test";
   onAgentRegistered?: (agent: unknown) => void | Promise<void>;
   onAgentAuthenticated?: (agent: unknown) => void | Promise<void>;
+  // P1 features
+  webhooks?: {
+    endpoints?: Array<{
+      url: string;
+      events?: string[];
+      secret?: string;
+      headers?: Record<string, string>;
+      maxRetries?: number;
+      timeoutMs?: number;
+    }>;
+    enabled?: boolean;
+  };
+  reputation?: {
+    enabled?: boolean;
+    initialScore?: number;
+    minScore?: number;
+    maxScore?: number;
+    weights?: Record<string, number>;
+    gates?: Array<{
+      minReputation: number;
+      scopes?: string[];
+      action: "block" | "warn";
+    }>;
+    flagThreshold?: number;
+    suspendThreshold?: number;
+  };
+  spendingCaps?: {
+    enabled?: boolean;
+    defaultCaps?: Array<{
+      amount: number;
+      currency: string;
+      period: "daily" | "monthly";
+      type: "hard" | "soft";
+    }>;
+    warningThreshold?: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -236,5 +330,9 @@ export function resolveConfig(config: AgentGateConfig): ResolvedConfig {
     mode: config.mode ?? "live",
     onAgentRegistered: config.onAgentRegistered as ResolvedConfig["onAgentRegistered"],
     onAgentAuthenticated: config.onAgentAuthenticated as ResolvedConfig["onAgentAuthenticated"],
+    // P1 features
+    webhooks: config.webhooks,
+    reputation: config.reputation,
+    spendingCaps: config.spendingCaps,
   };
 }

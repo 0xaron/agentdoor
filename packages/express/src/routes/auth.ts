@@ -7,6 +7,7 @@ import {
   AgentGateError,
 } from "@agentgate/core";
 import type { ResolvedConfig } from "@agentgate/core";
+import type { P1Services } from "../middleware.js";
 
 /**
  * Maximum allowed clock skew between agent timestamp and server time.
@@ -25,7 +26,8 @@ const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000; // 5 minutes
  */
 export function createAuthRouter(
   config: ResolvedConfig,
-  store: AgentStore
+  store: AgentStore,
+  p1Services?: P1Services,
 ): Router {
   const router = Router();
 
@@ -134,6 +136,16 @@ export function createAuthRouter(
       if (config.onAgentAuthenticated) {
         Promise.resolve(config.onAgentAuthenticated(agent)).catch((err) => {
           console.error("[agentgate] onAgentAuthenticated callback error:", err);
+        });
+      }
+
+      // P1: Emit webhook event for agent authentication
+      if (p1Services?.webhookEmitter) {
+        p1Services.webhookEmitter.emit("agent.authenticated", {
+          agent_id: agent.id,
+          method: "challenge" as const,
+        }).catch((err) => {
+          console.error("[agentgate] Webhook emit error:", err);
         });
       }
 

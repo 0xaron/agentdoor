@@ -4,7 +4,11 @@ import {
   resolveConfig,
   MemoryStore,
   AGENTGATE_VERSION,
+  WebhookEmitter,
+  ReputationManager,
+  SpendingTracker,
 } from "@agentgate/core";
+import type { WebhooksConfig, ReputationConfig, SpendingCapsConfig } from "@agentgate/core";
 import { createDiscoveryRouter } from "./routes/discovery.js";
 import { createRegisterRouter } from "./routes/register.js";
 import { createAuthRouter } from "./routes/auth.js";
@@ -38,6 +42,31 @@ export interface AgentGateExpressOptions extends AgentGateConfig {
    * express.json() globally. Defaults to true.
    */
   enableBodyParser?: boolean;
+
+  /**
+   * Pre-configured WebhookEmitter instance. If not provided,
+   * one is created from the webhooks config (P1).
+   */
+  webhookEmitter?: WebhookEmitter;
+
+  /**
+   * Pre-configured ReputationManager instance. If not provided,
+   * one is created from the reputation config (P1).
+   */
+  reputationManager?: ReputationManager;
+
+  /**
+   * Pre-configured SpendingTracker instance. If not provided,
+   * one is created from the spendingCaps config (P1).
+   */
+  spendingTracker?: SpendingTracker;
+}
+
+/** P1 services bundle passed to route handlers. */
+export interface P1Services {
+  webhookEmitter: WebhookEmitter;
+  reputationManager: ReputationManager;
+  spendingTracker: SpendingTracker;
 }
 
 /**
@@ -51,6 +80,16 @@ export interface AgentGateExpressOptions extends AgentGateConfig {
  *   scopes: [{ id: "data.read", description: "Read data" }],
  *   pricing: { "data.read": "$0.001/req" },
  *   rateLimit: { requests: 1000, window: "1h" },
+ *   // P1 features:
+ *   webhooks: {
+ *     endpoints: [{ url: "https://hooks.example.com/agentgate" }],
+ *   },
+ *   reputation: {
+ *     gates: [{ minReputation: 30, action: "block" }],
+ *   },
+ *   spendingCaps: {
+ *     defaultCaps: [{ amount: 10, currency: "USDC", period: "daily", type: "hard" }],
+ *   },
  * }));
  * ```
  *
@@ -76,6 +115,23 @@ export function agentgate(options: AgentGateExpressOptions): Router {
   const enableAuthGuard = options.enableAuthGuard !== false;
   const enableBodyParser = options.enableBodyParser !== false;
 
+  // Initialize P1 services
+  const webhookEmitter = options.webhookEmitter ?? new WebhookEmitter(
+    resolved.webhooks as WebhooksConfig | undefined,
+  );
+  const reputationManager = options.reputationManager ?? new ReputationManager(
+    resolved.reputation as ReputationConfig | undefined,
+  );
+  const spendingTracker = options.spendingTracker ?? new SpendingTracker(
+    resolved.spendingCaps as SpendingCapsConfig | undefined,
+  );
+
+  const p1Services: P1Services = {
+    webhookEmitter,
+    reputationManager,
+    spendingTracker,
+  };
+
   const router = Router();
 
   // Apply JSON body parsing for AgentGate POST routes if needed
@@ -93,8 +149,8 @@ export function agentgate(options: AgentGateExpressOptions): Router {
 
   // Mount route handlers
   router.use(createDiscoveryRouter(resolved));
-  router.use(createRegisterRouter(resolved, store));
-  router.use(createAuthRouter(resolved, store));
+  router.use(createRegisterRouter(resolved, store, p1Services));
+  router.use(createAuthRouter(resolved, store, p1Services));
   router.use(createHealthRouter(store));
 
   // Apply auth guard to all routes that pass through this router.

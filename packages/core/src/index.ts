@@ -243,3 +243,54 @@ export {
   extractFrameworkInfo,
   createRequestInfo,
 } from "./detect.js";
+
+// ---------------------------------------------------------------------------
+// Webhooks (P1)
+// ---------------------------------------------------------------------------
+
+export { WebhookEmitter } from "./webhooks.js";
+
+export type {
+  WebhookEventType,
+  WebhookEvent,
+  WebhookEventListener,
+  WebhookEndpointConfig,
+  WebhooksConfig,
+  WebhookDeliveryResult,
+  AgentRegisteredData,
+  AgentAuthenticatedData,
+  AgentPaymentFailedData,
+  AgentRateLimitedData,
+  AgentFlaggedData,
+  AgentSpendingCapData,
+} from "./webhooks.js";
+
+// ---------------------------------------------------------------------------
+// Reputation (P1)
+// ---------------------------------------------------------------------------
+
+export { ReputationManager, DEFAULT_REPUTATION_WEIGHTS } from "./reputation.js";
+
+export type {
+  ReputationEvent,
+  ReputationEventType,
+  ReputationWeights,
+  ReputationGateConfig,
+  ReputationConfig,
+  ReputationGateResult,
+} from "./reputation.js";
+
+// ---------------------------------------------------------------------------
+// Spending Caps (P1)
+// ---------------------------------------------------------------------------
+
+export { SpendingTracker } from "./spending.js";
+
+export type {
+  SpendingPeriod,
+  SpendingCapType,
+  SpendingCapRule,
+  SpendingCapsConfig,
+  SpendingRecord,
+  SpendingCheckResult,
+} from "./spending.js";
