@@ -39,13 +39,13 @@
 - [x] Emit events from Hono middleware — _Replaced custom `fireWebhook()` with core `WebhookEmitter`; now includes HMAC signing + retry with exponential backoff_
 - [x] Add tests for webhook emission in both adapters — _6 webhook tests for Next.js, 5 for Hono_
 
-### 3.8 — Reputation system: Wire into Next.js and Hono adapters
+### ~~3.8 — Reputation system: Wire into Next.js and Hono adapters~~ ✅ COMPLETE
 **Issue:** `ReputationManager` exists in core and is used in Express, but missing from Next.js and Hono.
 **Fix:**
-- [ ] Add ReputationManager integration in Next.js auth guard — _Custom `checkReputationGates()` exists but doesn't use `ReputationManager` class_
-- [ ] Add ReputationManager integration in Hono auth guard — _Same custom implementation_
-- [ ] Add reputation-based gating tests for both adapters
-- [ ] Add reputation update on successful/failed requests
+- [x] Add ReputationManager integration in Next.js auth guard — _Replaced custom `checkReputationGates()` with core `ReputationManager`; supports block/warn actions + scope-specific gates_
+- [x] Add ReputationManager integration in Hono auth guard — _Same replacement; both `agentgate()`, `createAgentGateMiddleware()`, and `createAuthGuardMiddleware()` now use core `ReputationManager`_
+- [x] Add reputation-based gating tests for both adapters — _7 tests for Next.js, 7 tests for Hono (block, allow, warn header, no-gates, score update on success/failure, scope-specific gates)_
+- [x] Add reputation update on successful/failed requests — _`request_success` (+0.1) on authenticated request, `request_error` (-0.5) on reputation-blocked request; score persisted to AgentStore_
 
 ---
 

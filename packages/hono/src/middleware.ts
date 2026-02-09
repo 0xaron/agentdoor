@@ -7,8 +7,9 @@ import type {
   AgentStore,
   ChallengeData,
   WebhooksConfig,
+  ReputationConfig,
 } from "@agentgate/core";
-import { MemoryStore, WebhookEmitter } from "@agentgate/core";
+import { MemoryStore, WebhookEmitter, ReputationManager } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers (Web Crypto API — works on CF Workers, Deno, Bun, Node 20+)
@@ -124,28 +125,8 @@ async function verifyEd25519(
 
 
 // ---------------------------------------------------------------------------
-// Reputation gate check
+// Reputation gate check — now uses core ReputationManager
 // ---------------------------------------------------------------------------
-
-/**
- * Check configured reputation gates for an agent. Uses the agent's stored
- * reputation score when available, falling back to 50 (default).
- */
-function checkReputationGates(
-  config: AgentGateHonoConfig,
-  agentReputation: number = 50,
-): { action: "block" | "warn"; minReputation: number } | null {
-  const gates = config.reputation?.gates;
-  if (!gates || gates.length === 0) return null;
-
-  for (const gate of gates) {
-    if (agentReputation < gate.minReputation && gate.action === "block") {
-      return { action: "block", minReputation: gate.minReputation };
-    }
-  }
-
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // Spending cap check (still in-memory for edge runtime)
@@ -294,6 +275,7 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
   const base = config.basePath ?? "";
   const store: AgentStore = config.store ?? new MemoryStore();
   const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
+  const reputationManager = new ReputationManager(config.reputation as ReputationConfig | undefined);
 
   // Discovery endpoint.
   app.get(`${base}/.well-known/agentgate.json`, (c: Context) => {
@@ -319,7 +301,7 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
   });
 
   // Auth guard middleware for protected paths.
-  app.use("*", createAuthGuardMiddleware(config, store));
+  app.use("*", createAuthGuardMiddleware(config, store, reputationManager));
 }
 
 // ---------------------------------------------------------------------------
@@ -334,10 +316,12 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
 export function createAuthGuardMiddleware(
   config: AgentGateHonoConfig,
   storeOverride?: AgentStore,
+  reputationManagerOverride?: ReputationManager,
 ): MiddlewareHandler<{ Variables: AgentGateVariables }> {
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = storeOverride ?? config.store ?? new MemoryStore();
+  const repMgr = reputationManagerOverride ?? new ReputationManager(config.reputation as ReputationConfig | undefined);
 
   return async (c, next) => {
     const pathname = new URL(c.req.url).pathname;
@@ -378,17 +362,23 @@ export function createAuthGuardMiddleware(
       return c.json({ error: "Invalid or expired token" }, 401);
     }
 
-    // Check reputation gates using agent's stored reputation.
-    const reputationResult = checkReputationGates(config, matchedAgent.reputation);
-    if (reputationResult && reputationResult.action === "block") {
-      return c.json(
-        {
-          error: "Insufficient reputation",
-          required: reputationResult.minReputation,
-          current: matchedAgent.reputation,
-        },
-        403,
-      );
+    // Check reputation gates using the core ReputationManager.
+    const reputationResult = repMgr.checkGate(matchedAgent.reputation ?? 50);
+    if (!reputationResult.allowed) {
+      if (reputationResult.action === "block") {
+        // Update reputation for the failed request
+        const newScore = repMgr.calculateScore(matchedAgent.reputation ?? 50, "request_error");
+        store.updateAgent(matchedAgent.id, { reputation: newScore }).catch(() => {});
+
+        return c.json(
+          {
+            error: "Insufficient reputation",
+            required: reputationResult.requiredScore,
+            current: reputationResult.currentScore,
+          },
+          403,
+        );
+      }
     }
 
     // Check spending caps before granting access.
@@ -404,8 +394,9 @@ export function createAuthGuardMiddleware(
       );
     }
 
-    // Update request count
-    await store.updateAgent(matchedAgent.id, { incrementRequests: 1 }).catch(() => {});
+    // Update reputation for successful request and increment request count
+    const newScore = repMgr.calculateScore(matchedAgent.reputation ?? 50, "request_success");
+    await store.updateAgent(matchedAgent.id, { reputation: newScore, incrementRequests: 1 }).catch(() => {});
 
     const agentContext: AgentContext = {
       id: matchedAgent.id,
@@ -417,6 +408,11 @@ export function createAuthGuardMiddleware(
 
     c.set("agent", agentContext);
     c.set("isAgent", true);
+
+    // Add reputation warning header if gate returned a "warn" action
+    if (reputationResult.action === "warn") {
+      c.header("x-agentgate-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
+    }
 
     await next();
   };
@@ -445,6 +441,7 @@ export function createAgentGateMiddleware(
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = config.store ?? new MemoryStore();
   const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
+  const repMgr = new ReputationManager(config.reputation as ReputationConfig | undefined);
 
   // Periodically clean expired challenges (every 5 minutes)
   let lastCleanup = Date.now();
@@ -515,17 +512,23 @@ export function createAgentGateMiddleware(
         return c.json({ error: "Invalid or expired token" }, 401);
       }
 
-      // Check reputation gates using agent's stored reputation.
-      const reputationResult = checkReputationGates(config, matchedAgent.reputation);
-      if (reputationResult && reputationResult.action === "block") {
-        return c.json(
-          {
-            error: "Insufficient reputation",
-            required: reputationResult.minReputation,
-            current: matchedAgent.reputation,
-          },
-          403,
-        );
+      // Check reputation gates using the core ReputationManager.
+      const reputationResult = repMgr.checkGate(matchedAgent.reputation ?? 50);
+      if (!reputationResult.allowed) {
+        if (reputationResult.action === "block") {
+          // Update reputation for the failed request
+          const newScore = repMgr.calculateScore(matchedAgent.reputation ?? 50, "request_error");
+          store.updateAgent(matchedAgent.id, { reputation: newScore }).catch(() => {});
+
+          return c.json(
+            {
+              error: "Insufficient reputation",
+              required: reputationResult.requiredScore,
+              current: reputationResult.currentScore,
+            },
+            403,
+          );
+        }
       }
 
       // Check spending caps before granting access.
@@ -541,8 +544,9 @@ export function createAgentGateMiddleware(
         );
       }
 
-      // Update request count
-      await store.updateAgent(matchedAgent.id, { incrementRequests: 1 }).catch(() => {});
+      // Update reputation for successful request and increment request count
+      const newScore = repMgr.calculateScore(matchedAgent.reputation ?? 50, "request_success");
+      await store.updateAgent(matchedAgent.id, { reputation: newScore, incrementRequests: 1 }).catch(() => {});
 
       const agentContext: AgentContext = {
         id: matchedAgent.id,
@@ -554,6 +558,11 @@ export function createAgentGateMiddleware(
 
       c.set("agent", agentContext);
       c.set("isAgent", true);
+
+      // Add reputation warning header if gate returned a "warn" action
+      if (reputationResult.action === "warn") {
+        c.header("x-agentgate-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
+      }
 
       await next();
       return;

@@ -7,7 +7,7 @@ import {
   buildDiscoveryDocument,
 } from "../index.js";
 import type { AgentGateVariables, AgentGateHonoConfig } from "../index.js";
-import { MemoryStore } from "@agentgate/core";
+import { MemoryStore, ReputationManager } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Shared test configuration
@@ -1707,5 +1707,240 @@ describe("webhook emission", () => {
     expect(headers["Content-Type"]).toBe("application/json");
     expect(headers["User-Agent"]).toBe("AgentGate-Webhooks/1.0");
     expect(headers["X-AgentGate-Event"]).toBeDefined();
+  });
+});
+
+// ==========================================================================
+// REPUTATION GATING TESTS (Task 3.8 — ReputationManager integration)
+// ==========================================================================
+
+describe("reputation gating with ReputationManager", () => {
+  /**
+   * Helper: register and verify an agent using real Ed25519 crypto,
+   * returning the agentId and apiKey for follow-up auth guard tests.
+   */
+  async function registerAndVerifyAgent(
+    app: Hono<{ Variables: AgentGateVariables }>,
+  ): Promise<{ agentId: string; apiKey: string }> {
+    const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+    const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+    const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
+
+    // Register
+    const regRes = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: publicKeyB64,
+        scopes_requested: ["data.read"],
+      }),
+    });
+    expect(regRes.status).toBe(201);
+    const regBody = await regRes.json();
+    const agentId = regBody.agent_id as string;
+    const challengeMessage = regBody.challenge.message as string;
+
+    // Sign the challenge
+    const sigBytes = await crypto.subtle.sign(
+      "Ed25519",
+      keyPair.privateKey,
+      new TextEncoder().encode(challengeMessage),
+    );
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
+
+    // Verify
+    const verifyRes = await app.request("/agentgate/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent_id: agentId,
+        signature: signatureB64,
+      }),
+    });
+    expect(verifyRes.status).toBe(200);
+    const verifyBody = await verifyRes.json();
+
+    return { agentId, apiKey: verifyBody.api_key as string };
+  }
+
+  it("blocks agent with reputation below block gate threshold", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 60, action: "block" as const }],
+      },
+    });
+    app.get("/api/test", (c) => c.json({ ok: true }));
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(app);
+
+    // Set agent reputation below the threshold
+    await store.updateAgent(agentId, { reputation: 30 });
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toContain("Insufficient reputation");
+    expect(body.required).toBe(60);
+    expect(body.current).toBe(30);
+  });
+
+  it("allows agent with reputation above block gate threshold", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 30, action: "block" as const }],
+      },
+    });
+    app.get("/api/test", (c) =>
+      c.json({ isAgent: c.get("isAgent") }),
+    );
+
+    const { apiKey } = await registerAndVerifyAgent(app);
+
+    // Agent starts at reputation 50, above the 30 threshold
+    const res = await app.request("/api/test", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.isAgent).toBe(true);
+  });
+
+  it("allows agent through with warn action but adds warning header", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 60, action: "warn" as const }],
+      },
+    });
+    app.get("/api/test", (c) =>
+      c.json({ isAgent: c.get("isAgent") }),
+    );
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(app);
+
+    // Set reputation below the warn threshold
+    await store.updateAgent(agentId, { reputation: 40 });
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("score=40");
+    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("required=60");
+  });
+
+  it("does not block when no reputation gates are configured", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      store,
+    });
+    app.get("/api/test", (c) =>
+      c.json({ isAgent: c.get("isAgent") }),
+    );
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(app);
+
+    // Set very low reputation
+    await store.updateAgent(agentId, { reputation: 5 });
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.isAgent).toBe(true);
+  });
+
+  it("updates reputation on successful authenticated request", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      store,
+    });
+    app.get("/api/test", (c) => c.json({ ok: true }));
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(app);
+
+    // Set a known starting reputation
+    await store.updateAgent(agentId, { reputation: 50 });
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(200);
+
+    // Check that reputation increased (request_success weight is +0.1)
+    const agent = await store.getAgent(agentId);
+    expect(agent!.reputation).toBeCloseTo(50.1, 1);
+  });
+
+  it("updates reputation on blocked request (block gate)", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 60, action: "block" as const }],
+      },
+    });
+    app.get("/api/test", (c) => c.json({ ok: true }));
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(app);
+
+    // Set reputation below threshold
+    await store.updateAgent(agentId, { reputation: 30 });
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(403);
+
+    // Allow fire-and-forget update to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Check that reputation decreased (request_error weight is -0.5)
+    const agent = await store.getAgent(agentId);
+    expect(agent!.reputation).toBeCloseTo(29.5, 1);
+  });
+
+  it("supports scope-specific gates via ReputationManager", () => {
+    const mgr = new ReputationManager({
+      gates: [
+        { minReputation: 80, scopes: ["data.write"], action: "block" },
+        { minReputation: 20, action: "block" },
+      ],
+    });
+
+    // Score 50 should pass the global gate (minReputation: 20)
+    const globalResult = mgr.checkGate(50);
+    expect(globalResult.allowed).toBe(true);
+
+    // Score 50 should fail the scoped gate for data.write (minReputation: 80)
+    const scopedResult = mgr.checkGate(50, "data.write");
+    expect(scopedResult.allowed).toBe(false);
+    expect(scopedResult.requiredScore).toBe(80);
   });
 });
