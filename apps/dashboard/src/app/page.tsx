@@ -7,6 +7,12 @@ import {
   overviewStats as mockOverviewStats,
 } from "@/lib/mock-data";
 import { getAllAgentsFromStore } from "@/lib/store";
+import {
+  TrafficChart,
+  RevenueChart,
+  RegistrationsChart,
+  FrameworkChart,
+} from "./charts";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -181,137 +187,7 @@ function StatCard({
 }
 
 // ---------------------------------------------------------------------------
-// Stacked Bar Chart (agent vs human traffic, or x402 vs subscription revenue)
-// ---------------------------------------------------------------------------
-
-function StackedBarChart({
-  data,
-}: {
-  data: { label: string; a: number; b: number }[];
-}) {
-  const maxVal = Math.max(...data.map((d) => d.a + d.b));
-
-  return (
-    <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 140 }}>
-      {data.map((d) => {
-        const total = d.a + d.b;
-        const heightPct = Math.max((total / maxVal) * 100, 4);
-        const aPct = (d.a / total) * 100;
-        return (
-          <div
-            key={d.label}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 48,
-                borderRadius: "4px 4px 0 0",
-                height: `${heightPct}%`,
-                minHeight: 4,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  background: "#93c5fd",
-                  flex: `0 0 ${100 - aPct}%`,
-                }}
-              />
-              <div style={{ background: "#6366f1", flex: `0 0 ${aPct}%` }} />
-            </div>
-            <span style={{ fontSize: "0.625rem", color: "#9ca3af" }}>
-              {d.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Registrations Per Day Bar Chart (Phase 3.2)
-// ---------------------------------------------------------------------------
-
-function RegistrationsBarChart({
-  data,
-}: {
-  data: { date: string; count: number }[];
-}) {
-  const maxCount = Math.max(...data.map((d) => d.count), 1);
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {data.map((d) => {
-        const widthPct = Math.max((d.count / maxCount) * 100, 2);
-        // Format the date label: show only MM-DD
-        const dateLabel = d.date.slice(5); // "01-03" from "2026-01-03"
-        return (
-          <div key={d.date} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                color: "#6b7280",
-                width: 48,
-                textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                flexShrink: 0,
-              }}
-            >
-              {dateLabel}
-            </span>
-            <div
-              style={{
-                flex: 1,
-                height: 24,
-                background: "#f3f4f6",
-                borderRadius: 4,
-                overflow: "hidden",
-                position: "relative",
-              }}
-            >
-              <div
-                style={{
-                  width: `${widthPct}%`,
-                  height: "100%",
-                  background: "linear-gradient(90deg, #6366f1, #818cf8)",
-                  borderRadius: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  paddingRight: 8,
-                  minWidth: 28,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 600,
-                    color: "#fff",
-                  }}
-                >
-                  {d.count}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Page (async Server Component - Phase 3.1 + 3.2)
+// Page (async Server Component)
 // ---------------------------------------------------------------------------
 
 export default async function DashboardPage() {
@@ -328,7 +204,7 @@ export default async function DashboardPage() {
       ? Math.round(storeAgents.reduce((s, a) => s + a.reputation, 0) / totalAgents)
       : mockOverviewStats.avgReputation;
 
-  // Build registrations-per-day data for the bar chart (Phase 3.2)
+  // Build registrations-per-day data for the bar chart
   const regDayCounts: Record<string, number> = {};
   for (const a of storeAgents) {
     const created = a.createdAt instanceof Date ? a.createdAt : new Date(String(a.createdAt));
@@ -411,11 +287,11 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Registrations Per Day Bar Chart (Phase 3.2) */}
+      {/* Registrations Per Day Chart (recharts) */}
       <div style={{ ...styles.card, marginBottom: 32 }}>
         <h2 style={styles.sectionTitle}>Agent Registrations Per Day</h2>
         {registrationData.length > 0 ? (
-          <RegistrationsBarChart data={registrationData} />
+          <RegistrationsChart data={registrationData} />
         ) : (
           <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
             No registration data available yet.
@@ -435,52 +311,11 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Traffic + Revenue Charts */}
+      {/* Traffic + Revenue Charts (recharts) */}
       <div style={styles.grid2}>
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Traffic (Last 7 Days)</h2>
-          <div
-            style={{
-              display: "flex",
-              gap: 16,
-              marginBottom: 12,
-              fontSize: "0.75rem",
-            }}
-          >
-            <span>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: "#6366f1",
-                  marginRight: 4,
-                }}
-              />
-              Agents
-            </span>
-            <span>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: "#93c5fd",
-                  marginRight: 4,
-                }}
-              />
-              Humans
-            </span>
-          </div>
-          <StackedBarChart
-            data={trafficData.map((d) => ({
-              label: d.label,
-              a: d.agents,
-              b: d.humans,
-            }))}
-          />
+          <TrafficChart data={trafficData} />
           <div
             style={{
               marginTop: 12,
@@ -498,48 +333,7 @@ export default async function DashboardPage() {
 
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Revenue (Last 6 Months)</h2>
-          <div
-            style={{
-              display: "flex",
-              gap: 16,
-              marginBottom: 12,
-              fontSize: "0.75rem",
-            }}
-          >
-            <span>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: "#10b981",
-                  marginRight: 4,
-                }}
-              />
-              x402 Revenue
-            </span>
-            <span>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: "#a7f3d0",
-                  marginRight: 4,
-                }}
-              />
-              Subscriptions
-            </span>
-          </div>
-          <StackedBarChart
-            data={revenueData.map((d) => ({
-              label: d.label,
-              a: d.x402,
-              b: d.subscriptions,
-            }))}
-          />
+          <RevenueChart data={revenueData} />
           <div
             style={{
               marginTop: 12,
@@ -554,39 +348,11 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Framework Breakdown + Scope Usage */}
+      {/* Framework Breakdown (recharts) + Scope Usage */}
       <div style={styles.grid2}>
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Agent Framework Breakdown</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {frameworkBreakdown.map((fw) => (
-              <div key={fw.name}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.8125rem",
-                    marginBottom: 4,
-                  }}
-                >
-                  <span style={{ fontWeight: 500 }}>{fw.name}</span>
-                  <span style={{ color: "#6b7280" }}>
-                    {fw.count} agents ({fw.percentage}%)
-                  </span>
-                </div>
-                <div style={styles.barBg}>
-                  <div
-                    style={{
-                      width: `${fw.percentage}%`,
-                      height: "100%",
-                      background: "#6366f1",
-                      borderRadius: 4,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <FrameworkChart data={frameworkBreakdown} />
         </div>
 
         <div style={styles.card}>

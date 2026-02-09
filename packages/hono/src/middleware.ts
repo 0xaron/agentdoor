@@ -4,38 +4,10 @@ import type {
   AgentContext,
   ScopeDefinition,
   Agent,
+  AgentStore,
+  ChallengeData,
 } from "@agentgate/core";
-
-// ---------------------------------------------------------------------------
-// In-memory stores (edge-compatible, no native deps)
-// ---------------------------------------------------------------------------
-
-interface PendingChallenge {
-  nonce: string;
-  message: string;
-  publicKey: string;
-  scopesRequested: string[];
-  x402Wallet?: string;
-  metadata: Record<string, string>;
-  expiresAt: number;
-}
-
-interface StoredAgent {
-  id: string;
-  publicKey: string;
-  apiKeyHash: string;
-  apiKey: string;
-  scopesGranted: string[];
-  x402Wallet?: string;
-  metadata: Record<string, string>;
-  createdAt: Date;
-}
-
-const registeredAgents = new Map<string, StoredAgent>();
-const pendingChallenges = new Map<string, PendingChallenge>();
-
-/** Per-agent spending tracker (request count). */
-const agentSpending = new Map<string, number>();
+import { MemoryStore } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers (Web Crypto API — works on CF Workers, Deno, Bun, Node 20+)
@@ -150,7 +122,7 @@ async function verifyEd25519(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3.7: Webhook helper (fire-and-forget)
+// Webhook helper (fire-and-forget)
 // ---------------------------------------------------------------------------
 
 /**
@@ -199,22 +171,19 @@ function fireWebhook(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3.8: Reputation gate check
+// Reputation gate check
 // ---------------------------------------------------------------------------
 
 /**
- * Check configured reputation gates for an agent. All agents currently
- * start at reputation 50 (in-memory adapter has no persistent reputation
- * tracking). Returns `null` when the agent passes all gates, or an object
- * describing the blocking gate.
+ * Check configured reputation gates for an agent. Uses the agent's stored
+ * reputation score when available, falling back to 50 (default).
  */
 function checkReputationGates(
   config: AgentGateHonoConfig,
+  agentReputation: number = 50,
 ): { action: "block" | "warn"; minReputation: number } | null {
   const gates = config.reputation?.gates;
   if (!gates || gates.length === 0) return null;
-
-  const agentReputation = 50; // default starting reputation
 
   for (const gate of gates) {
     if (agentReputation < gate.minReputation && gate.action === "block") {
@@ -226,16 +195,14 @@ function checkReputationGates(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3.9: Spending cap check
+// Spending cap check (still in-memory for edge runtime)
 // ---------------------------------------------------------------------------
+
+/** Per-agent spending tracker (request count). */
+const agentSpending = new Map<string, number>();
 
 /**
  * Check whether an agent has exceeded any configured spending cap.
- * Spending is tracked per-agent in an in-memory Map; each authenticated
- * request through the auth guard increments the counter by 1.
- *
- * Returns `null` when under the cap, or an object with the current spend
- * and the cap limit when exceeded.
  */
 function checkSpendingCap(
   config: AgentGateHonoConfig,
@@ -331,6 +298,15 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
    * Set to e.g. "/v1" to mount routes at "/v1/agentgate/register" etc.
    */
   basePath?: string;
+
+  /**
+   * Custom agent store implementation. If not provided, an in-memory
+   * store is created automatically (suitable for development and testing).
+   *
+   * For production, supply a persistent store (SQLite, Postgres, etc.)
+   * from @agentgate/core.
+   */
+  store?: AgentStore;
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +339,7 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
  */
 export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: AgentGateHonoConfig): void {
   const base = config.basePath ?? "";
+  const store: AgentStore = config.store ?? new MemoryStore();
 
   // Discovery endpoint.
   app.get(`${base}/.well-known/agentgate.json`, (c: Context) => {
@@ -374,21 +351,21 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
 
   // Registration endpoint.
   app.post(`${base}/agentgate/register`, async (c: Context) => {
-    return handleRegister(c, config);
+    return handleRegister(c, config, store);
   });
 
   // Registration verification endpoint.
   app.post(`${base}/agentgate/register/verify`, async (c: Context) => {
-    return handleRegisterVerify(c, config);
+    return handleRegisterVerify(c, config, store);
   });
 
   // Auth endpoint (returning agents).
   app.post(`${base}/agentgate/auth`, async (c: Context) => {
-    return handleAuth(c, config);
+    return handleAuth(c, config, store);
   });
 
   // Auth guard middleware for protected paths.
-  app.use("*", createAuthGuardMiddleware(config));
+  app.use("*", createAuthGuardMiddleware(config, store));
 }
 
 // ---------------------------------------------------------------------------
@@ -402,9 +379,11 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
  */
 export function createAuthGuardMiddleware(
   config: AgentGateHonoConfig,
+  storeOverride?: AgentStore,
 ): MiddlewareHandler<{ Variables: AgentGateVariables }> {
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
   const passthrough = config.passthrough ?? false;
+  const store: AgentStore = storeOverride ?? config.store ?? new MemoryStore();
 
   return async (c, next) => {
     const pathname = new URL(c.req.url).pathname;
@@ -431,25 +410,9 @@ export function createAuthGuardMiddleware(
 
     const token = authHeader.replace(/^Bearer\s+/i, "");
 
-    // Look up agent by API key.
-    let matchedAgent: StoredAgent | undefined;
-    for (const agent of registeredAgents.values()) {
-      if (agent.apiKey === token) {
-        matchedAgent = agent;
-        break;
-      }
-    }
-
-    if (!matchedAgent) {
-      // Try hash comparison for tokens that were hashed.
-      const hashed = await sha256(token);
-      for (const agent of registeredAgents.values()) {
-        if (agent.apiKeyHash === hashed) {
-          matchedAgent = agent;
-          break;
-        }
-      }
-    }
+    // Look up agent by API key hash via store.
+    const apiKeyHash = await sha256(token);
+    const matchedAgent = await store.getAgentByApiKeyHash(apiKeyHash);
 
     if (!matchedAgent) {
       if (passthrough) {
@@ -461,20 +424,20 @@ export function createAuthGuardMiddleware(
       return c.json({ error: "Invalid or expired token" }, 401);
     }
 
-    // Phase 3.8: Check reputation gates before granting access.
-    const reputationResult = checkReputationGates(config);
+    // Check reputation gates using agent's stored reputation.
+    const reputationResult = checkReputationGates(config, matchedAgent.reputation);
     if (reputationResult && reputationResult.action === "block") {
       return c.json(
         {
           error: "Insufficient reputation",
           required: reputationResult.minReputation,
-          current: 50,
+          current: matchedAgent.reputation,
         },
         403,
       );
     }
 
-    // Phase 3.9: Check spending caps before granting access.
+    // Check spending caps before granting access.
     const spendingResult = checkSpendingCap(config, matchedAgent.id);
     if (spendingResult) {
       return c.json(
@@ -486,6 +449,9 @@ export function createAuthGuardMiddleware(
         402,
       );
     }
+
+    // Update request count
+    await store.updateAgent(matchedAgent.id, { incrementRequests: 1 }).catch(() => {});
 
     const agentContext: AgentContext = {
       id: matchedAgent.id,
@@ -523,11 +489,22 @@ export function createAgentGateMiddleware(
   const base = config.basePath ?? "";
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
   const passthrough = config.passthrough ?? false;
+  const store: AgentStore = config.store ?? new MemoryStore();
+
+  // Periodically clean expired challenges (every 5 minutes)
+  let lastCleanup = Date.now();
+  const CLEANUP_INTERVAL = 5 * 60 * 1000;
 
   return async (c, next) => {
     const url = new URL(c.req.url);
     const pathname = url.pathname;
     const method = c.req.method;
+
+    // TTL-based cleanup: clean expired challenges periodically
+    if (Date.now() - lastCleanup > CLEANUP_INTERVAL) {
+      lastCleanup = Date.now();
+      store.cleanExpiredChallenges().catch(() => {});
+    }
 
     // Discovery.
     if (pathname === `${base}/.well-known/agentgate.json` && method === "GET") {
@@ -539,17 +516,17 @@ export function createAgentGateMiddleware(
 
     // Register.
     if (pathname === `${base}/agentgate/register` && method === "POST") {
-      return handleRegister(c, config);
+      return handleRegister(c, config, store);
     }
 
     // Verify.
     if (pathname === `${base}/agentgate/register/verify` && method === "POST") {
-      return handleRegisterVerify(c, config);
+      return handleRegisterVerify(c, config, store);
     }
 
     // Auth.
     if (pathname === `${base}/agentgate/auth` && method === "POST") {
-      return handleAuth(c, config);
+      return handleAuth(c, config, store);
     }
 
     // Auth guard for protected paths.
@@ -568,14 +545,10 @@ export function createAgentGateMiddleware(
       }
 
       const token = authHeader.replace(/^Bearer\s+/i, "");
-      let matchedAgent: StoredAgent | undefined;
 
-      for (const agent of registeredAgents.values()) {
-        if (agent.apiKey === token) {
-          matchedAgent = agent;
-          break;
-        }
-      }
+      // Look up agent by API key hash via store.
+      const apiKeyHash = await sha256(token);
+      const matchedAgent = await store.getAgentByApiKeyHash(apiKeyHash);
 
       if (!matchedAgent) {
         if (passthrough) {
@@ -587,20 +560,20 @@ export function createAgentGateMiddleware(
         return c.json({ error: "Invalid or expired token" }, 401);
       }
 
-      // Phase 3.8: Check reputation gates before granting access.
-      const reputationResult = checkReputationGates(config);
+      // Check reputation gates using agent's stored reputation.
+      const reputationResult = checkReputationGates(config, matchedAgent.reputation);
       if (reputationResult && reputationResult.action === "block") {
         return c.json(
           {
             error: "Insufficient reputation",
             required: reputationResult.minReputation,
-            current: 50,
+            current: matchedAgent.reputation,
           },
           403,
         );
       }
 
-      // Phase 3.9: Check spending caps before granting access.
+      // Check spending caps before granting access.
       const spendingResult = checkSpendingCap(config, matchedAgent.id);
       if (spendingResult) {
         return c.json(
@@ -612,6 +585,9 @@ export function createAgentGateMiddleware(
           402,
         );
       }
+
+      // Update request count
+      await store.updateAgent(matchedAgent.id, { incrementRequests: 1 }).catch(() => {});
 
       const agentContext: AgentContext = {
         id: matchedAgent.id,
@@ -639,7 +615,7 @@ export function createAgentGateMiddleware(
 // Route handler implementations
 // ---------------------------------------------------------------------------
 
-async function handleRegister(c: Context, config: AgentGateHonoConfig): Promise<Response> {
+async function handleRegister(c: Context, config: AgentGateHonoConfig, store: AgentStore): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = await c.req.json<Record<string, unknown>>();
@@ -667,31 +643,36 @@ async function handleRegister(c: Context, config: AgentGateHonoConfig): Promise<
     return c.json({ error: `Invalid scopes: ${invalidScopes.join(", ")}` }, 400);
   }
 
-  // Duplicate public key check.
-  for (const agent of registeredAgents.values()) {
-    if (agent.publicKey === publicKey) {
-      return c.json(
-        { error: "Public key already registered", agent_id: agent.id },
-        409,
-      );
-    }
+  // Duplicate public key check via store.
+  const existingAgent = await store.getAgentByPublicKey(publicKey);
+  if (existingAgent) {
+    return c.json(
+      { error: "Public key already registered", agent_id: existingAgent.id },
+      409,
+    );
   }
 
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
   const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
-  const expiresAt = Date.now() + 5 * 60 * 1000;
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-  pendingChallenges.set(agentId, {
+  // Persist challenge to AgentStore
+  const challengeData: ChallengeData = {
+    agentId,
     nonce,
     message,
-    publicKey,
-    scopesRequested,
-    x402Wallet,
-    metadata,
     expiresAt,
-  });
+    createdAt: new Date(),
+    pendingRegistration: {
+      publicKey,
+      scopesRequested,
+      x402Wallet,
+      metadata,
+    },
+  };
+  await store.createChallenge(challengeData);
 
   return c.json(
     {
@@ -699,7 +680,7 @@ async function handleRegister(c: Context, config: AgentGateHonoConfig): Promise<
       challenge: {
         nonce,
         message,
-        expires_at: new Date(expiresAt).toISOString(),
+        expires_at: expiresAt.toISOString(),
       },
     },
     201,
@@ -709,6 +690,7 @@ async function handleRegister(c: Context, config: AgentGateHonoConfig): Promise<
 async function handleRegisterVerify(
   c: Context,
   config: AgentGateHonoConfig,
+  store: AgentStore,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -724,17 +706,23 @@ async function handleRegisterVerify(
     return c.json({ error: "agent_id and signature are required" }, 400);
   }
 
-  const challenge = pendingChallenges.get(agentId);
+  // Retrieve challenge from store
+  const challenge = await store.getChallenge(agentId);
   if (!challenge) {
     return c.json({ error: "Unknown agent_id or challenge not found" }, 404);
   }
 
-  if (Date.now() > challenge.expiresAt) {
-    pendingChallenges.delete(agentId);
+  if (Date.now() > challenge.expiresAt.getTime()) {
+    await store.deleteChallenge(agentId);
     return c.json({ error: "Challenge expired" }, 410);
   }
 
-  const valid = await verifyEd25519(challenge.message, signature, challenge.publicKey);
+  const pending = challenge.pendingRegistration;
+  if (!pending) {
+    return c.json({ error: "Challenge missing registration data" }, 400);
+  }
+
+  const valid = await verifyEd25519(challenge.message, signature, pending.publicKey);
   if (!valid) {
     return c.json({ error: "Invalid signature" }, 400);
   }
@@ -742,28 +730,28 @@ async function handleRegisterVerify(
   const apiKey = `agk_live_${generateId("")}`;
   const apiKeyHash = await sha256(apiKey);
 
-  registeredAgents.set(agentId, {
+  // Persist agent to store
+  await store.createAgent({
     id: agentId,
-    publicKey: challenge.publicKey,
+    publicKey: pending.publicKey,
     apiKeyHash,
-    apiKey,
-    scopesGranted: challenge.scopesRequested,
-    x402Wallet: challenge.x402Wallet,
-    metadata: challenge.metadata,
-    createdAt: new Date(),
+    scopesGranted: pending.scopesRequested,
+    x402Wallet: pending.x402Wallet,
+    metadata: pending.metadata,
+    rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
   });
 
-  pendingChallenges.delete(agentId);
+  await store.deleteChallenge(agentId);
 
   // Fire callback.
   if (config.onAgentRegistered) {
     try {
       const agentRecord: Agent = {
         id: agentId,
-        publicKey: challenge.publicKey,
-        scopesGranted: challenge.scopesRequested,
-        x402Wallet: challenge.x402Wallet,
-        metadata: challenge.metadata,
+        publicKey: pending.publicKey,
+        scopesGranted: pending.scopesRequested,
+        x402Wallet: pending.x402Wallet,
+        metadata: pending.metadata,
         apiKeyHash: apiKeyHash,
         rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
         reputation: 50,
@@ -782,9 +770,9 @@ async function handleRegisterVerify(
   // Fire agent.registered webhook (fire-and-forget).
   fireWebhook(config, "agent.registered", {
     agent_id: agentId,
-    public_key: challenge.publicKey,
-    scopes_granted: challenge.scopesRequested,
-    metadata: challenge.metadata,
+    public_key: pending.publicKey,
+    scopes_granted: pending.scopesRequested,
+    metadata: pending.metadata,
   });
 
   // Issue a JWT token for immediate use.
@@ -792,10 +780,10 @@ async function handleRegisterVerify(
   const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
   const agentCtx: AgentContext = {
     id: agentId,
-    publicKey: challenge.publicKey,
-    scopes: challenge.scopesRequested,
+    publicKey: pending.publicKey,
+    scopes: pending.scopesRequested,
     rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
-    metadata: challenge.metadata,
+    metadata: pending.metadata,
   };
   const token = await issueJwt(agentCtx, jwtSecret, jwtExpiresIn);
   const tokenExpiresAt = computeJwtExpiration(jwtExpiresIn);
@@ -803,7 +791,7 @@ async function handleRegisterVerify(
   const responseBody: Record<string, unknown> = {
     agent_id: agentId,
     api_key: apiKey,
-    scopes_granted: challenge.scopesRequested,
+    scopes_granted: pending.scopesRequested,
     token,
     token_expires_at: tokenExpiresAt.toISOString(),
     rate_limit: {
@@ -823,7 +811,7 @@ async function handleRegisterVerify(
   return c.json(responseBody, 200);
 }
 
-async function handleAuth(c: Context, config: AgentGateHonoConfig): Promise<Response> {
+async function handleAuth(c: Context, config: AgentGateHonoConfig, store: AgentStore): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = await c.req.json<Record<string, unknown>>();
@@ -842,7 +830,8 @@ async function handleAuth(c: Context, config: AgentGateHonoConfig): Promise<Resp
     );
   }
 
-  const agent = registeredAgents.get(agentId);
+  // Look up agent from store
+  const agent = await store.getAgent(agentId);
   if (!agent) {
     return c.json({ error: "Unknown agent_id" }, 404);
   }
@@ -866,6 +855,9 @@ async function handleAuth(c: Context, config: AgentGateHonoConfig): Promise<Resp
   const token = await issueJwt(agentCtx, jwtSecret, jwtExpiresIn);
   const expiresAt = computeJwtExpiration(jwtExpiresIn);
 
+  // Update last auth timestamp
+  await store.updateAgent(agentId, { lastAuthAt: new Date() }).catch(() => {});
+
   // Fire onAgentAuthenticated callback.
   if (config.onAgentAuthenticated) {
     try {
@@ -877,12 +869,12 @@ async function handleAuth(c: Context, config: AgentGateHonoConfig): Promise<Resp
         metadata: agent.metadata,
         apiKeyHash: agent.apiKeyHash,
         rateLimit: config.rateLimit ?? { requests: 1000, window: "1h" },
-        reputation: 50,
-        status: "active",
+        reputation: agent.reputation,
+        status: agent.status,
         createdAt: agent.createdAt,
         lastAuthAt: new Date(),
-        totalRequests: 0,
-        totalX402Paid: 0,
+        totalRequests: agent.totalRequests,
+        totalX402Paid: agent.totalX402Paid,
       };
       await config.onAgentAuthenticated(agentRecord);
     } catch {
