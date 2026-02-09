@@ -165,6 +165,18 @@ app.use("*", agentgate({
 }));
 ```
 
+### Fastify
+
+```typescript
+import Fastify from "fastify";
+import { agentgate } from "@agentgate/fastify";
+
+const app = Fastify();
+app.register(agentgate, {
+  scopes: [{ id: "data.read", description: "Read" }]
+});
+```
+
 ### FastAPI (Python)
 
 ```python
@@ -270,18 +282,55 @@ One AgentGate integration auto-generates companion protocol files:
 
 ## Packages
 
+### Core
+
 | Package | Description | Status |
 |---|---|---|
-| `@agentgate/core` | Shared crypto, types, storage, rate limiting | P0 |
-| `@agentgate/express` | Express.js middleware | P0 |
-| `@agentgate/next` | Next.js App Router adapter | P0 |
-| `@agentgate/hono` | Hono middleware (Workers/Deno/Bun) | P0 |
-| `@agentgate/sdk` | Agent-side TypeScript SDK | P0 |
-| `@agentgate/detect` | Agent traffic detection middleware | P0 |
-| `@agentgate/cli` | CLI tool (`npx agentgate init`) | P0 |
-| `agentgate` (Python) | Python Agent SDK | P0 |
-| `agentgate-fastapi` (Python) | FastAPI middleware adapter | P0 |
-| `@agentgate/dashboard` | Agent analytics dashboard (Next.js) | P1 |
+| `@agentgate/core` | Shared crypto, types, storage, rate limiting | Stable |
+| `@agentgate/sdk` | Agent-side TypeScript SDK | Stable |
+| `@agentgate/cli` | CLI tool (`npx agentgate init`) | Stable |
+| `@agentgate/detect` | Agent traffic detection middleware | Stable |
+| `agentgate` (Python) | Python Agent SDK | Stable |
+
+### Framework Adapters
+
+| Package | Description | Status |
+|---|---|---|
+| `@agentgate/express` | Express.js middleware | Stable |
+| `@agentgate/next` | Next.js App Router adapter | Stable |
+| `@agentgate/hono` | Hono middleware (Workers/Deno/Bun) | Stable |
+| `@agentgate/fastify` | Fastify plugin with schema validation | Stable |
+| `agentgate-fastapi` (Python) | FastAPI middleware adapter | Stable |
+| `@agentgate/cloudflare` | Cloudflare Workers adapter with Durable Objects | Stable |
+| `@agentgate/vercel` | Vercel Edge middleware | Stable |
+
+### Auth Provider Companions
+
+| Package | Description | Status |
+|---|---|---|
+| `@agentgate/auth0` | Auth0 companion -- register agents as M2M clients | Stable |
+| `@agentgate/clerk` | Clerk companion -- agent accounts visible in Clerk dashboard | Stable |
+| `@agentgate/firebase` | Firebase companion -- agent accounts as Firebase Auth users | Stable |
+| `@agentgate/stytch` | Stytch companion -- bridge agents with Stytch Connected Apps | Stable |
+| `@agentgate/supabase` | Supabase plugin -- store agent records with RLS support | Stable |
+| `@agentgate/next-auth` | NextAuth.js companion -- agent provider for NextAuth | Stable |
+
+### Integrations
+
+| Package | Description | Status |
+|---|---|---|
+| `@agentgate/stripe` | Stripe billing bridge -- reconcile x402 payments as Stripe invoices | Stable |
+| `@agentgate/bazaar` | x402 Bazaar -- auto-list services on the x402 marketplace | Stable |
+| `@agentgate/registry` | Agent Registry -- crawled directory of AgentGate-enabled services | Stable |
+| `@agentgate/dashboard` | Agent analytics dashboard (Next.js) | Beta |
+
+### Deployment Templates
+
+| Template | Description |
+|---|---|
+| `template-railway` | Railway deployment template -- Express + AgentGate |
+| `template-cloudflare` | Cloudflare Workers template -- Hono + AgentGate |
+| `template-vercel` | Vercel template -- Next.js + AgentGate |
 
 ---
 
@@ -294,11 +343,26 @@ agentgate/
 │   ├── express/              # Express.js middleware
 │   ├── next/                 # Next.js adapter
 │   ├── hono/                 # Hono middleware
+│   ├── fastify/              # Fastify plugin
 │   ├── sdk/                  # Agent-side TypeScript SDK
 │   ├── detect/               # Agent traffic detection
 │   ├── cli/                  # CLI tool
 │   ├── python-sdk/           # Python Agent SDK (agentgate)
-│   └── fastapi-adapter/      # FastAPI middleware (agentgate-fastapi)
+│   ├── fastapi-adapter/      # FastAPI middleware (agentgate-fastapi)
+│   ├── cloudflare/           # Cloudflare Workers adapter
+│   ├── vercel/               # Vercel Edge middleware
+│   ├── auth0/                # Auth0 companion plugin
+│   ├── clerk/                # Clerk companion plugin
+│   ├── firebase/             # Firebase companion plugin
+│   ├── stytch/               # Stytch companion plugin
+│   ├── supabase/             # Supabase plugin
+│   ├── next-auth/            # NextAuth.js companion plugin
+│   ├── stripe/               # Stripe billing bridge
+│   ├── bazaar/               # x402 Bazaar integration
+│   ├── registry/             # Agent registry service
+│   ├── template-railway/     # Railway deployment template
+│   ├── template-cloudflare/  # Cloudflare Workers template
+│   └── template-vercel/      # Vercel deployment template
 ├── apps/
 │   └── dashboard/            # Agent dashboard (Next.js)
 ├── examples/
@@ -309,6 +373,7 @@ agentgate/
 │   ├── agent-typescript/     # Agent SDK example
 │   └── agent-langchain/      # LangChain integration
 ├── docs/                     # Documentation
+├── tests/                    # Integration tests
 ├── turbo.json                # Turborepo config
 ├── pnpm-workspace.yaml       # Workspace config
 └── package.json
@@ -384,7 +449,7 @@ app.use(agentgate({
 
   // Storage backend (optional, defaults to in-memory)
   storage: {
-    type: "memory"  // "memory" | "sqlite" | "postgres"
+    driver: "memory"  // "memory" | "sqlite" | "postgres" | "redis"
   },
 
   // Crypto config (optional)
@@ -404,6 +469,17 @@ app.use(agentgate({
     mcpServer: false,     // Auto-gen /mcp endpoint
     oauthCompat: false    // OAuth endpoints for MCP clients
   },
+
+  // Service metadata (optional)
+  service: {
+    name: "My API",
+    description: "My agent-ready API",
+    docsUrl: "https://docs.example.com",
+    supportEmail: "agents@example.com"
+  },
+
+  // API key mode (optional, defaults to "live")
+  mode: "live",  // "live" → agk_live_... keys, "test" → agk_test_... keys
 
   // Lifecycle hooks (optional)
   onAgentRegistered: (agent) => console.log(`New agent: ${agent.id}`),

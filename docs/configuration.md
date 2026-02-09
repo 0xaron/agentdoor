@@ -18,8 +18,20 @@ interface AgentGateConfig {
     mcpServer?: boolean;
     oauthCompat?: boolean;
   };
+  service?: {
+    name?: string;
+    description?: string;
+    docsUrl?: string;
+    supportEmail?: string;
+  };
+  registrationRateLimit?: RateLimitConfig;
+  challengeExpirySeconds?: number;
+  mode?: "live" | "test";
   onAgentRegistered?: (agent: Agent) => void | Promise<void>;
   onAgentAuthenticated?: (agent: Agent) => void | Promise<void>;
+  webhooks?: WebhooksConfig;
+  reputation?: ReputationConfig;
+  spendingCaps?: SpendingCapsConfig;
 }
 ```
 
@@ -166,11 +178,11 @@ When `x402` is configured:
 **Optional.** Configures where agent registrations and challenges are persisted. Defaults to in-memory storage (suitable for development only).
 
 ```typescript
-type StorageConfig =
-  | { driver: "memory" }
-  | { driver: "sqlite"; path: string }
-  | { driver: "postgres"; connectionString: string }
-  | { driver: "custom"; store: AgentStore };
+interface StorageConfig {
+  driver: "memory" | "sqlite" | "postgres" | "redis";
+  url?: string;
+  options?: Record<string, unknown>;
+}
 ```
 
 ### Examples
@@ -193,7 +205,7 @@ agentgate({
   scopes: [...],
   storage: {
     driver: "sqlite",
-    path: "./data/agentgate.db",
+    url: "./data/agentgate.db",
   },
 });
 ```
@@ -207,14 +219,30 @@ agentgate({
   scopes: [...],
   storage: {
     driver: "postgres",
-    connectionString: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL,
   },
 });
 ```
 
 Recommended for production. Works with standard PostgreSQL, Neon, Supabase, and any Postgres-compatible database.
 
-**Custom storage:**
+**Redis:**
+
+```typescript
+agentgate({
+  scopes: [...],
+  storage: {
+    driver: "redis",
+    url: process.env.REDIS_URL,
+  },
+});
+```
+
+Good for distributed setups. Works with Redis, Upstash, and any Redis-compatible service.
+
+**Custom storage via the `AgentStore` interface:**
+
+You can implement the `AgentStore` interface to integrate with any database or service. Pass it using the `options` field:
 
 ```typescript
 import type { AgentStore } from "@agentgate/core/storage";
@@ -232,11 +260,9 @@ const myStore: AgentStore = {
 
 agentgate({
   scopes: [...],
-  storage: { driver: "custom", store: myStore },
+  storage: { driver: "memory", options: { store: myStore } },
 });
 ```
-
-Implement the `AgentStore` interface to integrate with any database or service.
 
 ## `signing`
 
@@ -343,12 +369,15 @@ interface Agent {
   publicKey: string;                     // Base64 Ed25519 public key
   x402Wallet?: string;                   // Optional x402 wallet address
   scopesGranted: string[];               // Scopes the agent was granted
-  apiKey: string;                        // The issued API key (plaintext, only available in this hook)
+  apiKeyHash: string;                    // SHA-256 hash of the API key
   rateLimit: RateLimitConfig;
-  reputation?: number;                   // 0-100, starts at 50
+  reputation: number;                    // 0-100, starts at 50
   metadata: Record<string, string>;      // Agent-provided metadata
+  status: "active" | "suspended" | "banned";
   createdAt: Date;
   lastAuthAt: Date;
+  totalRequests: number;                 // Total requests made
+  totalX402Paid: number;                 // Total amount paid via x402
 }
 ```
 
@@ -426,7 +455,7 @@ app.use(agentgate({
 
   storage: {
     driver: "postgres",
-    connectionString: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL,
   },
 
   signing: { algorithm: "ed25519" },
@@ -441,6 +470,16 @@ app.use(agentgate({
     mcpServer: false,
     oauthCompat: false,
   },
+
+  service: {
+    name: "WeatherCo API",
+    description: "Real-time weather data and forecasts",
+    docsUrl: "https://docs.weatherco.com/agents",
+    supportEmail: "agents@weatherco.com",
+  },
+
+  mode: "live",
+  challengeExpirySeconds: 300,
 
   onAgentRegistered: async (agent) => {
     console.log(`Agent registered: ${agent.id}`);
@@ -485,6 +524,131 @@ import config from "./agentgate.config";
 app.use(agentgate(config));
 ```
 
+## `service`
+
+**Optional.** Metadata about your service, used in the discovery document and companion protocol endpoints.
+
+```typescript
+agentgate({
+  scopes: [...],
+  service: {
+    name: "WeatherCo API",                      // Default: "AgentGate Service"
+    description: "Real-time weather data",       // Default: "An AgentGate-enabled API service"
+    docsUrl: "https://docs.weatherco.com",       // Link to documentation
+    supportEmail: "agents@weatherco.com",        // Support contact
+  },
+});
+```
+
+These values appear in the `/.well-known/agentgate.json` discovery document.
+
+## `registrationRateLimit`
+
+**Optional.** Separate rate limit for the registration endpoint itself. Defaults to 10 requests per hour.
+
+```typescript
+agentgate({
+  scopes: [...],
+  registrationRateLimit: {
+    requests: 20,
+    window: "1h",
+  },
+});
+```
+
+This is independent of the per-agent `rateLimit`. It limits how many new registrations can be processed from a given IP.
+
+## `challengeExpirySeconds`
+
+**Optional.** How long a registration challenge nonce remains valid. Default: `300` (5 minutes).
+
+```typescript
+agentgate({
+  scopes: [...],
+  challengeExpirySeconds: 600,  // 10 minutes
+});
+```
+
+## `mode`
+
+**Optional.** Controls the API key prefix. In `"live"` mode, keys are prefixed with `agk_live_`. In `"test"` mode, keys are prefixed with `agk_test_`. Default: `"live"`.
+
+```typescript
+agentgate({
+  scopes: [...],
+  mode: "test",  // Issue test keys: agk_test_...
+});
+```
+
+## `webhooks`
+
+**Optional.** Configures webhook delivery for agent lifecycle events.
+
+```typescript
+agentgate({
+  scopes: [...],
+  webhooks: {
+    enabled: true,
+    endpoints: [
+      {
+        url: "https://hooks.yoursite.com/agent-events",
+        events: ["agent.registered", "agent.authenticated", "agent.suspended"],
+        secret: process.env.WEBHOOK_SECRET,   // Used to sign payloads
+        maxRetries: 3,                         // Retry on failure (default: 3)
+        timeoutMs: 5000,                       // Request timeout (default: 5000)
+      },
+    ],
+  },
+});
+```
+
+Webhook payloads include the event type, agent data, and a timestamp. Payloads are signed with HMAC-SHA256 using the endpoint `secret`.
+
+## `reputation`
+
+**Optional.** Enables the agent reputation scoring system. Agents start with an initial score (default: 50) that increases or decreases based on behavior.
+
+```typescript
+agentgate({
+  scopes: [...],
+  reputation: {
+    enabled: true,
+    initialScore: 50,        // Starting reputation (0-100)
+    minScore: 0,
+    maxScore: 100,
+    flagThreshold: 20,       // Flag agents below this score
+    suspendThreshold: 10,    // Auto-suspend agents below this score
+    gates: [
+      {
+        minReputation: 30,
+        scopes: ["data.write"],
+        action: "block",     // Block low-reputation agents from write scopes
+      },
+    ],
+  },
+});
+```
+
+## `spendingCaps`
+
+**Optional.** Configures spending caps for x402 payments.
+
+```typescript
+agentgate({
+  scopes: [...],
+  spendingCaps: {
+    enabled: true,
+    defaultCaps: [
+      { amount: 100, currency: "USDC", period: "daily", type: "hard" },
+      { amount: 2000, currency: "USDC", period: "monthly", type: "soft" },
+    ],
+    warningThreshold: 0.8,  // Warn at 80% of cap
+  },
+});
+```
+
+A `"hard"` cap rejects requests once reached. A `"soft"` cap emits a warning webhook but allows requests to continue.
+
 ## Environment Variables
 
 AgentGate reads the following environment variables as fallbacks:
@@ -493,7 +657,9 @@ AgentGate reads the following environment variables as fallbacks:
 |---|---|---|
 | `AGENTGATE_JWT_SECRET` | JWT signing secret | Auto-generated at startup |
 | `DATABASE_URL` | PostgreSQL connection string (when `storage.driver` is `"postgres"`) | None |
+| `REDIS_URL` | Redis connection string (when `storage.driver` is `"redis"`) | None |
 | `X402_WALLET_ADDRESS` | x402 payment address | None |
+| `WEBHOOK_SECRET` | Webhook signing secret | None |
 | `AGENTGATE_LOG_LEVEL` | Logging verbosity: `debug`, `info`, `warn`, `error` | `info` |
 
 Explicit config values always take precedence over environment variables.

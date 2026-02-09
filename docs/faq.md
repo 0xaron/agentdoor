@@ -70,9 +70,9 @@ AgentGate can run in detect-only mode before you even enable registration. The d
 To enable detect-only mode:
 
 ```typescript
-import { agentgate } from "@agentgate/express";
+import { detect } from "@agentgate/detect";
 
-app.use(agentgate.detect({
+app.use(detect({
   webhook: "https://hooks.yoursite.com/agent-traffic",
 }));
 ```
@@ -87,11 +87,18 @@ Yes. The core packages are open source under the MIT license:
 - `@agentgate/express` -- Express.js middleware
 - `@agentgate/next` -- Next.js adapter
 - `@agentgate/hono` -- Hono middleware
+- `@agentgate/fastify` -- Fastify plugin
 - `@agentgate/sdk` -- agent-side TypeScript SDK
 - `@agentgate/cli` -- CLI tool
 - `@agentgate/detect` -- agent traffic detection
+- `@agentgate/cloudflare` -- Cloudflare Workers adapter
+- `@agentgate/vercel` -- Vercel Edge middleware
+- `agentgate` (Python) -- Python agent SDK
+- `agentgate-fastapi` (Python) -- FastAPI middleware
 
-The source code is available at [github.com/agentgate/agentgate](https://github.com/agentgate/agentgate).
+The source code is available at [github.com/0xaron/preauth](https://github.com/0xaron/preauth).
+
+Additional packages include auth provider companions (Auth0, Clerk, Firebase, Stytch, Supabase, NextAuth.js), payment integrations (Stripe), platform adapters (Cloudflare, Vercel), and deployment templates (Railway, Cloudflare Workers, Vercel).
 
 The dashboard and hosted services (agent registry, managed storage, analytics) are separate paid products built on top of the open-source core.
 
@@ -104,6 +111,7 @@ AgentGate supports multiple storage backends through a pluggable `AgentStore` in
 | **Memory** | Development and testing. Data is lost on restart. | Built-in (default) |
 | **SQLite** | Single-server production deployments. | `@agentgate/core` |
 | **PostgreSQL** | Multi-server production deployments. Works with Neon, Supabase, RDS, or any Postgres-compatible database. | `@agentgate/core` |
+| **Redis** | Distributed setups. Works with Redis, Upstash, or any Redis-compatible service. | `@agentgate/core` |
 | **Custom** | Any database. Implement the `AgentStore` interface. | `@agentgate/core` |
 
 Configure via the `storage` option:
@@ -112,17 +120,23 @@ Configure via the `storage` option:
 // PostgreSQL
 agentgate({
   scopes: [...],
-  storage: { driver: "postgres", connectionString: process.env.DATABASE_URL },
+  storage: { driver: "postgres", url: process.env.DATABASE_URL },
 });
 
 // SQLite
 agentgate({
   scopes: [...],
-  storage: { driver: "sqlite", path: "./data/agentgate.db" },
+  storage: { driver: "sqlite", url: "./data/agentgate.db" },
+});
+
+// Redis
+agentgate({
+  scopes: [...],
+  storage: { driver: "redis", url: process.env.REDIS_URL },
 });
 ```
 
-The `AgentStore` interface is straightforward to implement for other databases (Redis, DynamoDB, MongoDB, etc.):
+The `AgentStore` interface is straightforward to implement for other databases (DynamoDB, MongoDB, etc.):
 
 ```typescript
 import type { AgentStore } from "@agentgate/core/storage";
@@ -148,8 +162,10 @@ AgentGate provides first-party adapters for the most popular JavaScript/TypeScri
 | Express.js (v4/v5) | `@agentgate/express` | Stable |
 | Next.js (App Router, v14/v15) | `@agentgate/next` | Stable |
 | Hono (v4) | `@agentgate/hono` | Stable |
-| Fastify | `@agentgate/fastify` | Planned |
-| FastAPI (Python) | `agentgate-fastapi` | Planned |
+| Fastify | `@agentgate/fastify` | Stable |
+| FastAPI (Python) | `agentgate-fastapi` | Stable |
+| Cloudflare Workers | `@agentgate/cloudflare` | Stable |
+| Vercel Edge | `@agentgate/vercel` | Stable |
 | Django | `django-agentgate` | Planned |
 
 All adapters share `@agentgate/core` for the underlying logic. Adding a new framework adapter requires implementing a thin layer that maps the framework's request/response model to AgentGate's internal types.
