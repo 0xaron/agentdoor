@@ -138,7 +138,7 @@ export interface AgentStore {
    * Returns the most recent challenge for the given agent.
    *
    * @param agentId - Agent ID
-   * @returns The ChallengeData, or null if not found or expired
+   * @returns The ChallengeData, or null if not found
    */
   getChallenge(agentId: string): Promise<ChallengeData | null>;
 

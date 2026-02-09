@@ -308,12 +308,6 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
     const NR = await getNextResponse();
     const { pathname } = request.nextUrl;
 
-    // TTL-based cleanup: clean expired challenges periodically
-    if (Date.now() - lastCleanup > CLEANUP_INTERVAL) {
-      lastCleanup = Date.now();
-      store.cleanExpiredChallenges().catch(() => {});
-    }
-
     // ---- Discovery ----
     if (pathname === "/.well-known/agentgate.json" && request.method === "GET") {
       return NR.json(buildDiscoveryDocument(config), {
@@ -338,6 +332,12 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
     // ---- Auth (returning agents) ----
     if (pathname === "/agentgate/auth" && request.method === "POST") {
       return handleAuth(request, config, store, webhookEmitter, NR);
+    }
+
+    // TTL-based cleanup: clean expired challenges periodically
+    if (Date.now() - lastCleanup > CLEANUP_INTERVAL) {
+      lastCleanup = Date.now();
+      store.cleanExpiredChallenges().catch(() => {});
     }
 
     // ---- Auth guard for protected routes ----

@@ -165,12 +165,6 @@ export class MemoryStore implements AgentStore {
     const challenge = this.challenges.get(agentId);
     if (!challenge) return null;
 
-    // Check if expired
-    if (Date.now() > challenge.expiresAt.getTime()) {
-      this.challenges.delete(agentId);
-      return null;
-    }
-
     return { ...challenge };
   }
 

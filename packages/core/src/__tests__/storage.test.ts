@@ -145,11 +145,13 @@ describe("MemoryStore - Challenge Management", () => {
     expect(result).toBeNull();
   });
 
-  it("getChallenge returns null for expired challenges", async () => {
+  it("getChallenge returns expired challenges for caller to handle", async () => {
     const challenge = makeChallenge("ag_expired", -1000); // already expired
     await store.createChallenge(challenge);
     const result = await store.getChallenge("ag_expired");
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.agentId).toBe("ag_expired");
+    expect(result!.expiresAt.getTime()).toBeLessThan(Date.now());
   });
 
   it("deleteChallenge removes a challenge", async () => {
