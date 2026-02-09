@@ -5,7 +5,7 @@ Make your API agent-ready in under 5 minutes. This guide walks you through insta
 ## Prerequisites
 
 - Node.js >= 18
-- An existing Express, Next.js, or Hono API
+- An existing Express, Next.js, Hono, or Fastify API (Python FastAPI is also supported)
 - pnpm, npm, or yarn
 
 ## 1. Install
@@ -21,7 +21,7 @@ pnpm add @agentgate/express @agentgate/core
 yarn add @agentgate/express @agentgate/core
 ```
 
-For Next.js, use `@agentgate/next` instead of `@agentgate/express`. For Hono, use `@agentgate/hono`.
+For Next.js, use `@agentgate/next` instead of `@agentgate/express`. For Hono, use `@agentgate/hono`. For Fastify, use `@agentgate/fastify`. For Python FastAPI, see the [FastAPI example](../examples/python-fastapi/).
 
 ## 2. Initialize Configuration
 
@@ -111,6 +111,27 @@ app.use("*", agentgate({
 app.get("/api/data", (c) => c.json({ temperature: 72 }));
 
 export default app;
+```
+
+### Fastify
+
+```typescript
+import Fastify from "fastify";
+import { agentgate } from "@agentgate/fastify";
+
+const app = Fastify();
+
+app.register(agentgate, {
+  scopes: [
+    { id: "data.read", description: "Read data" },
+  ],
+});
+
+app.get("/api/data", async (request, reply) => {
+  return { temperature: 72 };
+});
+
+app.listen({ port: 3000 });
 ```
 
 ## 4. Test with curl
