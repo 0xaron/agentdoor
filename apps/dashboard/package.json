@@ -12,15 +12,16 @@
     "clean": "rm -rf .next out"
   },
   "dependencies": {
+    "@agentgate/core": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@agentgate/core": "workspace:*"
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.7.0"
   }
 }
