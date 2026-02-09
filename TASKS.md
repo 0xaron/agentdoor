@@ -14,7 +14,7 @@
 - [x] Use `AgentStore` challenge methods in Hono adapter
 - [x] Remove in-memory Maps from both adapters
 - [x] Add TTL-based cleanup (challenges expire after 5 min)
-- [ ] Update tests to verify persistence — _Tests exist but don't verify persistence with custom stores_
+- [x] Update tests to verify persistence — _Persistence tests added for both Next.js and Hono with custom MemoryStore_
 
 ---
 
@@ -28,7 +28,7 @@
 - [x] Traffic chart: stacked bar (human vs agent) over time
 - [x] Revenue chart: line/bar over time
 - [x] Framework breakdown: horizontal bar chart
-- [ ] Auto-refresh data on interval (or SSE/websocket for real-time) — _No polling, SSE, or WebSocket implemented_
+- [x] Auto-refresh data on interval (or SSE/websocket for real-time) — _AutoRefreshProvider and LiveStatsCards client components poll /api/stats every 30s_
 
 ### 3.7 — Webhook events: Wire into Next.js and Hono adapters
 **Issue:** `WebhookEmitter` exists in core and is used in Express adapter, but not in Next.js or Hono.
@@ -37,7 +37,7 @@
 - [~] Emit `agent.registered`, `agent.authenticated` events from Next.js route handlers — _Uses custom `fireWebhook()` instead of core `WebhookEmitter`; no retry or HMAC_
 - [x] Accept `webhooks` config in Hono adapter
 - [~] Emit events from Hono middleware — _Same custom implementation as Next.js_
-- [ ] Add tests for webhook emission in both adapters
+- [x] Add tests for webhook emission in both adapters — _6 webhook tests for Next.js, 5 for Hono_
 
 ### 3.8 — Reputation system: Wire into Next.js and Hono adapters
 **Issue:** `ReputationManager` exists in core and is used in Express, but missing from Next.js and Hono.

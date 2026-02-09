@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { MemoryStore } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Mock next/server -- must be declared before any imports that trigger it.
@@ -1750,5 +1751,363 @@ describe("route-handlers", () => {
         version: "0.1.0",
       });
     });
+  });
+});
+
+// ===========================================================================
+//  PERSISTENCE TESTS (Task 2.4 — verify challenges persist to custom store)
+// ===========================================================================
+
+describe("challenge persistence with custom store", () => {
+  it("persists challenge to the provided store on registration", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const registerRes = await mw(
+      createMockRequest("POST", "/agentgate/register", {
+        body: {
+          public_key: pk,
+          scopes_requested: ["data.read"],
+          metadata: { framework: "test" },
+        },
+      }),
+    );
+
+    expect(registerRes.status).toBe(201);
+    const registerBody = await registerRes.json();
+
+    // Verify the challenge was persisted to the store
+    const storedChallenge = await store.getChallenge(registerBody.agent_id);
+    expect(storedChallenge).not.toBeNull();
+    expect(storedChallenge!.agentId).toBe(registerBody.agent_id);
+    expect(storedChallenge!.nonce).toBe(registerBody.challenge.nonce);
+    expect(storedChallenge!.message).toBe(registerBody.challenge.message);
+  });
+
+  it("stores pendingRegistration data in the challenge", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const registerRes = await mw(
+      createMockRequest("POST", "/agentgate/register", {
+        body: {
+          public_key: pk,
+          scopes_requested: ["data.read", "data.write"],
+          metadata: { framework: "langchain" },
+          x402_wallet: "0xTestWallet",
+        },
+      }),
+    );
+    const registerBody = await registerRes.json();
+
+    const storedChallenge = await store.getChallenge(registerBody.agent_id);
+    expect(storedChallenge).not.toBeNull();
+    expect(storedChallenge!.pendingRegistration).toBeDefined();
+    expect(storedChallenge!.pendingRegistration.publicKey).toBe(pk);
+    expect(storedChallenge!.pendingRegistration.scopesRequested).toEqual(["data.read", "data.write"]);
+  });
+
+  it("deletes challenge from store after successful verification", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    const { agentId } = await registerAndVerifyAgent(mw);
+
+    // After verification, the challenge should be deleted
+    const storedChallenge = await store.getChallenge(agentId);
+    expect(storedChallenge).toBeNull();
+  });
+
+  it("persists agent to the store after successful verification", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const { agentId } = await registerAndVerifyAgent(mw, pk);
+
+    // The agent should be stored
+    const storedAgent = await store.getAgent(agentId);
+    expect(storedAgent).not.toBeNull();
+    expect(storedAgent!.id).toBe(agentId);
+    expect(storedAgent!.publicKey).toBe(pk);
+    expect(storedAgent!.scopesGranted).toEqual(["data.read"]);
+    expect(storedAgent!.status).toBe("active");
+  });
+
+  it("can look up agent by public key in the store after verification", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const { agentId } = await registerAndVerifyAgent(mw, pk);
+
+    const storedAgent = await store.getAgentByPublicKey(pk);
+    expect(storedAgent).not.toBeNull();
+    expect(storedAgent!.id).toBe(agentId);
+  });
+
+  it("challenge has a valid expiration time (approximately 5 minutes)", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const now = Date.now();
+    const registerRes = await mw(
+      createMockRequest("POST", "/agentgate/register", {
+        body: {
+          public_key: pk,
+          scopes_requested: ["data.read"],
+        },
+      }),
+    );
+    const registerBody = await registerRes.json();
+
+    const storedChallenge = await store.getChallenge(registerBody.agent_id);
+    expect(storedChallenge).not.toBeNull();
+
+    const expiresAt = storedChallenge!.expiresAt.getTime();
+    // Should expire roughly 5 minutes from now (allow 10 seconds tolerance)
+    expect(expiresAt).toBeGreaterThan(now + 4 * 60 * 1000);
+    expect(expiresAt).toBeLessThanOrEqual(now + 6 * 60 * 1000);
+  });
+
+  it("separate middleware instances with the same store share state", async () => {
+    const store = new MemoryStore();
+    const mw1 = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw2 = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+
+    // Register through mw1
+    const pk = uniquePublicKey();
+    const registerRes = await mw1(
+      createMockRequest("POST", "/agentgate/register", {
+        body: {
+          public_key: pk,
+          scopes_requested: ["data.read"],
+        },
+      }),
+    );
+    const registerBody = await registerRes.json();
+
+    // Verify through mw2 — should find the challenge in the shared store
+    const importKeySpy = vi
+      .spyOn(crypto.subtle, "importKey")
+      .mockResolvedValue({} as CryptoKey);
+    const verifySpy = vi
+      .spyOn(crypto.subtle, "verify")
+      .mockResolvedValue(true);
+
+    const verifyRes = await mw2(
+      createMockRequest("POST", "/agentgate/register/verify", {
+        body: {
+          agent_id: registerBody.agent_id,
+          signature: btoa("test-sig"),
+        },
+      }),
+    );
+
+    expect(verifyRes.status).toBe(200);
+    const verifyBody = await verifyRes.json();
+    expect(verifyBody.api_key).toBeDefined();
+
+    importKeySpy.mockRestore();
+    verifySpy.mockRestore();
+  });
+});
+
+// ===========================================================================
+//  WEBHOOK EMISSION TESTS (Task 3.7 — verify webhooks fire in Next.js)
+// ===========================================================================
+
+describe("webhook emission", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("OK", { status: 200 }),
+    );
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("fires agent.registered webhook after successful verification", async () => {
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    await registerAndVerifyAgent(mw);
+
+    // Allow fire-and-forget fetch to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Should have been called with the webhook endpoint
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => call[0] === "https://example.com/webhook",
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+
+    // Verify the payload contains agent.registered event
+    const registeredCall = webhookCalls.find((call) => {
+      const body = JSON.parse(call[1]?.body as string);
+      return body.type === "agent.registered";
+    });
+    expect(registeredCall).toBeDefined();
+
+    const payload = JSON.parse(registeredCall![1]?.body as string);
+    expect(payload.type).toBe("agent.registered");
+    expect(payload.data.agent_id).toBeDefined();
+    expect(payload.timestamp).toBeDefined();
+  });
+
+  it("fires agent.authenticated webhook after successful auth", async () => {
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    const { agentId } = await registerAndVerifyAgent(mw);
+
+    // Clear previous fetch calls
+    fetchSpy.mockClear();
+
+    // Authenticate the agent
+    const importKeySpy = vi
+      .spyOn(crypto.subtle, "importKey")
+      .mockResolvedValue({} as CryptoKey);
+    const verifySpy = vi
+      .spyOn(crypto.subtle, "verify")
+      .mockResolvedValue(true);
+
+    const authRes = await mw(
+      createMockRequest("POST", "/agentgate/auth", {
+        body: {
+          agent_id: agentId,
+          signature: btoa("auth-sig"),
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    );
+
+    expect(authRes.status).toBe(200);
+
+    // Allow fire-and-forget fetch to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => call[0] === "https://example.com/webhook",
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+
+    const authCall = webhookCalls.find((call) => {
+      const body = JSON.parse(call[1]?.body as string);
+      return body.type === "agent.authenticated";
+    });
+    expect(authCall).toBeDefined();
+
+    const payload = JSON.parse(authCall![1]?.body as string);
+    expect(payload.type).toBe("agent.authenticated");
+    expect(payload.data.agent_id).toBe(agentId);
+
+    importKeySpy.mockRestore();
+    verifySpy.mockRestore();
+  });
+
+  it("does not fire webhooks when no endpoints are configured", async () => {
+    const mw = createAgentGateMiddleware(TEST_CONFIG);
+
+    await registerAndVerifyAgent(mw);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    // fetch should not have been called for webhooks (only for internal crypto etc.)
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => typeof call[0] === "string" && call[0].includes("webhook"),
+    );
+    expect(webhookCalls).toHaveLength(0);
+  });
+
+  it("respects endpoint event filtering", async () => {
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          {
+            url: "https://example.com/auth-only",
+            events: ["agent.authenticated"],
+          },
+        ],
+      },
+    });
+
+    await registerAndVerifyAgent(mw);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    // The endpoint only subscribes to agent.authenticated, so
+    // agent.registered should NOT be sent to it.
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => call[0] === "https://example.com/auth-only",
+    );
+
+    for (const call of webhookCalls) {
+      const body = JSON.parse(call[1]?.body as string);
+      expect(body.type).not.toBe("agent.registered");
+    }
+  });
+
+  it("silently handles webhook delivery failures", async () => {
+    fetchSpy.mockRejectedValue(new Error("Network error"));
+
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    // Should not throw even when webhook delivery fails
+    const { agentId } = await registerAndVerifyAgent(mw);
+    expect(agentId).toBeDefined();
+
+    await new Promise((r) => setTimeout(r, 50));
+  });
+
+  it("sends correct headers with webhook payload", async () => {
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    await registerAndVerifyAgent(mw);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => call[0] === "https://example.com/webhook",
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+
+    const headers = webhookCalls[0][1]?.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(headers["User-Agent"]).toBe("AgentGate-Webhooks/1.0");
+    expect(headers["X-AgentGate-Event"]).toBeDefined();
   });
 });

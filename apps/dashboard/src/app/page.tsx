@@ -13,6 +13,7 @@ import {
   RegistrationsChart,
   FrameworkChart,
 } from "./charts";
+import { AutoRefreshProvider, LiveStatsCards } from "./auto-refresh";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -259,33 +260,20 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* Overview Stats */}
-      <div style={styles.grid4}>
-        <StatCard
-          label="Total Agents"
-          value={totalAgents.toString()}
-          delta={`${activeAgents} active`}
-          deltaUp
-        />
-        <StatCard
-          label="Active Agents"
-          value={activeAgents.toString()}
-          delta={totalAgents > 0 ? `${Math.round((activeAgents / totalAgents) * 100)}% of total` : "0%"}
-          deltaUp
-        />
-        <StatCard
-          label="Total Requests"
-          value={formatNumber(totalRequests)}
-          delta={`avg ${formatNumber(totalAgents > 0 ? Math.round(totalRequests / totalAgents) : 0)}/agent`}
-          deltaUp
-        />
-        <StatCard
-          label="Total Revenue (x402)"
-          value={formatCurrency(totalRevenue)}
-          delta={`avg rep: ${avgReputation}/100`}
-          deltaUp
-        />
-      </div>
+      {/* Auto-refresh provider wraps data sections for periodic polling */}
+      <AutoRefreshProvider intervalMs={30000}>
+
+      {/* Overview Stats — auto-refreshing client component */}
+      <LiveStatsCards
+        initialStats={{
+          totalAgents,
+          activeAgents,
+          totalRequests,
+          totalRevenue,
+          avgReputation,
+        }}
+        intervalMs={30000}
+      />
 
       {/* Registrations Per Day Chart (recharts) */}
       <div style={{ ...styles.card, marginBottom: 32 }}>
@@ -669,6 +657,8 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      </AutoRefreshProvider>
     </div>
   );
 }
