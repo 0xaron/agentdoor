@@ -50,7 +50,8 @@ export function RevenueChart({
         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
         <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6b7280" }} />
         <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} />
-        <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="x402" stackId="revenue" fill="#10b981" name="x402 Revenue" />
         <Bar dataKey="subscriptions" stackId="revenue" fill="#a7f3d0" name="Subscriptions" radius={[4, 4, 0, 0]} />
@@ -101,7 +102,8 @@ export function FrameworkChart({
         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
         <XAxis type="number" tick={{ fontSize: 12, fill: "#6b7280" }} domain={[0, 100]} unit="%" />
         <YAxis dataKey="name" type="category" tick={{ fontSize: 12, fill: "#6b7280" }} width={80} />
-        <Tooltip formatter={(value: number, _name: string, props: { payload: { count: number } }) => [`${value}% (${props.payload.count} agents)`, "Usage"]} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <Tooltip formatter={(value: any, _name: any, props: any) => [`${Number(value)}% (${props.payload.count} agents)`, "Usage"]} />
         <Bar dataKey="percentage" fill="#6366f1" name="Usage %" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
