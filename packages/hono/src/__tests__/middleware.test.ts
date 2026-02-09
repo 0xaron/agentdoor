@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 import {
   agentgate,
@@ -7,6 +7,7 @@ import {
   buildDiscoveryDocument,
 } from "../index.js";
 import type { AgentGateVariables, AgentGateHonoConfig } from "../index.js";
+import { MemoryStore } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Shared test configuration
@@ -1286,5 +1287,425 @@ describe("Discovery document — scopes with no price or rateLimit", () => {
     expect(scopes[0].id).toBe("basic");
     expect(scopes[0].price).toBeUndefined();
     expect(scopes[0].rate_limit).toBeUndefined();
+  });
+});
+
+// ==========================================================================
+// PERSISTENCE TESTS (Task 2.4 — verify challenges persist to custom store)
+// ==========================================================================
+
+describe("challenge persistence with custom store", () => {
+  it("persists challenge to the provided store on registration", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, { ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const res = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: pk,
+        scopes_requested: ["data.read"],
+        metadata: { framework: "test" },
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+
+    // Verify the challenge was persisted to the store
+    const storedChallenge = await store.getChallenge(body.agent_id);
+    expect(storedChallenge).not.toBeNull();
+    expect(storedChallenge!.agentId).toBe(body.agent_id);
+    expect(storedChallenge!.nonce).toBe(body.challenge.nonce);
+    expect(storedChallenge!.message).toBe(body.challenge.message);
+  });
+
+  it("stores pendingRegistration data in the challenge", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, { ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const res = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: pk,
+        scopes_requested: ["data.read", "data.write"],
+        metadata: { framework: "langchain" },
+        x402_wallet: "0xTestWallet",
+      }),
+    });
+    const body = await res.json();
+
+    const storedChallenge = await store.getChallenge(body.agent_id);
+    expect(storedChallenge).not.toBeNull();
+    expect(storedChallenge!.pendingRegistration).toBeDefined();
+    expect(storedChallenge!.pendingRegistration.publicKey).toBe(pk);
+    expect(storedChallenge!.pendingRegistration.scopesRequested).toEqual(["data.read", "data.write"]);
+  });
+
+  it("challenge has a valid expiration time (approximately 5 minutes)", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, { ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+    const now = Date.now();
+    const res = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: pk,
+        scopes_requested: ["data.read"],
+      }),
+    });
+    const body = await res.json();
+
+    const storedChallenge = await store.getChallenge(body.agent_id);
+    expect(storedChallenge).not.toBeNull();
+
+    const expiresAt = storedChallenge!.expiresAt.getTime();
+    // Should expire roughly 5 minutes from now (allow 10 seconds tolerance)
+    expect(expiresAt).toBeGreaterThan(now + 4 * 60 * 1000);
+    expect(expiresAt).toBeLessThanOrEqual(now + 6 * 60 * 1000);
+  });
+
+  it("challenge is retrievable across requests to the same store", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, { ...TEST_CONFIG, store });
+
+    const pk = uniquePublicKey();
+
+    // Register (creates challenge)
+    const regRes = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: pk,
+        scopes_requested: ["data.read"],
+      }),
+    });
+    const regBody = await regRes.json();
+    const agentId = regBody.agent_id;
+
+    // Verify challenge exists in store
+    const challenge = await store.getChallenge(agentId);
+    expect(challenge).not.toBeNull();
+
+    // Try verify with invalid sig — the fact that we get 400 (Invalid signature)
+    // instead of 404 (Unknown agent_id) proves the challenge was found in the store
+    const verifyRes = await app.request("/agentgate/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent_id: agentId,
+        signature: "dGVzdC1zaWduYXR1cmU=",
+      }),
+    });
+
+    expect(verifyRes.status).toBe(400);
+    const verifyBody = await verifyRes.json();
+    expect(verifyBody.error).toContain("Invalid signature");
+  });
+
+  it("multiple registrations use the same store", async () => {
+    const store = new MemoryStore();
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, { ...TEST_CONFIG, store });
+
+    // Register two agents
+    const pk1 = uniquePublicKey();
+    const pk2 = uniquePublicKey();
+
+    const res1 = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: pk1,
+        scopes_requested: ["data.read"],
+      }),
+    });
+    const res2 = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: pk2,
+        scopes_requested: ["data.write"],
+      }),
+    });
+
+    const body1 = await res1.json();
+    const body2 = await res2.json();
+
+    // Both challenges should be in the store
+    const challenge1 = await store.getChallenge(body1.agent_id);
+    const challenge2 = await store.getChallenge(body2.agent_id);
+    expect(challenge1).not.toBeNull();
+    expect(challenge2).not.toBeNull();
+    expect(challenge1!.pendingRegistration.publicKey).toBe(pk1);
+    expect(challenge2!.pendingRegistration.publicKey).toBe(pk2);
+  });
+});
+
+// ==========================================================================
+// WEBHOOK EMISSION TESTS (Task 3.7 — verify webhooks fire in Hono)
+// ==========================================================================
+
+describe("webhook emission", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+    // We need to preserve Hono's internal fetch behavior while spying
+    // Use mockImplementation that delegates to the original for Hono requests
+    const originalFetch = globalThis.fetch;
+    fetchSpy.mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      // Webhook calls go to external URLs
+      if (url.includes("example.com")) {
+        return new Response("OK", { status: 200 });
+      }
+      // Let Hono's internal request handling work normally
+      return originalFetch(input as any, init);
+    });
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  /**
+   * Helper: generate a real Ed25519 key pair, register with the given app,
+   * and verify with a real signature. Returns the agentId for follow-up tests.
+   */
+  async function registerAndVerifyWithRealCrypto(
+    app: Hono<{ Variables: AgentGateVariables }>,
+  ): Promise<{ agentId: string; publicKeyB64: string; privateKey: CryptoKey }> {
+    const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+    const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+    const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
+
+    // Register
+    const regRes = await app.request("/agentgate/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        public_key: publicKeyB64,
+        scopes_requested: ["data.read"],
+      }),
+    });
+    expect(regRes.status).toBe(201);
+    const regBody = await regRes.json();
+    const agentId = regBody.agent_id as string;
+    const challengeMessage = regBody.challenge.message as string;
+
+    // Sign the challenge with the real private key
+    const sigBytes = await crypto.subtle.sign(
+      "Ed25519",
+      keyPair.privateKey,
+      new TextEncoder().encode(challengeMessage),
+    );
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
+
+    // Verify
+    const verifyRes = await app.request("/agentgate/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent_id: agentId,
+        signature: signatureB64,
+      }),
+    });
+    expect(verifyRes.status).toBe(200);
+
+    return { agentId, publicKeyB64, privateKey: keyPair.privateKey };
+  }
+
+  it("fires agent.registered webhook after successful verify", async () => {
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    await registerAndVerifyWithRealCrypto(app);
+
+    // Allow fire-and-forget fetch to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => {
+        const url = typeof call[0] === "string" ? call[0] : (call[0] as Request).url;
+        return url === "https://example.com/webhook";
+      },
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+
+    // Verify the payload contains agent.registered event
+    const registeredCall = webhookCalls.find((call) => {
+      const body = JSON.parse(call[1]?.body as string);
+      return body.type === "agent.registered";
+    });
+    expect(registeredCall).toBeDefined();
+
+    const payload = JSON.parse(registeredCall![1]?.body as string);
+    expect(payload.type).toBe("agent.registered");
+    expect(payload.data.agent_id).toBeDefined();
+    expect(payload.timestamp).toBeDefined();
+  });
+
+  it("fires agent.authenticated webhook after successful auth", async () => {
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    const { agentId, privateKey } = await registerAndVerifyWithRealCrypto(app);
+
+    // Clear previous fetch calls
+    fetchSpy.mockClear();
+    const originalFetch2 = globalThis.fetch;
+    fetchSpy.mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("example.com")) {
+        return new Response("OK", { status: 200 });
+      }
+      return originalFetch2(input as any, init);
+    });
+
+    // Sign the auth message
+    const timestamp = new Date().toISOString();
+    const authMessage = `agentgate:auth:${agentId}:${timestamp}`;
+    const authSigBytes = await crypto.subtle.sign(
+      "Ed25519",
+      privateKey,
+      new TextEncoder().encode(authMessage),
+    );
+    const authSignatureB64 = btoa(String.fromCharCode(...new Uint8Array(authSigBytes)));
+
+    // Authenticate
+    const authRes = await app.request("/agentgate/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent_id: agentId,
+        signature: authSignatureB64,
+        timestamp,
+      }),
+    });
+
+    expect(authRes.status).toBe(200);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => {
+        const url = typeof call[0] === "string" ? call[0] : (call[0] as Request).url;
+        return url === "https://example.com/webhook";
+      },
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+
+    const authCall = webhookCalls.find((call) => {
+      const body = JSON.parse(call[1]?.body as string);
+      return body.type === "agent.authenticated";
+    });
+    expect(authCall).toBeDefined();
+
+    const payload = JSON.parse(authCall![1]?.body as string);
+    expect(payload.type).toBe("agent.authenticated");
+    expect(payload.data.agent_id).toBe(agentId);
+  });
+
+  it("does not fire webhooks when no endpoints are configured", async () => {
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, TEST_CONFIG);
+
+    await registerAndVerifyWithRealCrypto(app);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => {
+        const url = typeof call[0] === "string" ? call[0] : (call[0] as Request).url;
+        return url.includes("example.com");
+      },
+    );
+    expect(webhookCalls).toHaveLength(0);
+  });
+
+  it("respects endpoint event filtering", async () => {
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          {
+            url: "https://example.com/auth-only",
+            events: ["agent.authenticated"],
+          },
+        ],
+      },
+    });
+
+    await registerAndVerifyWithRealCrypto(app);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    // The endpoint only subscribes to agent.authenticated, so
+    // agent.registered should NOT be sent to it.
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => {
+        const url = typeof call[0] === "string" ? call[0] : (call[0] as Request).url;
+        return url === "https://example.com/auth-only";
+      },
+    );
+
+    for (const call of webhookCalls) {
+      const body = JSON.parse(call[1]?.body as string);
+      expect(body.type).not.toBe("agent.registered");
+    }
+  });
+
+  it("sends correct headers with webhook payload", async () => {
+    const app = new Hono<{ Variables: AgentGateVariables }>();
+    agentgate(app, {
+      ...TEST_CONFIG,
+      webhooks: {
+        endpoints: [
+          { url: "https://example.com/webhook" },
+        ],
+      },
+    });
+
+    await registerAndVerifyWithRealCrypto(app);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const webhookCalls = fetchSpy.mock.calls.filter(
+      (call) => {
+        const url = typeof call[0] === "string" ? call[0] : (call[0] as Request).url;
+        return url === "https://example.com/webhook";
+      },
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+
+    const headers = webhookCalls[0][1]?.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(headers["User-Agent"]).toBe("AgentGate-Webhooks/1.0");
+    expect(headers["X-AgentGate-Event"]).toBeDefined();
   });
 });

@@ -34,6 +34,9 @@ coverage/
 npm-debug.log*
 pnpm-debug.log*
 
+# Lock files (project uses pnpm)
+package-lock.json
+
 # Keys (never commit)
 *.pem
 keys.json
