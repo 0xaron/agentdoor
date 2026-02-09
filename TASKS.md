@@ -34,9 +34,9 @@
 **Issue:** `WebhookEmitter` exists in core and is used in Express adapter, but not in Next.js or Hono.
 **Fix:**
 - [x] Accept `webhooks` config in Next.js adapter
-- [~] Emit `agent.registered`, `agent.authenticated` events from Next.js route handlers — _Uses custom `fireWebhook()` instead of core `WebhookEmitter`; no retry or HMAC_
+- [x] Emit `agent.registered`, `agent.authenticated` events from Next.js route handlers — _Replaced custom `fireWebhook()` with core `WebhookEmitter`; now includes HMAC signing + retry with exponential backoff_
 - [x] Accept `webhooks` config in Hono adapter
-- [~] Emit events from Hono middleware — _Same custom implementation as Next.js_
+- [x] Emit events from Hono middleware — _Replaced custom `fireWebhook()` with core `WebhookEmitter`; now includes HMAC signing + retry with exponential backoff_
 - [x] Add tests for webhook emission in both adapters — _6 webhook tests for Next.js, 5 for Hono_
 
 ### 3.8 — Reputation system: Wire into Next.js and Hono adapters
