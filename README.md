@@ -3,6 +3,7 @@
 [![CI](https://github.com/0xaron/preauth/actions/workflows/ci.yml/badge.svg)](https://github.com/0xaron/preauth/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@agentgate/core.svg)](https://www.npmjs.com/package/@agentgate/core)
 [![PyPI version](https://img.shields.io/pypi/v/agentgate.svg)](https://pypi.org/project/agentgate/)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-brightgreen.svg)](https://github.com/0xaron/preauth/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)

@@ -4,6 +4,25 @@ import path from "path";
 export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts", "packages/*/src/__tests__/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "json-summary", "lcov"],
+      reportsDirectory: "./coverage",
+      include: ["packages/*/src/**"],
+      exclude: [
+        "**/template/**",
+        "**/examples/**",
+        "**/__tests__/**",
+        "**/storage/postgres.ts",
+        "**/storage/sqlite.ts",
+      ],
+      thresholds: {
+        lines: 75,
+        branches: 75,
+        functions: 80,
+        statements: 75,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -51,13 +51,13 @@
 
 ## PHASE 4: Build & CI Polish
 
-### 4.3 — Add test coverage reporting
+### ~~4.3 — Add test coverage reporting~~ ✅ COMPLETE
 **Issue:** No `vitest --coverage` or `pytest --cov` in CI. No coverage badges in README.
 **Fix:**
 - [x] Add `vitest --coverage` to CI
-- [ ] Set minimum coverage thresholds (recommend: 80% lines, 75% branches)
-- [ ] Add coverage badge to README
-- [ ] Add `pytest --cov` for Python packages
+- [x] Set minimum coverage thresholds — _75% lines/statements, 75% branches, 80% functions in vitest.config.ts; 80% fail_under for both Python packages_
+- [x] Add coverage badge to README — _Shield.io badge (≥80%) linking to CI workflow_
+- [x] Add `pytest --cov` for Python packages — _pytest-cov added to dev deps; `pytest --cov --cov-report=term --cov-report=xml` in CI for both python-sdk (86% coverage) and fastapi-adapter (97% coverage)_
 
 ### ~~4.4 — Add PyPI publish step~~ ✅ COMPLETE
 **File:** `.github/workflows/publish.yml`
@@ -82,11 +82,11 @@
 - [ ] x402 payment flow E2E (mocked facilitator)
 - [ ] Detection middleware E2E: agent vs browser requests
 
-### 5.3 — README badges
+### ~~5.3 — README badges~~ ✅ COMPLETE
 **File:** `README.md`
 **Issue:** Quick start and architecture diagram exist, but badges are missing.
 **Fix:**
 - [x] Add badges: build status — _CI workflow badge present_
 - [x] Add badges: npm version — _@agentgate/core version badge present_
-- [ ] Add badges: test coverage — _No coverage badge (blocked by 4.3)_
+- [x] Add badges: test coverage — _Coverage ≥80% badge added (unblocked by 4.3 completion)_
 - [x] Add badges: license — _MIT badge present_
