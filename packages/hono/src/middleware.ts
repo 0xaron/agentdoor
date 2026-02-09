@@ -6,8 +6,9 @@ import type {
   Agent,
   AgentStore,
   ChallengeData,
+  WebhooksConfig,
 } from "@agentgate/core";
-import { MemoryStore } from "@agentgate/core";
+import { MemoryStore, WebhookEmitter } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers (Web Crypto API — works on CF Workers, Deno, Bun, Node 20+)
@@ -121,54 +122,6 @@ async function verifyEd25519(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Webhook helper (fire-and-forget)
-// ---------------------------------------------------------------------------
-
-/**
- * Fire a webhook event to all configured endpoints. The call is
- * fire-and-forget — it does not await the response and silently catches
- * any errors so it never blocks request processing.
- */
-function fireWebhook(
-  config: AgentGateHonoConfig,
-  event: string,
-  data: Record<string, unknown>,
-): void {
-  const endpoints = config.webhooks?.endpoints;
-  if (!endpoints || endpoints.length === 0) return;
-
-  const payload = JSON.stringify({
-    id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-    type: event,
-    timestamp: new Date().toISOString(),
-    data,
-  });
-
-  for (const endpoint of endpoints) {
-    // Skip if endpoint subscribes to specific events and this isn't one of them.
-    if (
-      endpoint.events &&
-      endpoint.events.length > 0 &&
-      !endpoint.events.includes(event)
-    ) {
-      continue;
-    }
-
-    fetch(endpoint.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "AgentGate-Webhooks/1.0",
-        "X-AgentGate-Event": event,
-        ...(endpoint.headers ?? {}),
-      },
-      body: payload,
-    }).catch(() => {
-      // Silently ignore — fire-and-forget.
-    });
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Reputation gate check
@@ -340,6 +293,7 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
 export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: AgentGateHonoConfig): void {
   const base = config.basePath ?? "";
   const store: AgentStore = config.store ?? new MemoryStore();
+  const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
 
   // Discovery endpoint.
   app.get(`${base}/.well-known/agentgate.json`, (c: Context) => {
@@ -356,12 +310,12 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
 
   // Registration verification endpoint.
   app.post(`${base}/agentgate/register/verify`, async (c: Context) => {
-    return handleRegisterVerify(c, config, store);
+    return handleRegisterVerify(c, config, store, webhookEmitter);
   });
 
   // Auth endpoint (returning agents).
   app.post(`${base}/agentgate/auth`, async (c: Context) => {
-    return handleAuth(c, config, store);
+    return handleAuth(c, config, store, webhookEmitter);
   });
 
   // Auth guard middleware for protected paths.
@@ -490,6 +444,7 @@ export function createAgentGateMiddleware(
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = config.store ?? new MemoryStore();
+  const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
 
   // Periodically clean expired challenges (every 5 minutes)
   let lastCleanup = Date.now();
@@ -521,12 +476,12 @@ export function createAgentGateMiddleware(
 
     // Verify.
     if (pathname === `${base}/agentgate/register/verify` && method === "POST") {
-      return handleRegisterVerify(c, config, store);
+      return handleRegisterVerify(c, config, store, webhookEmitter);
     }
 
     // Auth.
     if (pathname === `${base}/agentgate/auth` && method === "POST") {
-      return handleAuth(c, config, store);
+      return handleAuth(c, config, store, webhookEmitter);
     }
 
     // Auth guard for protected paths.
@@ -691,6 +646,7 @@ async function handleRegisterVerify(
   c: Context,
   config: AgentGateHonoConfig,
   store: AgentStore,
+  webhookEmitter: WebhookEmitter,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -767,13 +723,13 @@ async function handleRegisterVerify(
     }
   }
 
-  // Fire agent.registered webhook (fire-and-forget).
-  fireWebhook(config, "agent.registered", {
+  // Fire agent.registered webhook via core WebhookEmitter (with HMAC + retry).
+  webhookEmitter.emit("agent.registered", {
     agent_id: agentId,
     public_key: pending.publicKey,
     scopes_granted: pending.scopesRequested,
     metadata: pending.metadata,
-  });
+  }).catch(() => {});
 
   // Issue a JWT token for immediate use.
   const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
@@ -811,7 +767,7 @@ async function handleRegisterVerify(
   return c.json(responseBody, 200);
 }
 
-async function handleAuth(c: Context, config: AgentGateHonoConfig, store: AgentStore): Promise<Response> {
+async function handleAuth(c: Context, config: AgentGateHonoConfig, store: AgentStore, webhookEmitter: WebhookEmitter): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = await c.req.json<Record<string, unknown>>();
@@ -882,11 +838,11 @@ async function handleAuth(c: Context, config: AgentGateHonoConfig, store: AgentS
     }
   }
 
-  // Fire agent.authenticated webhook (fire-and-forget).
-  fireWebhook(config, "agent.authenticated", {
+  // Fire agent.authenticated webhook via core WebhookEmitter (with HMAC + retry).
+  webhookEmitter.emit("agent.authenticated", {
     agent_id: agentId,
     method: "challenge",
-  });
+  }).catch(() => {});
 
   return c.json({
     token,

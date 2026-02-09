@@ -4,8 +4,9 @@ import type {
   ScopeDefinition,
   AgentStore,
   ChallengeData,
+  WebhooksConfig,
 } from "@agentgate/core";
-import { MemoryStore } from "@agentgate/core";
+import { MemoryStore, WebhookEmitter } from "@agentgate/core";
 
 /**
  * Shape of the Next.js request object from `next/server`.
@@ -174,54 +175,6 @@ async function verifyEd25519(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Webhook helper (fire-and-forget)
-// ---------------------------------------------------------------------------
-
-/**
- * Fire a webhook event to all configured endpoints. The call is
- * fire-and-forget — it does not await the response and silently catches
- * any errors so it never blocks request processing.
- */
-function fireWebhook(
-  config: AgentGateNextConfig,
-  event: string,
-  data: Record<string, unknown>,
-): void {
-  const endpoints = config.webhooks?.endpoints;
-  if (!endpoints || endpoints.length === 0) return;
-
-  const payload = JSON.stringify({
-    id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-    type: event,
-    timestamp: new Date().toISOString(),
-    data,
-  });
-
-  for (const endpoint of endpoints) {
-    // Skip if endpoint subscribes to specific events and this isn't one of them.
-    if (
-      endpoint.events &&
-      endpoint.events.length > 0 &&
-      !endpoint.events.includes(event)
-    ) {
-      continue;
-    }
-
-    fetch(endpoint.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "AgentGate-Webhooks/1.0",
-        "X-AgentGate-Event": event,
-        ...(endpoint.headers ?? {}),
-      },
-      body: payload,
-    }).catch(() => {
-      // Silently ignore — fire-and-forget.
-    });
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Reputation gate check
@@ -364,6 +317,7 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
   const protectedPrefixes = config.protectedPaths ?? ["/api/"];
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = config.store ?? new MemoryStore();
+  const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
 
   // Periodically clean expired challenges (every 5 minutes)
   let lastCleanup = Date.now();
@@ -397,12 +351,12 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
 
     // ---- Registration verify ----
     if (pathname === "/agentgate/register/verify" && request.method === "POST") {
-      return handleRegisterVerify(request, config, store, NR);
+      return handleRegisterVerify(request, config, store, webhookEmitter, NR);
     }
 
     // ---- Auth (returning agents) ----
     if (pathname === "/agentgate/auth" && request.method === "POST") {
-      return handleAuth(request, config, store, NR);
+      return handleAuth(request, config, store, webhookEmitter, NR);
     }
 
     // ---- Auth guard for protected routes ----
@@ -504,6 +458,7 @@ async function handleRegisterVerify(
   request: NextRequest,
   config: AgentGateNextConfig,
   store: AgentStore,
+  webhookEmitter: WebhookEmitter,
   NR: typeof _NextResponse,
 ): Promise<NextResponse> {
   let body: Record<string, unknown>;
@@ -581,13 +536,13 @@ async function handleRegisterVerify(
     }
   }
 
-  // Fire agent.registered webhook (fire-and-forget).
-  fireWebhook(config, "agent.registered", {
+  // Fire agent.registered webhook via core WebhookEmitter (with HMAC + retry).
+  webhookEmitter.emit("agent.registered", {
     agent_id: agentId,
     public_key: pending.publicKey,
     scopes_granted: pending.scopesRequested,
     metadata: pending.metadata,
-  });
+  }).catch(() => {});
 
   // Issue a JWT token for immediate use.
   const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
@@ -629,6 +584,7 @@ async function handleAuth(
   request: NextRequest,
   config: AgentGateNextConfig,
   store: AgentStore,
+  webhookEmitter: WebhookEmitter,
   NR: typeof _NextResponse,
 ): Promise<NextResponse> {
   let body: Record<string, unknown>;
@@ -700,11 +656,11 @@ async function handleAuth(
     }
   }
 
-  // Fire agent.authenticated webhook (fire-and-forget).
-  fireWebhook(config, "agent.authenticated", {
+  // Fire agent.authenticated webhook via core WebhookEmitter (with HMAC + retry).
+  webhookEmitter.emit("agent.authenticated", {
     agent_id: agentId,
     method: "challenge",
-  });
+  }).catch(() => {});
 
   return NR.json({
     token,
