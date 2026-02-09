@@ -5,8 +5,9 @@ import type {
   AgentStore,
   ChallengeData,
   WebhooksConfig,
+  ReputationConfig,
 } from "@agentgate/core";
-import { MemoryStore, WebhookEmitter } from "@agentgate/core";
+import { MemoryStore, WebhookEmitter, ReputationManager } from "@agentgate/core";
 
 /**
  * Shape of the Next.js request object from `next/server`.
@@ -177,29 +178,8 @@ async function verifyEd25519(
 
 
 // ---------------------------------------------------------------------------
-// Reputation gate check
+// Reputation gate check — now uses core ReputationManager
 // ---------------------------------------------------------------------------
-
-/**
- * Check configured reputation gates for an agent. Uses the agent's stored
- * reputation score when available, falling back to 50 (default) for agents
- * without a persisted score.
- */
-function checkReputationGates(
-  config: AgentGateNextConfig,
-  agentReputation: number = 50,
-): { action: "block" | "warn"; minReputation: number } | null {
-  const gates = config.reputation?.gates;
-  if (!gates || gates.length === 0) return null;
-
-  for (const gate of gates) {
-    if (agentReputation < gate.minReputation && gate.action === "block") {
-      return { action: "block", minReputation: gate.minReputation };
-    }
-  }
-
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // Spending cap check (still in-memory for edge runtime)
@@ -318,6 +298,7 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = config.store ?? new MemoryStore();
   const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
+  const reputationManager = new ReputationManager(config.reputation as ReputationConfig | undefined);
 
   // Periodically clean expired challenges (every 5 minutes)
   let lastCleanup = Date.now();
@@ -362,7 +343,7 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
     // ---- Auth guard for protected routes ----
     const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
     if (isProtected) {
-      return handleAuthGuard(request, config, store, passthrough, NR);
+      return handleAuthGuard(request, config, store, passthrough, reputationManager, NR);
     }
 
     // Non-AgentGate routes — pass through.
@@ -673,6 +654,7 @@ async function handleAuthGuard(
   config: AgentGateNextConfig,
   store: AgentStore,
   passthrough: boolean,
+  reputationManager: ReputationManager,
   NR: typeof _NextResponse,
 ): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
@@ -704,17 +686,23 @@ async function handleAuthGuard(
     return NR.json({ error: "Invalid or expired token" }, { status: 401 });
   }
 
-  // Check reputation gates using the agent's stored reputation.
-  const reputationResult = checkReputationGates(config, matchedAgent.reputation);
-  if (reputationResult && reputationResult.action === "block") {
-    return NR.json(
-      {
-        error: "Insufficient reputation",
-        required: reputationResult.minReputation,
-        current: matchedAgent.reputation,
-      },
-      { status: 403 },
-    );
+  // Check reputation gates using the core ReputationManager.
+  const reputationResult = reputationManager.checkGate(matchedAgent.reputation ?? 50);
+  if (!reputationResult.allowed) {
+    if (reputationResult.action === "block") {
+      // Update reputation for the failed request
+      const newScore = reputationManager.calculateScore(matchedAgent.reputation ?? 50, "request_error");
+      store.updateAgent(matchedAgent.id, { reputation: newScore }).catch(() => {});
+
+      return NR.json(
+        {
+          error: "Insufficient reputation",
+          required: reputationResult.requiredScore,
+          current: reputationResult.currentScore,
+        },
+        { status: 403 },
+      );
+    }
   }
 
   // Check spending caps before granting access.
@@ -730,8 +718,9 @@ async function handleAuthGuard(
     );
   }
 
-  // Update request count
-  await store.updateAgent(matchedAgent.id, { incrementRequests: 1 }).catch(() => {});
+  // Update reputation for successful request and increment request count
+  const newScore = reputationManager.calculateScore(matchedAgent.reputation ?? 50, "request_success");
+  await store.updateAgent(matchedAgent.id, { reputation: newScore, incrementRequests: 1 }).catch(() => {});
 
   // Inject agent context into request headers so downstream route handlers
   // can access it. Edge middleware cannot mutate `request` objects directly
@@ -748,6 +737,11 @@ async function handleAuthGuard(
   requestHeaders.set("x-agentgate-agent", JSON.stringify(agentContext));
   requestHeaders.set("x-agentgate-authenticated", "true");
   requestHeaders.set("x-agentgate-agent-id", matchedAgent.id);
+
+  // Add reputation warning header if gate returned a "warn" action
+  if (reputationResult.action === "warn") {
+    requestHeaders.set("x-agentgate-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
+  }
 
   const response = NR.next({ headers: requestHeaders });
   return response;

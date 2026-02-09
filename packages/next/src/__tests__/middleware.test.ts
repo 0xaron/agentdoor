@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { MemoryStore } from "@agentgate/core";
+import { MemoryStore, ReputationManager } from "@agentgate/core";
 
 // ---------------------------------------------------------------------------
 // Mock next/server -- must be declared before any imports that trigger it.
@@ -2109,5 +2109,187 @@ describe("webhook emission", () => {
     expect(headers["Content-Type"]).toBe("application/json");
     expect(headers["User-Agent"]).toBe("AgentGate-Webhooks/1.0");
     expect(headers["X-AgentGate-Event"]).toBeDefined();
+  });
+});
+
+// ===========================================================================
+//  REPUTATION GATING TESTS (Task 3.8 — ReputationManager integration)
+// ===========================================================================
+
+describe("reputation gating with ReputationManager", () => {
+  it("blocks agent with reputation below block gate threshold", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 60, action: "block" as const }],
+      },
+    });
+
+    // Register an agent
+    const { agentId, apiKey } = await registerAndVerifyAgent(mw);
+
+    // Set agent reputation to 30 (below the 60 threshold)
+    await store.updateAgent(agentId, { reputation: 30 });
+
+    // Try to access a protected route
+    const res = await mw(
+      createMockRequest("GET", "/api/data", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toContain("Insufficient reputation");
+    expect(body.required).toBe(60);
+    expect(body.current).toBe(30);
+  });
+
+  it("allows agent with reputation above block gate threshold", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 30, action: "block" as const }],
+      },
+    });
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(mw);
+
+    // Agent starts at reputation 50, which is above the 30 threshold
+    const res = await mw(
+      createMockRequest("GET", "/api/data", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
+  });
+
+  it("allows agent through with warn action but adds warning header", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 60, action: "warn" as const }],
+      },
+    });
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(mw);
+
+    // Set reputation below the warn threshold
+    await store.updateAgent(agentId, { reputation: 40 });
+
+    const res = await mw(
+      createMockRequest("GET", "/api/data", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
+    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("score=40");
+    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("required=60");
+  });
+
+  it("does not block when no reputation gates are configured", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      store,
+    });
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(mw);
+
+    // Set very low reputation
+    await store.updateAgent(agentId, { reputation: 5 });
+
+    const res = await mw(
+      createMockRequest("GET", "/api/data", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
+  });
+
+  it("updates reputation on successful authenticated request", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      store,
+    });
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(mw);
+
+    // Set a known starting reputation
+    await store.updateAgent(agentId, { reputation: 50 });
+
+    // Make a successful authenticated request
+    const res = await mw(
+      createMockRequest("GET", "/api/data", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+
+    // Check that reputation increased (request_success weight is +0.1)
+    const agent = await store.getAgent(agentId);
+    expect(agent!.reputation).toBeCloseTo(50.1, 1);
+  });
+
+  it("updates reputation on blocked request (block gate)", async () => {
+    const store = new MemoryStore();
+    const mw = createAgentGateMiddleware({
+      ...TEST_CONFIG,
+      store,
+      reputation: {
+        gates: [{ minReputation: 60, action: "block" as const }],
+      },
+    });
+
+    const { agentId, apiKey } = await registerAndVerifyAgent(mw);
+
+    // Set reputation below threshold
+    await store.updateAgent(agentId, { reputation: 30 });
+
+    // Make a request that gets blocked
+    const res = await mw(
+      createMockRequest("GET", "/api/data", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }),
+    );
+
+    expect(res.status).toBe(403);
+
+    // Check that reputation decreased (request_error weight is -0.5)
+    const agent = await store.getAgent(agentId);
+    expect(agent!.reputation).toBeCloseTo(29.5, 1);
+  });
+
+  it("supports scope-specific gates via ReputationManager", async () => {
+    // Verify ReputationManager correctly handles scope-specific gates
+    const mgr = new ReputationManager({
+      gates: [
+        { minReputation: 80, scopes: ["data.write"], action: "block" },
+        { minReputation: 20, action: "block" },
+      ],
+    });
+
+    // Score 50 should pass the global gate (minReputation: 20)
+    const globalResult = mgr.checkGate(50);
+    expect(globalResult.allowed).toBe(true);
+
+    // Score 50 should fail the scoped gate for data.write (minReputation: 80)
+    const scopedResult = mgr.checkGate(50, "data.write");
+    expect(scopedResult.allowed).toBe(false);
+    expect(scopedResult.requiredScore).toBe(80);
   });
 });
