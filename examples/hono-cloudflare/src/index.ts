@@ -1,26 +1,16 @@
 import { Hono } from "hono";
-import { agentgate } from "@agentgate/hono";
+import { createAgentGateMiddleware, type AgentGateVariables } from "@agentgate/hono";
 
 type Bindings = {
   X402_WALLET: string;
 };
 
-// AgentGate context added to Hono's request context
-type Variables = {
-  isAgent: boolean;
-  agent?: {
-    id: string;
-    scopes: string[];
-    metadata: Record<string, string>;
-  };
-};
-
-const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const app = new Hono<{ Bindings: Bindings; Variables: AgentGateVariables }>();
 
 // --- AgentGate: 3 lines to make your Cloudflare Worker agent-ready ---
 app.use(
   "/*",
-  agentgate({
+  createAgentGateMiddleware({
     scopes: [
       {
         id: "stocks.read",
@@ -39,7 +29,7 @@ app.use(
       "stocks.read": "$0.005/req",
       "stocks.historical": "$0.05/req",
     },
-    rateLimit: { default: "500/hour" },
+    rateLimit: { requests: 500, window: "1h" },
     x402: {
       network: "base",
       currency: "USDC",
@@ -77,7 +67,7 @@ app.get("/api/stocks", (c) => {
       ...stock,
       currency: "USD",
       timestamp: new Date().toISOString(),
-      requestedBy: isAgent ? `agent:${agent!.id}` : "human",
+      requestedBy: isAgent ? `agent:${agent?.id}` : "human",
     });
   }
 
@@ -88,7 +78,7 @@ app.get("/api/stocks", (c) => {
       ...data,
     })),
     timestamp: new Date().toISOString(),
-    requestedBy: isAgent ? `agent:${agent!.id}` : "human",
+    requestedBy: isAgent ? `agent:${agent?.id}` : "human",
   });
 });
 
@@ -128,7 +118,7 @@ app.get("/api/stocks/historical", (c) => {
     currency: "USD",
     history,
     generatedAt: new Date().toISOString(),
-    requestedBy: isAgent ? `agent:${agent!.id}` : "human",
+    requestedBy: isAgent ? `agent:${agent?.id}` : "human",
   });
 });
 
