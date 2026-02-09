@@ -74,13 +74,13 @@
 **Issue:** Directory exists but only Express E2E is implemented.
 **Cover:**
 - [x] Full E2E: Express server + SDK client — discover → register → verify → authenticated request
-- [ ] Full E2E: Next.js server + SDK client
-- [ ] Full E2E: Hono server + SDK client
-- [ ] Cross-adapter compatibility: register on Express, auth on same config with different adapter
-- [ ] Rate limiting E2E: exceed rate limit, verify 429 response
-- [ ] Reputation E2E: low-reputation agent gets gated
-- [ ] x402 payment flow E2E (mocked facilitator)
-- [ ] Detection middleware E2E: agent vs browser requests
+- [x] Full E2E: Next.js server + SDK client — _8 tests: full lifecycle, passthrough, multi-agent, metadata persistence, challenge cleanup_
+- [x] Full E2E: Hono server + SDK client — _8 tests: full lifecycle with real Ed25519 crypto, passthrough, multi-agent, duplicate key rejection_
+- [x] Cross-adapter compatibility: register on Express, auth on same config with different adapter — _3 tests: shared MemoryStore visibility across Express↔Hono, discovery document consistency_
+- [x] Rate limiting E2E: exceed rate limit, verify 429 response — _6 tests: within limit, 429 after exceeding, per-agent buckets, non-agent bypass, rate limit in verify/discovery_
+- [x] Reputation E2E: low-reputation agent gets gated — _8 tests: block gate, allow, warn header, no-gates, score update +0.1/-0.5, scope-specific gates_
+- [x] x402 payment flow E2E (mocked facilitator) — _8 tests: discovery payment section, wallet persistence, verify response x402 details, scoped pricing_
+- [x] Detection middleware E2E: agent vs browser requests — _10 tests: LangChain UA, self-identification, browser classification, standalone classifyRequest, confidence scoring_
 
 ### ~~5.3 — README badges~~ ✅ COMPLETE
 **File:** `README.md`
