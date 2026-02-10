@@ -127,7 +127,7 @@ Yes. The core packages are open source under the MIT license:
 - `agentgate` (Python) -- Python agent SDK
 - `agentgate-fastapi` (Python) -- FastAPI middleware
 
-The source code is available at [github.com/0xaron/preauth](https://github.com/0xaron/preauth).
+The source code is available at [github.com/0xaron/agentgate](https://github.com/0xaron/agentgate).
 
 Additional packages include auth provider companions (Auth0, Clerk, Firebase, Stytch, Supabase, NextAuth.js), payment integrations (Stripe), platform adapters (Cloudflare, Vercel), and deployment templates (Railway, Cloudflare Workers, Vercel).
 
