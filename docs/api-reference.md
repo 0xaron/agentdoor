@@ -9,7 +9,7 @@ Complete reference for all HTTP endpoints exposed by the AgentGate middleware. T
 | `GET` | `/.well-known/agentgate.json` | Discovery document |
 | `POST` | `/agentgate/register` | Start agent registration |
 | `POST` | `/agentgate/register/verify` | Complete registration via challenge-response |
-| `POST` | `/agentgate/auth` | Authenticate a returning agent |
+| `POST` | `/agentgate/auth` | **Token refresh** -- obtain a fresh JWT via signed challenge |
 | `GET` | `/agentgate/health` | Health check |
 
 ---
@@ -281,9 +281,11 @@ Content-Type: application/json
 
 ---
 
-## `POST /agentgate/auth`
+## `POST /agentgate/auth` (Token Refresh)
 
-Authenticates a returning agent by signing a timestamped message. Use this to obtain a fresh JWT without re-registering. This is for agents that have already registered and want a new short-lived token.
+**This is the token refresh endpoint.** Agents obtain a fresh JWT by signing a timestamped message with their Ed25519 private key. Use this when the current JWT has expired or is about to expire.
+
+Unlike typical JWT refresh tokens, this endpoint requires a **cryptographic signature on every call** -- proving the agent still holds the private key. A stolen JWT alone cannot be used to refresh. The SDK calls this endpoint automatically (see [Token Refresh in the SDK guide](./agent-sdk.md#token-refresh)).
 
 ### Request
 
@@ -337,6 +339,10 @@ Content-Type: application/json
 | `400` | `invalid_timestamp` | Timestamp is too far in the past or future (>5 minute skew). |
 | `404` | `agent_not_found` | No registered agent with this ID. |
 | `403` | `agent_suspended` | Agent account has been suspended. |
+
+### SDK Automation
+
+If you're using the AgentGate SDK (TypeScript or Python), **you don't need to call this endpoint manually**. The SDK's `Session` object automatically refreshes the token 30 seconds before expiry and retries on `401` responses. See the [SDK Token Refresh guide](./agent-sdk.md#token-refresh) for details.
 
 ---
 

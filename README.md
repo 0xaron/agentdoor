@@ -45,6 +45,12 @@ Agent                              SaaS (with AgentGate middleware)
   │── GET /api/data ──────────────────────▶│  (4) Ready
   │   Authorization: Bearer agk_xxx        │      Ongoing
   │◀── {data} ────────────────────────────│
+  │                                         │
+  │  ... JWT expires (default: 1 hour) ...  │
+  │                                         │
+  │── POST /agentgate/auth ───────────────▶│  (5) Token Refresh
+  │   {agent_id, timestamp, signature}     │      (automatic in SDK)
+  │◀── {token, expires_at} ───────────────│      ~50ms
 ```
 
 **Total: < 500ms.** Compare: browser automation = 30–60s.
@@ -92,7 +98,7 @@ app.listen(3000);
 That's it. Your API is now agent-ready:
 - `/.well-known/agentgate.json` — auto-generated discovery endpoint
 - `/agentgate/register` + `/agentgate/register/verify` — headless agent registration
-- `/agentgate/auth` — returning agent authentication
+- `/agentgate/auth` — token refresh via signed challenge (no browser, no password)
 - Auth middleware applied to all your routes
 
 ### Using the CLI
@@ -268,6 +274,38 @@ One AgentGate integration auto-generates companion protocol files:
 | **Ed25519 Challenge-Response** (default) | Best security | Agent signs server nonce. Private key never leaves agent. ~1ms verify. |
 | **x402 Wallet Identity** | Agents with x402 wallets | Wallet address = identity. One identity for auth + payments. |
 | **JWT Token** | After initial auth, for caching | Server issues short-lived JWT. Standard Bearer token. |
+
+### Token Refresh
+
+JWTs are short-lived (default: 1 hour). When a token expires, agents refresh it via `POST /agentgate/auth` by signing a fresh timestamp with their Ed25519 private key. This is a **signature-based refresh** — more secure than typical JWT refresh tokens because it requires proof of private key ownership on every renewal.
+
+```
+POST /agentgate/auth
+{
+  "agent_id": "ag_xxx",
+  "timestamp": "2026-02-08T12:30:00Z",              // current time
+  "signature": sign("agentgate:auth:ag_xxx:2026-02-08T12:30:00Z")  // Ed25519
+}
+→ { "token": "eyJ...", "expires_at": "2026-02-08T13:30:00Z" }
+```
+
+**The SDK handles this automatically.** The `Session` object refreshes the token 30 seconds before expiry — your agent code never needs to deal with expired tokens:
+
+```typescript
+// Token refresh is transparent. Just make requests.
+const data = await session.get("/api/data");  // auto-refreshes if needed
+```
+
+**Why signature-based refresh instead of a refresh token?**
+
+| | Typical Refresh Token | AgentGate `/agentgate/auth` |
+|---|---|---|
+| Stolen token risk | Refresh token = unlimited access | Stolen JWT alone can't refresh |
+| Proof of identity | None (just present the token) | Ed25519 signature every time |
+| Security model | Trust-the-token | Zero-trust (prove key ownership) |
+| Agent private key | Not needed after registration | Needed for every refresh |
+
+A stolen JWT is useless once it expires. An attacker would need the agent's Ed25519 private key to get a new one.
 
 ### Why Not Just OAuth?
 
@@ -527,7 +565,7 @@ POST /agentgate/register/verify
 → 200 { "agent_id": "ag_xxx", "api_key": "agk_live_xxx", "scopes_granted": [...], "token": "eyJ...", "rate_limit": {...} }
 ```
 
-### Returning Agent Auth
+### Token Refresh (Returning Agent Auth)
 
 ```
 POST /agentgate/auth
@@ -540,6 +578,8 @@ POST /agentgate/auth
 
 → 200 { "token": "eyJ...", "expires_at": "..." }
 ```
+
+This is the token refresh endpoint. Agents sign a fresh timestamp to prove key ownership and receive a new short-lived JWT. The SDK calls this automatically when tokens expire.
 
 ### Protected Routes
 
