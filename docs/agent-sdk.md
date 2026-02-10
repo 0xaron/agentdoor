@@ -316,7 +316,7 @@ The SDK caches registration credentials per-service to avoid re-registering on e
 Each credential file contains the agent ID, API key, JWT, and expiration. The SDK automatically:
 - Loads cached credentials on `connect()`.
 - Skips registration if valid credentials exist.
-- Refreshes the JWT when it expires (using the `/agentgate/auth` endpoint).
+- Refreshes the JWT when it expires (see [Token Refresh](#token-refresh) below).
 - Re-registers if the API key is rejected (e.g. revoked by the service).
 
 To force re-registration:
@@ -332,6 +332,59 @@ To clear all cached credentials:
 ```typescript
 await agent.disconnect("https://api.weatherco.com");
 ```
+
+### Token Refresh
+
+JWTs issued by AgentGate are short-lived (default: 1 hour). The SDK **automatically refreshes tokens** before they expire -- your code never needs to handle token expiry manually.
+
+#### How It Works
+
+1. The `Session` monitors the token's expiration time.
+2. **30 seconds before expiry**, it proactively calls `POST /agentgate/auth` with a fresh Ed25519 signature.
+3. The server verifies the signature, issues a new JWT, and returns it.
+4. The `Session` swaps in the new token transparently.
+5. If a request receives a `401` (token already expired), the SDK retries once with a fresh token.
+
+```
+Session                                 SaaS
+  │                                       │
+  │  (token expires in 30s)               │
+  │── POST /agentgate/auth ─────────────▶│
+  │   {agent_id, timestamp, signature}   │
+  │◀── {token, expires_at} ─────────────│
+  │                                       │
+  │── GET /api/data ────────────────────▶│  (uses new token)
+  │   Authorization: Bearer eyJ...       │
+  │◀── {data} ──────────────────────────│
+```
+
+#### Why Signature-Based Refresh?
+
+Unlike typical OAuth refresh tokens, AgentGate requires an **Ed25519 signature on every refresh**. This means:
+
+- **A stolen JWT cannot be refreshed.** The attacker would need the agent's private key.
+- **Every refresh proves key ownership.** The server verifies the signature against the agent's registered public key.
+- **No long-lived refresh tokens.** There is no separate "refresh token" that could be stolen and used indefinitely.
+
+This design is intentional: agents are server-side processes that always have access to their private key, so requiring a signature on every refresh is zero-friction while providing stronger security.
+
+#### Manual Refresh
+
+While automatic refresh covers most cases, you can also trigger a manual refresh:
+
+```typescript
+// TypeScript
+await session.refreshToken();
+```
+
+```python
+# Python
+session.refresh_token()
+```
+
+#### Concurrent Refresh Handling
+
+If multiple requests trigger a token refresh simultaneously, the SDK coalesces them into a single network call. Only one `POST /agentgate/auth` request is made, and all waiting requests use the new token.
 
 ---
 

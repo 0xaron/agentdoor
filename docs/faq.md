@@ -54,6 +54,37 @@ That said, AgentGate provides OAuth compatibility mode (via `companion.oauthComp
 
 If you already have OAuth set up for human users, AgentGate does not interfere. It runs on separate endpoints (`/agentgate/*`) alongside your existing OAuth routes.
 
+## How does token refresh work?
+
+JWTs issued by AgentGate are short-lived (default: 1 hour). When a token expires, agents obtain a fresh one via `POST /agentgate/auth` -- the **token refresh endpoint**.
+
+**How it works:**
+
+1. The agent signs a timestamped message: `agentgate:auth:{agent_id}:{timestamp}`
+2. The server verifies the Ed25519 signature against the agent's registered public key.
+3. If valid, the server issues a fresh JWT and returns it.
+
+```
+POST /agentgate/auth
+{
+  "agent_id": "ag_xxx",
+  "timestamp": "2026-02-08T12:30:00Z",
+  "signature": "<base64-ed25519-signature>"
+}
+→ { "token": "eyJ...", "expires_at": "2026-02-08T13:30:00Z" }
+```
+
+**If you're using the SDK, this is fully automatic.** The `Session` object refreshes the token 30 seconds before expiry. Your agent code never sees expired tokens:
+
+```typescript
+// Just make requests. Token refresh happens transparently.
+const data = await session.get("/api/data");
+```
+
+**Why not a separate refresh token?** AgentGate uses signature-based refresh instead of a long-lived refresh token. This is more secure: a stolen JWT cannot be refreshed without the agent's Ed25519 private key. Since agents are server-side processes that always have access to their key, this adds no friction while preventing token theft escalation.
+
+See the [API Reference](./api-reference.md#post-agentgateauth-token-refresh) and [SDK Token Refresh guide](./agent-sdk.md#token-refresh) for full details.
+
 ## How does agent traffic detection work?
 
 AgentGate can run in detect-only mode before you even enable registration. The detection middleware classifies incoming requests as human or agent traffic using multiple signals:
@@ -177,7 +208,7 @@ The challenge-response protocol is designed with security as a priority:
 - **Private key never transmitted.** The agent's secret key never leaves the agent. Only the public key is shared during registration. The challenge proves key ownership without exposing the private key.
 - **Nonce prevents replay.** Each challenge includes a unique random nonce and a timestamp. Challenges expire after 5 minutes. Replaying a signed challenge after expiration fails.
 - **API keys are hashed.** API keys are stored as SHA-256 hashes in the database. A database compromise does not reveal usable credentials.
-- **JWTs are short-lived.** JWT tokens expire (default: 1 hour). Agents refresh tokens via the `/agentgate/auth` endpoint.
+- **JWTs are short-lived.** JWT tokens expire (default: 1 hour). Agents refresh tokens via the `/agentgate/auth` endpoint using a fresh Ed25519 signature -- a stolen JWT alone cannot be refreshed. See [How does token refresh work?](#how-does-token-refresh-work) for details.
 - **Pure JS crypto.** Ed25519 operations use `tweetnacl`, a well-audited, pure-JavaScript implementation with no native dependencies. No `node-gyp` compilation, no C bindings, works everywhere.
 
 ## What is the performance overhead?
