@@ -342,7 +342,8 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 | `@agentgate/cloudflare` | Cloudflare Workers adapter with Durable Objects | Stable |
 | `@agentgate/vercel` | Vercel Edge middleware | Stable |
 
-### Auth Provider Companions
+<details>
+<summary><strong>Auth Provider Companions</strong> (6 packages)</summary>
 
 | Package | Description | Status |
 |---|---|---|
@@ -353,7 +354,10 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 | `@agentgate/supabase` | Supabase plugin -- store agent records with RLS support | Stable |
 | `@agentgate/next-auth` | NextAuth.js companion -- agent provider for NextAuth | Stable |
 
-### Integrations
+</details>
+
+<details>
+<summary><strong>Integrations</strong> (4 packages)</summary>
 
 | Package | Description | Status |
 |---|---|---|
@@ -362,13 +366,18 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 | `@agentgate/registry` | Agent Registry -- crawled directory of AgentGate-enabled services | Stable |
 | `@agentgate/dashboard` | Agent analytics dashboard (Next.js) | Beta |
 
-### Deployment Templates
+</details>
+
+<details>
+<summary><strong>Deployment Templates</strong> (3 templates)</summary>
 
 | Template | Description |
 |---|---|
 | `template-railway` | Railway deployment template -- Express + AgentGate |
 | `template-cloudflare` | Cloudflare Workers template -- Hono + AgentGate |
 | `template-vercel` | Vercel template -- Next.js + AgentGate |
+
+</details>
 
 ---
 
