@@ -472,10 +472,10 @@ app.use(agentgate({
   },
 
   service: {
-    name: "WeatherCo API",
+    name: "Example API",
     description: "Real-time weather data and forecasts",
-    docsUrl: "https://docs.weatherco.com/agents",
-    supportEmail: "agents@weatherco.com",
+    docsUrl: "https://docs.example.com/agents",
+    supportEmail: "agents@example.com",
   },
 
   mode: "live",
@@ -532,10 +532,10 @@ app.use(agentgate(config));
 agentgate({
   scopes: [...],
   service: {
-    name: "WeatherCo API",                      // Default: "AgentGate Service"
+    name: "Example API",                      // Default: "AgentGate Service"
     description: "Real-time weather data",       // Default: "An AgentGate-enabled API service"
-    docsUrl: "https://docs.weatherco.com",       // Link to documentation
-    supportEmail: "agents@weatherco.com",        // Support contact
+    docsUrl: "https://docs.example.com",       // Link to documentation
+    supportEmail: "agents@example.com",        // Support contact
   },
 });
 ```

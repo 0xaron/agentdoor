@@ -21,7 +21,7 @@ import type { A2AAgentCard } from "./types.js";
  * they don't know about AgentGate specifically.
  *
  * @param config - Resolved AgentGate configuration
- * @param serviceUrl - The base URL of the service (e.g. "https://api.weatherco.com")
+ * @param serviceUrl - The base URL of the service (e.g. "https://api.example.com")
  * @returns A2AAgentCard document
  */
 export function generateA2AAgentCard(

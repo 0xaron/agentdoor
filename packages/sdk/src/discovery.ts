@@ -185,7 +185,7 @@ export interface DiscoverOptions {
  * The well-known endpoint is `<baseUrl>/.well-known/agentgate.json`.
  * Results are cached in memory for the specified TTL.
  *
- * @param baseUrl - The target service URL (e.g. "https://api.weatherco.com")
+ * @param baseUrl - The target service URL (e.g. "https://api.example.com")
  * @param options - Optional fetch / caching configuration
  * @returns The validated discovery document
  */

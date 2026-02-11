@@ -5,7 +5,7 @@
  *   import { AgentGate } from "@agentgate/sdk";
  *
  *   const agent = new AgentGate({ keyPath: "~/.agentgate/keys.json" });
- *   const session = await agent.connect("https://api.weatherco.com");
+ *   const session = await agent.connect("https://api.example.com");
  *   const data = await session.get("/weather/forecast", { params: { city: "sf" } });
  *
  * @module @agentgate/sdk

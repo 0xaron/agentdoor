@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Cloudflare Workers deployment template - Agent-Ready Worker with Hono + AgentGate",
+  "license": "MIT",
   "scripts": {
     "build": "echo 'Template package - deploy with wrangler'",
     "test": "echo 'Template package'",

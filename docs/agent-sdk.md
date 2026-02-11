@@ -23,7 +23,7 @@ const agent = new AgentGate({
 });
 
 // Connect to any AgentGate-enabled service
-const session = await agent.connect("https://api.weatherco.com");
+const session = await agent.connect("https://api.example.com");
 
 // Make authenticated requests
 const weather = await session.get("/api/weather", {
@@ -164,7 +164,7 @@ const agent = new AgentGate({
   },
 });
 
-const session = await agent.connect("https://api.weatherco.com", {
+const session = await agent.connect("https://api.example.com", {
   scopes: ["weather.read", "weather.forecast"],
 });
 
@@ -208,7 +208,7 @@ const agent = new AgentGate({ keyPath: "~/.agentgate/keys.json" });
 
 // Register with multiple services (these run in parallel)
 const [weather, stocks, maps] = await Promise.all([
-  agent.connect("https://api.weatherco.com"),
+  agent.connect("https://api.example.com"),
   agent.connect("https://api.stockdata.com"),
   agent.connect("https://api.maps-service.com"),
 ]);
@@ -309,7 +309,7 @@ The SDK caches registration credentials per-service to avoid re-registering on e
 ~/.agentgate/
   keys.json                           # Ed25519 keypair
   credentials/
-    api.weatherco.com.json            # Cached credentials for weatherco
+    api.example.com.json            # Cached credentials for example service
     api.stockdata.com.json            # Cached credentials for stockdata
 ```
 
@@ -322,7 +322,7 @@ Each credential file contains the agent ID, API key, JWT, and expiration. The SD
 To force re-registration:
 
 ```typescript
-const session = await agent.connect("https://api.weatherco.com", {
+const session = await agent.connect("https://api.example.com", {
   forceRegister: true,
 });
 ```
@@ -330,7 +330,7 @@ const session = await agent.connect("https://api.weatherco.com", {
 To clear all cached credentials:
 
 ```typescript
-await agent.disconnect("https://api.weatherco.com");
+await agent.disconnect("https://api.example.com");
 ```
 
 ### Token Refresh
@@ -404,7 +404,7 @@ from agentgate import AgentGate
 agent = AgentGate(key_path="~/.agentgate/keys.json")
 
 # Connect to a service (discovery + register + auth)
-session = agent.connect("https://api.weatherco.com")
+session = agent.connect("https://api.example.com")
 
 # Make authenticated requests
 weather = session.get("/api/weather", params={"city": "sf"})
@@ -482,7 +482,7 @@ agent = AgentGate(
 )
 
 session = agent.connect(
-    "https://api.weatherco.com",
+    "https://api.example.com",
     scopes=["weather.read"],
 )
 
@@ -501,7 +501,7 @@ async def main():
 
     # Connect to multiple services concurrently
     weather, stocks = await asyncio.gather(
-        agent.connect_async("https://api.weatherco.com"),
+        agent.connect_async("https://api.example.com"),
         agent.connect_async("https://api.stockdata.com"),
     )
 
@@ -532,12 +532,12 @@ toolkit = AgentGateToolkit(key_path="~/.agentgate/keys.json")
 
 # Discover and wrap multiple services as LangChain tools
 tools = toolkit.get_tools([
-    "https://api.weatherco.com",
+    "https://api.example.com",
     "https://api.stockdata.com",
 ])
 
 # Each service's scopes become individual LangChain tools
-# e.g., "weatherco_weather_read", "stockdata_price_read"
+# e.g., "example_weather_read", "stockdata_price_read"
 from langchain.agents import initialize_agent
 
 agent = initialize_agent(tools, llm, agent="zero-shot-react-description")
@@ -551,7 +551,7 @@ from agentgate.integrations.crewai import AgentGateTools
 
 agentgate_tools = AgentGateTools(key_path="~/.agentgate/keys.json")
 tools = agentgate_tools.for_services([
-    "https://api.weatherco.com",
+    "https://api.example.com",
 ])
 
 from crewai import Agent, Task, Crew
