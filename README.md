@@ -8,10 +8,9 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 
-### Make Your Website Agent-Ready in 3 Lines of Code
+**The pre-auth layer for the agentic internet.**
 
-> The pre-auth layer for the agentic internet.
-> Sits alongside Clerk. Lets agents register, authenticate, and pay — programmatically.
+> Make your website agent-ready in 3 lines of code. Let AI agents register, authenticate, and pay for your API — programmatically, in under 500ms, with zero browser automation.
 
 ---
 
@@ -275,37 +274,23 @@ One AgentDoor integration auto-generates companion protocol files:
 | **x402 Wallet Identity** | Agents with x402 wallets | Wallet address = identity. One identity for auth + payments. |
 | **JWT Token** | After initial auth, for caching | Server issues short-lived JWT. Standard Bearer token. |
 
-### Token Refresh
+<details>
+<summary><strong>Token Refresh (signature-based)</strong></summary>
 
-JWTs are short-lived (default: 1 hour). When a token expires, agents refresh it via `POST /agentdoor/auth` by signing a fresh timestamp with their Ed25519 private key. This is a **signature-based refresh** — more secure than typical JWT refresh tokens because it requires proof of private key ownership on every renewal.
-
-```
-POST /agentdoor/auth
-{
-  "agent_id": "ag_xxx",
-  "timestamp": "2026-02-08T12:30:00Z",              // current time
-  "signature": sign("agentdoor:auth:ag_xxx:2026-02-08T12:30:00Z")  // Ed25519
-}
-→ { "token": "eyJ...", "expires_at": "2026-02-08T13:30:00Z" }
-```
-
-**The SDK handles this automatically.** The `Session` object refreshes the token 30 seconds before expiry — your agent code never needs to deal with expired tokens:
+JWTs are short-lived (default: 1 hour). When a token expires, agents refresh via `POST /agentdoor/auth` by signing a fresh timestamp with their Ed25519 private key — more secure than typical refresh tokens because it requires proof of key ownership on every renewal. **The SDK handles this automatically.**
 
 ```typescript
 // Token refresh is transparent. Just make requests.
 const data = await session.get("/api/data");  // auto-refreshes if needed
 ```
 
-**Why signature-based refresh instead of a refresh token?**
-
 | | Typical Refresh Token | AgentDoor `/agentdoor/auth` |
 |---|---|---|
 | Stolen token risk | Refresh token = unlimited access | Stolen JWT alone can't refresh |
 | Proof of identity | None (just present the token) | Ed25519 signature every time |
 | Security model | Trust-the-token | Zero-trust (prove key ownership) |
-| Agent private key | Not needed after registration | Needed for every refresh |
 
-A stolen JWT is useless once it expires. An attacker would need the agent's Ed25519 private key to get a new one.
+</details>
 
 ### Why Not Just OAuth?
 
@@ -315,6 +300,20 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 | Round-trips | 5+ | 2 |
 | Speed | Seconds (browser redirect) | < 500ms total |
 | Secret exposure | Tokens sent every request | Private key never transmitted |
+
+---
+
+## Works With Your Existing Auth
+
+AgentDoor doesn't replace your existing auth provider — it sits alongside it. Human users keep signing in through Clerk, Auth0, Firebase, or whatever you already use. Agents get their own headless path:
+
+| Concern | Your Auth Provider (Humans) | AgentDoor (Agents) |
+|---|---|---|
+| Registration | Email, social OAuth, magic links | Keypair + signed challenge, headless API |
+| Authentication | Session cookies, JWTs | Signed request headers or short-lived token |
+| Payment setup | Stripe checkout, credit card | x402 auto-configured at registration |
+| Identity | Name, email, avatar | Public key / x402 wallet, scopes |
+| Lifecycle | Signup → verify → login → use | Register → use (one step) |
 
 ---
 
@@ -381,7 +380,29 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 
 ---
 
-## Project Structure
+## Technical Details
+
+- **Zero native dependencies** — Pure JS crypto (tweetnacl). No `node-gyp`. Works everywhere.
+- **< 5ms auth verification** — Ed25519 signature verification is fast.
+- **< 2ms middleware overhead** — Minimal impact on request latency.
+- **< 50KB SDK** — Lightweight for constrained agent environments.
+- **Pluggable storage** — In-memory (dev) → SQLite → Postgres.
+- **Node.js >= 18** — Native crypto, ES modules.
+
+### Core Dependencies
+
+| Package | Purpose | Size |
+|---|---|---|
+| `tweetnacl` | Ed25519 crypto | 8KB, audited, pure JS |
+| `jose` | JWT issuance/verification | Standards-compliant |
+| `zod` | Schema validation | Config + API input |
+| `nanoid` | ID generation | Agent IDs + nonces |
+| `@noble/secp256k1` | x402 wallet compat | Pure JS |
+
+---
+
+<details>
+<summary><strong>Project Structure</strong></summary>
 
 ```
 agentdoor/
@@ -426,6 +447,8 @@ agentdoor/
 └── package.json
 ```
 
+</details>
+
 ---
 
 ## Development
@@ -454,183 +477,25 @@ pnpm dev
 
 ---
 
-## Sitting Alongside Clerk
-
-AgentDoor doesn't replace your existing auth. It sits alongside it:
-
-| Concern | Clerk (Humans) | AgentDoor (Agents) |
-|---|---|---|
-| Registration | Email, social OAuth, magic links | Keypair + signed challenge, headless API |
-| Authentication | Session cookies, JWTs | Signed request headers or short-lived token |
-| Payment setup | Stripe checkout, credit card | x402 auto-configured at registration |
-| Identity | Name, email, avatar | Public key / x402 wallet, scopes |
-| Lifecycle | Signup → verify → login → use | Register → use (one step) |
-
----
-
-## Configuration Reference
-
-```typescript
-import { agentdoor } from "@agentdoor/express";
-
-app.use(agentdoor({
-  // Required: Define available scopes
-  scopes: [
-    { id: "data.read", description: "Read data", price: "$0.001/req", rateLimit: "1000/hour" },
-    { id: "data.write", description: "Write data", price: "$0.01/req", rateLimit: "100/hour" }
-  ],
-
-  // Rate limiting (optional)
-  rateLimit: {
-    default: { requests: 1000, window: "1h" },
-    registration: { requests: 10, window: "1h" }
-  },
-
-  // x402 payment integration (optional)
-  x402: {
-    network: "base",
-    currency: "USDC",
-    paymentAddress: "0xYourWallet...",
-    facilitator: "https://x402.org/facilitator"
-  },
-
-  // Storage backend (optional, defaults to in-memory)
-  storage: {
-    driver: "memory"  // "memory" | "sqlite" | "postgres" | "redis"
-  },
-
-  // Crypto config (optional)
-  signing: {
-    algorithm: "ed25519"  // "ed25519" | "secp256k1"
-  },
-
-  // JWT config (optional)
-  jwt: {
-    secret: process.env.JWT_SECRET,
-    expiresIn: "1h"
-  },
-
-  // Companion protocol generation (optional)
-  companion: {
-    a2aAgentCard: true,   // Auto-gen /.well-known/agent-card.json
-    mcpServer: false,     // Auto-gen /mcp endpoint
-    oauthCompat: false    // OAuth endpoints for MCP clients
-  },
-
-  // Service metadata (optional)
-  service: {
-    name: "My API",
-    description: "My agent-ready API",
-    docsUrl: "https://docs.example.com",
-    supportEmail: "agents@example.com"
-  },
-
-  // API key mode (optional, defaults to "live")
-  mode: "live",  // "live" → agk_live_... keys, "test" → agk_test_... keys
-
-  // Lifecycle hooks (optional)
-  onAgentRegistered: (agent) => console.log(`New agent: ${agent.id}`),
-  onAgentAuthenticated: (agent) => console.log(`Agent auth: ${agent.id}`)
-}));
-```
-
----
-
-## API Reference
-
-### Discovery
-
-```
-GET /.well-known/agentdoor.json
-```
-
-Returns the service discovery document. CDN-cacheable (`Cache-Control: public, max-age=3600`).
-
-### Registration
-
-```
-POST /agentdoor/register
-
-{
-  "public_key": "base64-ed25519-public-key",
-  "scopes_requested": ["data.read"],
-  "x402_wallet": "0x1234...abcd",
-  "metadata": { "framework": "langchain", "version": "0.2.0" }
-}
-
-→ 201 { "agent_id": "ag_xxx", "challenge": { "nonce": "...", "message": "...", "expires_at": "..." } }
-```
-
-### Challenge Verification
-
-```
-POST /agentdoor/register/verify
-
-{
-  "agent_id": "ag_xxx",
-  "signature": "base64-ed25519-signature"
-}
-
-→ 200 { "agent_id": "ag_xxx", "api_key": "agk_live_xxx", "scopes_granted": [...], "token": "eyJ...", "rate_limit": {...} }
-```
-
-### Token Refresh (Returning Agent Auth)
-
-```
-POST /agentdoor/auth
-
-{
-  "agent_id": "ag_xxx",
-  "timestamp": "2026-02-08T12:30:00Z",
-  "signature": "base64-signature"
-}
-
-→ 200 { "token": "eyJ...", "expires_at": "..." }
-```
-
-This is the token refresh endpoint. Agents sign a fresh timestamp to prove key ownership and receive a new short-lived JWT. The SDK calls this automatically when tokens expire.
-
-### Protected Routes
-
-```
-GET /api/your-endpoint
-Authorization: Bearer agk_live_xxx
-X-PAYMENT: <x402-payment-payload>   (optional)
-```
-
----
-
-## Technical Details
-
-- **Zero native dependencies** — Pure JS crypto (tweetnacl). No `node-gyp`. Works everywhere.
-- **< 5ms auth verification** — Ed25519 signature verification is fast.
-- **< 2ms middleware overhead** — Minimal impact on request latency.
-- **< 50KB SDK** — Lightweight for constrained agent environments.
-- **Pluggable storage** — In-memory (dev) → SQLite → Postgres.
-- **Node.js >= 18** — Native crypto, ES modules.
-
-### Core Dependencies
-
-| Package | Purpose | Size |
-|---|---|---|
-| `tweetnacl` | Ed25519 crypto | 8KB, audited, pure JS |
-| `jose` | JWT issuance/verification | Standards-compliant |
-| `zod` | Schema validation | Config + API input |
-| `nanoid` | ID generation | Agent IDs + nonces |
-| `@noble/secp256k1` | x402 wallet compat | Pure JS |
-
----
-
 ## Documentation
 
-- [Quick Start Guide](./docs/quickstart.md)
-- [Configuration Reference](./docs/configuration.md)
-- [API Reference](./docs/api-reference.md)
-- [Agent SDK Guide](./docs/agent-sdk.md)
-- [FAQ](./docs/faq.md)
+- [Quick Start Guide](./docs/quickstart.md) — Get running in 5 minutes
+- [Configuration Reference](./docs/configuration.md) — All options with examples
+- [API Reference](./docs/api-reference.md) — Discovery, registration, auth, and protected route endpoints
+- [Agent SDK Guide](./docs/agent-sdk.md) — TypeScript and Python agent-side usage
+- [FAQ](./docs/faq.md) — Common questions answered
+
+---
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, coding standards, and PR guidelines.
+
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security Policy](./SECURITY.md) — Report vulnerabilities responsibly
 
 ---
 
 ## License
 
-MIT
+[MIT](./LICENSE)
