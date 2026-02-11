@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/supabase",
+  "name": "@agentdoor/supabase",
   "version": "0.1.0",
-  "description": "Supabase plugin for AgentGate - store agent records in Supabase with RLS support",
+  "description": "Supabase plugin for AgentDoor - store agent records in Supabase with RLS support",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/supabase"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "supabase",
     "auth",
     "agent",

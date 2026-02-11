@@ -73,7 +73,7 @@ const FRAMEWORK_PATTERNS: FrameworkPattern[] = [
   { pattern: /haystack/i, name: "Haystack", confidence: 0.85 },
   { pattern: /semantic[_-]?kernel/i, name: "Semantic Kernel", confidence: 0.90 },
   { pattern: /dspy/i, name: "DSPy", confidence: 0.85 },
-  { pattern: /agentgate/i, name: "AgentGate SDK", confidence: 1.0 },
+  { pattern: /agentdoor/i, name: "AgentDoor SDK", confidence: 1.0 },
   { pattern: /browser[_-]?use/i, name: "browser-use", confidence: 0.90 },
 
   // HTTP libraries commonly used by agents/scripts
@@ -455,14 +455,14 @@ export function analyzeSelfIdentification(request: DetectableRequest): SignalRes
     };
   }
 
-  // Check for AgentGate-specific headers.
-  const agentGateId = request.headers["x-agentgate-agent-id"];
-  if (agentGateId) {
+  // Check for AgentDoor-specific headers.
+  const agentDoorId = request.headers["x-agentdoor-agent-id"];
+  if (agentDoorId) {
     return {
-      signal: "self-id:agentgate",
+      signal: "self-id:agentdoor",
       confidence: 1.0,
-      reason: `Agent self-identified via X-AgentGate-Agent-Id: ${agentGateId}`,
-      data: { agentId: agentGateId },
+      reason: `Agent self-identified via X-AgentDoor-Agent-Id: ${agentDoorId}`,
+      data: { agentId: agentDoorId },
     };
   }
 

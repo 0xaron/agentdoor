@@ -1,13 +1,13 @@
 # Agent-Ready Express API (Railway)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/agentgate)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/agentdoor)
 
-Deploy an agent-ready Express API to Railway in one click. Built with Express, AgentGate, and x402 micropayments.
+Deploy an agent-ready Express API to Railway in one click. Built with Express, AgentDoor, and x402 micropayments.
 
 ## What You Get
 
-- **AgentGate middleware** for Express that handles agent authentication, capability discovery, and x402 payments
-- **`.well-known/agentgate`** endpoint auto-served for agent discovery
+- **AgentDoor middleware** for Express that handles agent authentication, capability discovery, and x402 payments
+- **`.well-known/agentdoor`** endpoint auto-served for agent discovery
 - **x402 micropayments** via USDC on Base network
 - **Sample API routes** with scope-based access control
 - **Docker-ready**: Includes Dockerfile for containerized deployment
@@ -47,7 +47,7 @@ The server will be available at [http://localhost:3000](http://localhost:3000).
 
 ```
 ├── src/
-│   └── index.ts         # Express app with AgentGate middleware and routes
+│   └── index.ts         # Express app with AgentDoor middleware and routes
 ├── railway.json         # Railway deployment configuration
 ├── Dockerfile           # Container configuration
 ├── tsconfig.json        # TypeScript configuration
@@ -56,8 +56,8 @@ The server will be available at [http://localhost:3000](http://localhost:3000).
 
 ## How It Works
 
-1. **Agent Discovery**: Agents find your API via `/.well-known/agentgate`
-2. **Authentication**: AgentGate middleware validates agent credentials and scopes
+1. **Agent Discovery**: Agents find your API via `/.well-known/agentdoor`
+2. **Authentication**: AgentDoor middleware validates agent credentials and scopes
 3. **Payment**: x402 handles micropayments for API access (USDC on Base)
 4. **Access**: Authenticated agents can call your API endpoints
 
@@ -71,7 +71,7 @@ The server will be available at [http://localhost:3000](http://localhost:3000).
 
 ## Learn More
 
-- [AgentGate Documentation](https://github.com/agentgate/agentgate)
+- [AgentDoor Documentation](https://github.com/agentdoor/agentdoor)
 - [x402 Protocol](https://www.x402.org/)
 - [Express Documentation](https://expressjs.com/)
 - [Railway Documentation](https://docs.railway.app/)

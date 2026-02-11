@@ -77,7 +77,7 @@ describe("SupabasePlugin", () => {
 
   describe("constructor", () => {
     it("creates a plugin with default config", () => {
-      expect(plugin.getTableName()).toBe("agentgate_agents");
+      expect(plugin.getTableName()).toBe("agentdoor_agents");
       expect(plugin.isAutoSyncEnabled()).toBe(true);
     });
 
@@ -117,7 +117,7 @@ describe("SupabasePlugin", () => {
 
       expect(result.success).toBe(true);
       expect(result.agentId).toBe("ag_test_1");
-      expect(mockClient.from).toHaveBeenCalledWith("agentgate_agents");
+      expect(mockClient.from).toHaveBeenCalledWith("agentdoor_agents");
     });
 
     it("includes all agent data in the record", async () => {
@@ -131,7 +131,7 @@ describe("SupabasePlugin", () => {
         metadata: { framework: "langchain" },
       });
 
-      const fromResult = mockClient.from("agentgate_agents");
+      const fromResult = mockClient.from("agentdoor_agents");
       expect(fromResult.upsert).toHaveBeenCalledWith([
         expect.objectContaining({
           id: "ag_test_1",
@@ -214,7 +214,7 @@ describe("SupabasePlugin", () => {
   describe("SQL exports", () => {
     it("exports AGENT_TABLE_SQL with CREATE TABLE", () => {
       expect(AGENT_TABLE_SQL).toContain("CREATE TABLE");
-      expect(AGENT_TABLE_SQL).toContain("agentgate_agents");
+      expect(AGENT_TABLE_SQL).toContain("agentdoor_agents");
       expect(AGENT_TABLE_SQL).toContain("public_key");
       expect(AGENT_TABLE_SQL).toContain("scopes_granted");
       expect(AGENT_TABLE_SQL).toContain("reputation");

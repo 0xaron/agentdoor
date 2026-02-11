@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { AgentStore, AgentContext } from "@agentgate/core";
+import type { AgentStore, AgentContext } from "@agentdoor/core";
 import {
   createChallenge,
   verifySignature,
@@ -8,10 +8,10 @@ import {
   generateApiKey,
   hashApiKey,
   generateAgentId,
-  AgentGateError,
+  AgentDoorError,
   DEFAULT_REPUTATION,
-} from "@agentgate/core";
-import type { ResolvedConfig } from "@agentgate/core";
+} from "@agentdoor/core";
+import type { ResolvedConfig } from "@agentdoor/core";
 import type { P1Services } from "../middleware.js";
 
 /**
@@ -31,11 +31,11 @@ const pendingRegistrations = new Map<string, PendingRegistration>();
 /**
  * Creates a router with the full agent registration + challenge-response flow:
  *
- * POST /agentgate/register
+ * POST /agentdoor/register
  *   Agent sends public_key + scopes_requested + optional x402_wallet + metadata.
  *   Server responds with agent_id + challenge (nonce + message + expires_at).
  *
- * POST /agentgate/register/verify
+ * POST /agentdoor/register/verify
  *   Agent proves key ownership by signing the challenge message.
  *   Server verifies signature, creates the agent record, issues API key + JWT.
  */
@@ -47,13 +47,13 @@ export function createRegisterRouter(
   const router = Router();
 
   /**
-   * POST /agentgate/register
+   * POST /agentdoor/register
    *
    * Step 1 of registration: accept agent public key, requested scopes,
    * optional x402 wallet, and metadata. Return a challenge nonce that
    * the agent must sign to prove key ownership.
    */
-  router.post("/agentgate/register", async (req, res) => {
+  router.post("/agentdoor/register", async (req, res) => {
     try {
       const { public_key, scopes_requested, x402_wallet, metadata } = req.body;
 
@@ -131,14 +131,14 @@ export function createRegisterRouter(
         },
       });
     } catch (err) {
-      if (err instanceof AgentGateError) {
+      if (err instanceof AgentDoorError) {
         res.status(err.statusCode).json({
           error: err.code,
           message: err.message,
         });
         return;
       }
-      console.error("[agentgate] Registration error:", err);
+      console.error("[agentdoor] Registration error:", err);
       res.status(500).json({
         error: "internal_error",
         message: "An unexpected error occurred during registration",
@@ -147,13 +147,13 @@ export function createRegisterRouter(
   });
 
   /**
-   * POST /agentgate/register/verify
+   * POST /agentdoor/register/verify
    *
    * Step 2 of registration: agent proves key ownership by providing
    * a signature over the challenge message. Server verifies the signature,
    * creates the agent record, and issues an API key + JWT token.
    */
-  router.post("/agentgate/register/verify", async (req, res) => {
+  router.post("/agentdoor/register/verify", async (req, res) => {
     try {
       const { agent_id, signature } = req.body;
 
@@ -264,7 +264,7 @@ export function createRegisterRouter(
       // Fire the onAgentRegistered callback if provided
       if (config.onAgentRegistered) {
         Promise.resolve(config.onAgentRegistered(agent)).catch((err) => {
-          console.error("[agentgate] onAgentRegistered callback error:", err);
+          console.error("[agentdoor] onAgentRegistered callback error:", err);
         });
       }
 
@@ -277,7 +277,7 @@ export function createRegisterRouter(
           x402_wallet: pending.x402Wallet,
           metadata: pending.metadata,
         }).catch((err) => {
-          console.error("[agentgate] Webhook emit error:", err);
+          console.error("[agentdoor] Webhook emit error:", err);
         });
       }
 
@@ -302,14 +302,14 @@ export function createRegisterRouter(
 
       res.status(200).json(response);
     } catch (err) {
-      if (err instanceof AgentGateError) {
+      if (err instanceof AgentDoorError) {
         res.status(err.statusCode).json({
           error: err.code,
           message: err.message,
         });
         return;
       }
-      console.error("[agentgate] Verification error:", err);
+      console.error("[agentdoor] Verification error:", err);
       res.status(500).json({
         error: "internal_error",
         message: "An unexpected error occurred during verification",

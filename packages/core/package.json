@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/core",
+  "name": "@agentdoor/core",
   "version": "0.1.0",
-  "description": "Core shared library for AgentGate - agent registration, auth, and discovery",
+  "description": "Core shared library for AgentDoor - agent registration, auth, and discovery",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -64,11 +64,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/core"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "agent",
     "auth",
     "registration",

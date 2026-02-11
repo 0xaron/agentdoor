@@ -1,4 +1,4 @@
-"""Ed25519 verification helpers for the AgentGate FastAPI adapter.
+"""Ed25519 verification helpers for the AgentDoor FastAPI adapter.
 
 Provides server-side signature verification using PyNaCl.
 """

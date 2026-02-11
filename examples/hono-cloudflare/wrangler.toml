@@ -1,4 +1,4 @@
-name = "agentgate-hono-example"
+name = "agentdoor-hono-example"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 

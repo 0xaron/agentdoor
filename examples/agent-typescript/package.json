@@ -2,14 +2,14 @@
   "name": "example-agent-typescript",
   "version": "0.1.0",
   "private": true,
-  "description": "Example TypeScript agent using the AgentGate SDK to connect to AgentGate-enabled services",
+  "description": "Example TypeScript agent using the AgentDoor SDK to connect to AgentDoor-enabled services",
   "type": "module",
   "scripts": {
     "dev": "tsx watch index.ts",
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@agentgate/sdk": "workspace:*"
+    "@agentdoor/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

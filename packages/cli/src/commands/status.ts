@@ -1,8 +1,8 @@
 /**
- * `agentgate status` — Check current AgentGate configuration and status.
+ * `agentdoor status` — Check current AgentDoor configuration and status.
  *
  * Reads the local config file and checks for the presence of required files
- * (.well-known/agentgate.json, etc.). Optionally probes a running server to
+ * (.well-known/agentdoor.json, etc.). Optionally probes a running server to
  * verify endpoints are live.
  */
 
@@ -34,23 +34,23 @@ interface StatusCheck {
 async function checkLocalFiles(cwd: string, configPath?: string): Promise<StatusCheck[]> {
   const checks: StatusCheck[] = [];
 
-  // Check agentgate.config.ts
+  // Check agentdoor.config.ts
   const configFile = configPath
     ? resolve(cwd, configPath)
-    : join(cwd, "agentgate.config.ts");
+    : join(cwd, "agentdoor.config.ts");
 
   const configTsExists = existsSync(configFile);
   const configJsExists = !configTsExists && existsSync(configFile.replace(".ts", ".js"));
-  const configJsonExists = !configTsExists && !configJsExists && existsSync(join(cwd, "agentgate.config.json"));
+  const configJsonExists = !configTsExists && !configJsExists && existsSync(join(cwd, "agentdoor.config.json"));
 
   const configFound = configTsExists || configJsExists || configJsonExists;
   const configName = configTsExists
-    ? "agentgate.config.ts"
+    ? "agentdoor.config.ts"
     : configJsExists
-      ? "agentgate.config.js"
+      ? "agentdoor.config.js"
       : configJsonExists
-        ? "agentgate.config.json"
-        : "agentgate.config.ts";
+        ? "agentdoor.config.json"
+        : "agentdoor.config.ts";
 
   checks.push({
     label: "Config",
@@ -58,11 +58,11 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
     detail: configFound ? `${configName} found` : `${configName} not found`,
   });
 
-  // Check .well-known/agentgate.json
+  // Check .well-known/agentdoor.json
   const wellKnownPaths = [
-    join(cwd, "public", ".well-known", "agentgate.json"),
-    join(cwd, ".well-known", "agentgate.json"),
-    join(cwd, "static", ".well-known", "agentgate.json"),
+    join(cwd, "public", ".well-known", "agentdoor.json"),
+    join(cwd, ".well-known", "agentdoor.json"),
+    join(cwd, "static", ".well-known", "agentdoor.json"),
   ];
 
   let discoveryFound = false;
@@ -80,8 +80,8 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
     label: "Discovery",
     ok: discoveryFound,
     detail: discoveryFound
-      ? `agentgate.json found at ${discoveryPath}`
-      : "/.well-known/agentgate.json not found in public/, .well-known/, or static/",
+      ? `agentdoor.json found at ${discoveryPath}`
+      : "/.well-known/agentdoor.json not found in public/, .well-known/, or static/",
   });
 
   // Check agent-card.json (A2A compat)
@@ -134,7 +134,7 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
       checks.push({
         label: "Discovery Parse",
         ok: false,
-        detail: "Failed to parse agentgate.json",
+        detail: "Failed to parse agentdoor.json",
       });
     }
   }
@@ -151,7 +151,7 @@ async function checkRemoteEndpoints(baseUrl: string): Promise<StatusCheck[]> {
 
   // Check discovery endpoint.
   try {
-    const discoveryUrl = new URL("/.well-known/agentgate.json", baseUrl).toString();
+    const discoveryUrl = new URL("/.well-known/agentdoor.json", baseUrl).toString();
     const res = await fetch(discoveryUrl, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(5000),
@@ -161,8 +161,8 @@ async function checkRemoteEndpoints(baseUrl: string): Promise<StatusCheck[]> {
       label: "Discovery",
       ok: res.ok,
       detail: res.ok
-        ? `/.well-known/agentgate.json serving (${res.status})`
-        : `/.well-known/agentgate.json returned ${res.status}`,
+        ? `/.well-known/agentdoor.json serving (${res.status})`
+        : `/.well-known/agentdoor.json returned ${res.status}`,
     });
 
     if (res.ok) {
@@ -265,20 +265,20 @@ function displayChecks(title: string, checks: StatusCheck[]): void {
 export function registerStatusCommand(program: Command): void {
   program
     .command("status")
-    .description("Check current AgentGate configuration and endpoint status")
+    .description("Check current AgentDoor configuration and endpoint status")
     .option("-u, --url <url>", "Base URL of a running server to probe endpoints")
-    .option("-c, --config <path>", "Path to agentgate config file")
+    .option("-c, --config <path>", "Path to agentdoor config file")
     .action(async (options: StatusOptions) => {
       const cwd = process.cwd();
 
       // Local file checks.
       const localChecks = await checkLocalFiles(cwd, options.config);
-      displayChecks("AgentGate Status (Local)", localChecks);
+      displayChecks("AgentDoor Status (Local)", localChecks);
 
       // Remote checks if URL provided.
       if (options.url) {
         const remoteChecks = await checkRemoteEndpoints(options.url);
-        displayChecks("AgentGate Status (Remote)", remoteChecks);
+        displayChecks("AgentDoor Status (Remote)", remoteChecks);
       } else {
         console.log(
           chalk.dim("   Tip: Use --url <base-url> to probe a running server's endpoints.\n"),
@@ -292,7 +292,7 @@ export function registerStatusCommand(program: Command): void {
       } else {
         const failCount = localChecks.filter((c) => !c.ok).length;
         console.log(
-          chalk.yellow(`  ${failCount} check(s) need attention. Run "agentgate init" to fix.\n`),
+          chalk.yellow(`  ${failCount} check(s) need attention. Run "agentdoor init" to fix.\n`),
         );
       }
     });

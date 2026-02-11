@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/stripe",
+  "name": "@agentdoor/stripe",
   "version": "0.1.0",
-  "description": "Stripe billing bridge for AgentGate - reconcile x402 payments as Stripe invoice items",
+  "description": "Stripe billing bridge for AgentDoor - reconcile x402 payments as Stripe invoice items",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "peerDependencies": {
     "stripe": ">=14"
@@ -40,11 +40,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/stripe"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "stripe",
     "billing",
     "x402",

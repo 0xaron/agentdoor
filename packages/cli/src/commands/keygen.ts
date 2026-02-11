@@ -1,7 +1,7 @@
 /**
- * `agentgate keygen` — Generate an Ed25519 keypair for agent authentication.
+ * `agentdoor keygen` — Generate an Ed25519 keypair for agent authentication.
  *
- * Saves the keypair to ~/.agentgate/keys.json. This is primarily used by
+ * Saves the keypair to ~/.agentdoor/keys.json. This is primarily used by
  * agent developers (demand-side) to create a persistent identity for their
  * agent, but can also be used for testing on the supply-side.
  */
@@ -104,7 +104,7 @@ async function sha256Hex(data: string): Promise<string> {
 }
 
 function getDefaultKeyPath(): string {
-  return join(homedir(), ".agentgate", "keys.json");
+  return join(homedir(), ".agentdoor", "keys.json");
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export function registerKeygenCommand(program: Command): void {
       const keyPath = options.output ?? getDefaultKeyPath();
       const keyDir = join(keyPath, "..");
 
-      console.log(chalk.bold.cyan("\n  AgentGate Keygen\n"));
+      console.log(chalk.bold.cyan("\n  AgentDoor Keygen\n"));
 
       // Check for existing keys.
       if (existsSync(keyPath) && !options.force) {

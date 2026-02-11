@@ -16,8 +16,8 @@ describe("generateDiscoveryDocument", () => {
     const config = getResolvedConfig();
     const doc = generateDiscoveryDocument(config);
 
-    expect(typeof doc.agentgate_version).toBe("string");
-    expect(doc.agentgate_version.length).toBeGreaterThan(0);
+    expect(typeof doc.agentdoor_version).toBe("string");
+    expect(doc.agentdoor_version.length).toBeGreaterThan(0);
     expect(typeof doc.service_name).toBe("string");
     expect(typeof doc.registration_endpoint).toBe("string");
     expect(typeof doc.auth_endpoint).toBe("string");
@@ -75,7 +75,7 @@ describe("validateDiscoveryDocument", () => {
 
   it("reports specific missing fields", () => {
     const result = validateDiscoveryDocument({
-      agentgate_version: "1.0",
+      agentdoor_version: "1.0",
       // missing: service_name, registration_endpoint, auth_endpoint, scopes_available, auth_methods
     });
     expect(result.valid).toBe(false);

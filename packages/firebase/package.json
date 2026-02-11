@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/firebase",
+  "name": "@agentdoor/firebase",
   "version": "0.1.0",
-  "description": "Firebase companion plugin for AgentGate - create agent accounts as Firebase Auth users",
+  "description": "Firebase companion plugin for AgentDoor - create agent accounts as Firebase Auth users",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/firebase"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "firebase",
     "auth",
     "agent",

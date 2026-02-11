@@ -1,8 +1,8 @@
 {
-  "name": "@agentgate/dashboard",
+  "name": "@agentdoor/dashboard",
   "version": "0.1.0",
   "private": true,
-  "description": "AgentGate dashboard - monitor agent registrations, usage, and revenue",
+  "description": "AgentDoor dashboard - monitor agent registrations, usage, and revenue",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +11,7 @@
     "clean": "rm -rf .next out"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*",
+    "@agentdoor/core": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

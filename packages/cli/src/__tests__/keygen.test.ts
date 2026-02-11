@@ -1,5 +1,5 @@
 /**
- * Tests for `agentgate keygen` command.
+ * Tests for `agentdoor keygen` command.
  *
  * Covers: Ed25519 keypair generation, output paths, directory creation,
  * file permissions, output formats, and overwrite protection.
@@ -16,7 +16,7 @@ import { writeFile, mkdir, readFile, rm } from "node:fs/promises";
 // ---------------------------------------------------------------------------
 
 function createTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "agentgate-keygen-test-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "agentdoor-keygen-test-"));
 }
 
 /** Simulate what keygen does: generate a keypair and write to disk. */
@@ -160,9 +160,9 @@ describe("keygen - output path", () => {
     expect(fs.existsSync(keyPath)).toBe(true);
   });
 
-  it("default path uses ~/.agentgate/keys.json pattern", () => {
-    const defaultPath = path.join(os.homedir(), ".agentgate", "keys.json");
-    expect(defaultPath).toContain(".agentgate");
+  it("default path uses ~/.agentdoor/keys.json pattern", () => {
+    const defaultPath = path.join(os.homedir(), ".agentdoor", "keys.json");
+    expect(defaultPath).toContain(".agentdoor");
     expect(defaultPath).toContain("keys.json");
   });
 });

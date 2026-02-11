@@ -1,5 +1,5 @@
 /**
- * Integration / E2E tests for the AgentGate Hono middleware.
+ * Integration / E2E tests for the AgentDoor Hono middleware.
  *
  * Exercises the complete agent lifecycle through the Hono adapter:
  *   Discovery -> Register -> Verify -> Auth Guard -> Authenticated Request
@@ -9,9 +9,9 @@
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { agentgate } from "@agentgate/hono";
-import type { AgentGateVariables } from "@agentgate/hono";
-import { MemoryStore } from "@agentgate/core";
+import { agentdoor } from "@agentdoor/hono";
+import type { AgentDoorVariables } from "@agentdoor/hono";
+import { MemoryStore } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Shared config
@@ -25,8 +25,8 @@ const TEST_SCOPES = [
 
 function createApp(overrides?: Record<string, unknown>) {
   const store = new MemoryStore();
-  const app = new Hono<{ Variables: AgentGateVariables }>();
-  agentgate(app, {
+  const app = new Hono<{ Variables: AgentDoorVariables }>();
+  agentdoor(app, {
     scopes: TEST_SCOPES,
     store,
     service: { name: "Hono E2E Test API", description: "E2E test service" },
@@ -45,7 +45,7 @@ function createApp(overrides?: Record<string, unknown>) {
  * Register and verify an agent using real Ed25519 crypto.
  */
 async function fullRegistration(
-  app: Hono<{ Variables: AgentGateVariables }>,
+  app: Hono<{ Variables: AgentDoorVariables }>,
   scopes: string[] = ["data.read"],
 ) {
   // Generate real Ed25519 key pair
@@ -59,7 +59,7 @@ async function fullRegistration(
   );
 
   // Register
-  const regRes = await app.request("/agentgate/register", {
+  const regRes = await app.request("/agentdoor/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -82,7 +82,7 @@ async function fullRegistration(
   );
 
   // Verify
-  const verifyRes = await app.request("/agentgate/register/verify", {
+  const verifyRes = await app.request("/agentdoor/register/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -107,15 +107,15 @@ async function fullRegistration(
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Hono Full Agent Lifecycle", () => {
+describe("AgentDoor E2E: Hono Full Agent Lifecycle", () => {
   it("completes the full lifecycle: discovery -> register -> verify -> auth guard -> re-auth", async () => {
     const { app, store } = createApp();
 
     // 1. Discovery
-    const discovery = await app.request("/.well-known/agentgate.json");
+    const discovery = await app.request("/.well-known/agentdoor.json");
     expect(discovery.status).toBe(200);
     const discoveryBody = await discovery.json();
-    expect(discoveryBody.agentgate_version).toBe("1.0");
+    expect(discoveryBody.agentdoor_version).toBe("1.0");
     expect(discoveryBody.service_name).toBe("Hono E2E Test API");
     expect(discoveryBody.scopes_available).toHaveLength(3);
 
@@ -137,7 +137,7 @@ describe("AgentGate E2E: Hono Full Agent Lifecycle", () => {
 
     // 5. Re-auth with signature
     const ts = new Date().toISOString();
-    const authMsg = `agentgate:auth:${agent.agentId}:${ts}`;
+    const authMsg = `agentdoor:auth:${agent.agentId}:${ts}`;
     const authSigBytes = await crypto.subtle.sign(
       "Ed25519",
       agent.privateKey,
@@ -145,7 +145,7 @@ describe("AgentGate E2E: Hono Full Agent Lifecycle", () => {
     );
     const authSigB64 = btoa(String.fromCharCode(...new Uint8Array(authSigBytes)));
 
-    const authRes = await app.request("/agentgate/auth", {
+    const authRes = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -208,7 +208,7 @@ describe("AgentGate E2E: Hono Full Agent Lifecycle", () => {
     const agent = await fullRegistration(app, ["data.read"]);
 
     // Try to register with the same public key
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -243,7 +243,7 @@ describe("AgentGate E2E: Hono Full Agent Lifecycle", () => {
     const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
     const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
 
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

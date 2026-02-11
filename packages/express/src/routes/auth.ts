@@ -1,12 +1,12 @@
 import { Router } from "express";
-import type { AgentStore, AgentContext } from "@agentgate/core";
+import type { AgentStore, AgentContext } from "@agentdoor/core";
 import {
   verifySignature,
   issueToken,
   computeExpirationDate,
-  AgentGateError,
-} from "@agentgate/core";
-import type { ResolvedConfig } from "@agentgate/core";
+  AgentDoorError,
+} from "@agentdoor/core";
+import type { ResolvedConfig } from "@agentdoor/core";
 import type { P1Services } from "../middleware.js";
 
 /**
@@ -17,7 +17,7 @@ import type { P1Services } from "../middleware.js";
 const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Creates a router for POST /agentgate/auth.
+ * Creates a router for POST /agentdoor/auth.
  *
  * This endpoint is for returning agents that have already completed
  * registration and want to obtain a fresh JWT token. The agent proves
@@ -31,7 +31,7 @@ export function createAuthRouter(
 ): Router {
   const router = Router();
 
-  router.post("/agentgate/auth", async (req, res) => {
+  router.post("/agentdoor/auth", async (req, res) => {
     try {
       const { agent_id, timestamp, signature } = req.body;
 
@@ -99,15 +99,15 @@ export function createAuthRouter(
         return;
       }
 
-      // Reconstruct the expected signed message: agentgate:auth:{agent_id}:{timestamp}
-      const expectedMessage = `agentgate:auth:${agent_id}:${timestamp}`;
+      // Reconstruct the expected signed message: agentdoor:auth:{agent_id}:{timestamp}
+      const expectedMessage = `agentdoor:auth:${agent_id}:${timestamp}`;
 
       // Verify the signature
       const isValid = verifySignature(expectedMessage, signature, agent.publicKey);
       if (!isValid) {
         res.status(401).json({
           error: "invalid_signature",
-          message: "Signature verification failed. Ensure you signed the message 'agentgate:auth:{agent_id}:{timestamp}' with the correct private key.",
+          message: "Signature verification failed. Ensure you signed the message 'agentdoor:auth:{agent_id}:{timestamp}' with the correct private key.",
         });
         return;
       }
@@ -135,7 +135,7 @@ export function createAuthRouter(
       // Fire the onAgentAuthenticated callback if configured
       if (config.onAgentAuthenticated) {
         Promise.resolve(config.onAgentAuthenticated(agent)).catch((err) => {
-          console.error("[agentgate] onAgentAuthenticated callback error:", err);
+          console.error("[agentdoor] onAgentAuthenticated callback error:", err);
         });
       }
 
@@ -145,7 +145,7 @@ export function createAuthRouter(
           agent_id: agent.id,
           method: "challenge" as const,
         }).catch((err) => {
-          console.error("[agentgate] Webhook emit error:", err);
+          console.error("[agentdoor] Webhook emit error:", err);
         });
       }
 
@@ -154,14 +154,14 @@ export function createAuthRouter(
         expires_at: tokenExpiresAt.toISOString(),
       });
     } catch (err) {
-      if (err instanceof AgentGateError) {
+      if (err instanceof AgentDoorError) {
         res.status(err.statusCode).json({
           error: err.code,
           message: err.message,
         });
         return;
       }
-      console.error("[agentgate] Auth error:", err);
+      console.error("[agentdoor] Auth error:", err);
       res.status(500).json({
         error: "internal_error",
         message: "An unexpected error occurred during authentication",

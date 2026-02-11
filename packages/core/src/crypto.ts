@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Cryptographic Operations
+ * @agentdoor/core - Cryptographic Operations
  *
  * Ed25519 key generation, signing, and verification using tweetnacl.
  * secp256k1 wallet signature verification using @noble/secp256k1.

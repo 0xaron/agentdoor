@@ -1,4 +1,4 @@
-"""Tests for agentgate.discovery module."""
+"""Tests for agentdoor.discovery module."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from agentgate.discovery import (
+from agentdoor.discovery import (
     DiscoveryDocument,
     ScopeDefinition,
     discover,
@@ -19,21 +19,21 @@ class TestParseDiscoveryDocument:
 
     def _minimal_doc(self) -> dict:
         return {
-            "agentgate_version": "0.1",
+            "agentdoor_version": "0.1",
             "service_name": "Test Service",
         }
 
     def test_parses_minimal_document(self) -> None:
         doc = parse_discovery_document(self._minimal_doc())
         assert isinstance(doc, DiscoveryDocument)
-        assert doc.agentgate_version == "0.1"
+        assert doc.agentdoor_version == "0.1"
         assert doc.service_name == "Test Service"
 
     def test_default_endpoints(self) -> None:
         doc = parse_discovery_document(self._minimal_doc())
-        assert doc.registration_endpoint == "/agentgate/register"
-        assert doc.verification_endpoint == "/agentgate/register/verify"
-        assert doc.auth_endpoint == "/agentgate/auth"
+        assert doc.registration_endpoint == "/agentdoor/register"
+        assert doc.verification_endpoint == "/agentdoor/register/verify"
+        assert doc.auth_endpoint == "/agentdoor/auth"
 
     def test_custom_endpoints(self) -> None:
         data = {
@@ -87,7 +87,7 @@ class TestParseDiscoveryDocument:
             parse_discovery_document({"service_name": "incomplete"})
 
         with pytest.raises(KeyError):
-            parse_discovery_document({"agentgate_version": "0.1"})
+            parse_discovery_document({"agentdoor_version": "0.1"})
 
     def test_empty_scopes(self) -> None:
         data = {**self._minimal_doc(), "scopes": []}
@@ -99,11 +99,11 @@ class TestDiscover:
     """Tests for the async discover() function."""
 
     _DOC = {
-        "agentgate_version": "0.1",
+        "agentdoor_version": "0.1",
         "service_name": "Remote Service",
-        "registration_endpoint": "/agentgate/register",
-        "verification_endpoint": "/agentgate/register/verify",
-        "auth_endpoint": "/agentgate/auth",
+        "registration_endpoint": "/agentdoor/register",
+        "verification_endpoint": "/agentdoor/register/verify",
+        "auth_endpoint": "/agentdoor/auth",
         "scopes": [{"name": "read", "description": "Read access"}],
         "token_ttl_seconds": 7200,
     }
@@ -111,7 +111,7 @@ class TestDiscover:
     @pytest.mark.asyncio
     @respx.mock
     async def test_discover_fetches_and_parses(self) -> None:
-        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+        respx.get("https://api.example.com/.well-known/agentdoor.json").mock(
             return_value=httpx.Response(200, json=self._DOC)
         )
         doc = await discover("https://api.example.com")
@@ -123,7 +123,7 @@ class TestDiscover:
     @pytest.mark.asyncio
     @respx.mock
     async def test_discover_strips_trailing_slash(self) -> None:
-        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+        respx.get("https://api.example.com/.well-known/agentdoor.json").mock(
             return_value=httpx.Response(200, json=self._DOC)
         )
         doc = await discover("https://api.example.com/")
@@ -132,7 +132,7 @@ class TestDiscover:
     @pytest.mark.asyncio
     @respx.mock
     async def test_discover_with_provided_client(self) -> None:
-        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+        respx.get("https://api.example.com/.well-known/agentdoor.json").mock(
             return_value=httpx.Response(200, json=self._DOC)
         )
         async with httpx.AsyncClient() as client:
@@ -142,7 +142,7 @@ class TestDiscover:
     @pytest.mark.asyncio
     @respx.mock
     async def test_discover_raises_on_http_error(self) -> None:
-        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+        respx.get("https://api.example.com/.well-known/agentdoor.json").mock(
             return_value=httpx.Response(404)
         )
         with pytest.raises(httpx.HTTPStatusError):
@@ -151,7 +151,7 @@ class TestDiscover:
     @pytest.mark.asyncio
     @respx.mock
     async def test_discover_raises_on_missing_fields(self) -> None:
-        respx.get("https://api.example.com/.well-known/agentgate.json").mock(
+        respx.get("https://api.example.com/.well-known/agentdoor.json").mock(
             return_value=httpx.Response(200, json={"service_name": "incomplete"})
         )
         with pytest.raises(KeyError):

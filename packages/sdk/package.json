@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/sdk",
+  "name": "@agentdoor/sdk",
   "version": "0.1.0",
-  "description": "Agent-side SDK for connecting to AgentGate-enabled services",
+  "description": "Agent-side SDK for connecting to AgentDoor-enabled services",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -39,11 +39,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/sdk"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "agent",
     "sdk",
     "auth",

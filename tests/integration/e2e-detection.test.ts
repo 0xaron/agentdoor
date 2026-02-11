@@ -4,7 +4,7 @@
  * Tests that the detection system correctly identifies agent vs browser
  * traffic based on User-Agent, headers, and other signals.
  *
- * Uses the @agentgate/detect package with Express middleware.
+ * Uses the @agentdoor/detect package with Express middleware.
  *
  * Note: The classifier uses a weighted combination of 5 signal categories
  * (user-agent, self-id, headers, behavior, ip). Individual signals may not
@@ -15,7 +15,7 @@
 import { describe, it, expect } from "vitest";
 import express from "express";
 import * as http from "node:http";
-import { detect, classifyRequest } from "@agentgate/detect";
+import { detect, classifyRequest } from "@agentdoor/detect";
 
 // ---------------------------------------------------------------------------
 // HTTP request helper
@@ -84,7 +84,7 @@ function createApp() {
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Detection Middleware", () => {
+describe("AgentDoor E2E: Detection Middleware", () => {
   it("detects high-confidence agent traffic (LangChain UA)", async () => {
     const app = createApp();
 
@@ -94,9 +94,9 @@ describe("AgentGate E2E: Detection Middleware", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers["x-agentgate-is-agent"]).toBe("true");
-    expect(res.headers["x-agentgate-confidence"]).toBeDefined();
-    const confidence = parseFloat(res.headers["x-agentgate-confidence"] as string);
+    expect(res.headers["x-agentdoor-is-agent"]).toBe("true");
+    expect(res.headers["x-agentdoor-confidence"]).toBeDefined();
+    const confidence = parseFloat(res.headers["x-agentdoor-confidence"] as string);
     expect(confidence).toBeGreaterThan(0.5);
   });
 
@@ -110,8 +110,8 @@ describe("AgentGate E2E: Detection Middleware", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers["x-agentgate-is-agent"]).toBe("true");
-    expect(res.headers["x-agentgate-framework"]).toBeDefined();
+    expect(res.headers["x-agentdoor-is-agent"]).toBe("true");
+    expect(res.headers["x-agentdoor-framework"]).toBeDefined();
   });
 
   it("detects agent traffic from combined signals (HTTP library + no browser headers)", async () => {
@@ -126,9 +126,9 @@ describe("AgentGate E2E: Detection Middleware", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers["x-agentgate-is-agent"]).toBeDefined();
-    expect(res.headers["x-agentgate-confidence"]).toBeDefined();
-    const confidence = parseFloat(res.headers["x-agentgate-confidence"] as string);
+    expect(res.headers["x-agentdoor-is-agent"]).toBeDefined();
+    expect(res.headers["x-agentdoor-confidence"]).toBeDefined();
+    const confidence = parseFloat(res.headers["x-agentdoor-confidence"] as string);
     expect(confidence).toBeGreaterThan(0);
   });
 
@@ -146,20 +146,20 @@ describe("AgentGate E2E: Detection Middleware", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers["x-agentgate-is-agent"]).toBe("false");
+    expect(res.headers["x-agentdoor-is-agent"]).toBe("false");
   });
 
   it("detects agent traffic with self-identification + auth header", async () => {
     const app = createApp();
 
     const res = await request(app, "GET", "/api/data", {
-      "User-Agent": "agentgate-sdk/1.0.0",
-      "X-Agent-Framework": "agentgate-sdk/1.0.0",
+      "User-Agent": "agentdoor-sdk/1.0.0",
+      "X-Agent-Framework": "agentdoor-sdk/1.0.0",
       Authorization: "Bearer agk_live_test1234567890abcdef12345678",
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers["x-agentgate-is-agent"]).toBe("true");
+    expect(res.headers["x-agentdoor-is-agent"]).toBe("true");
   });
 
   it("handles requests with no User-Agent header", async () => {
@@ -170,7 +170,7 @@ describe("AgentGate E2E: Detection Middleware", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers["x-agentgate-is-agent"]).toBeDefined();
+    expect(res.headers["x-agentdoor-is-agent"]).toBeDefined();
   });
 
   it("classifyRequest function works standalone (high-confidence agent)", () => {
@@ -214,7 +214,7 @@ describe("AgentGate E2E: Detection Middleware", () => {
     });
 
     expect(res.status).toBe(200);
-    const confidence = parseFloat(res.headers["x-agentgate-confidence"] as string);
+    const confidence = parseFloat(res.headers["x-agentdoor-confidence"] as string);
     expect(confidence).toBeGreaterThanOrEqual(0);
     expect(confidence).toBeLessThanOrEqual(1);
   });
@@ -226,7 +226,7 @@ describe("AgentGate E2E: Detection Middleware", () => {
     const agentRes = await request(app, "GET", "/api/data", {
       "User-Agent": "langchain/0.1.0",
     });
-    expect(agentRes.headers["x-agentgate-is-agent"]).toBe("true");
+    expect(agentRes.headers["x-agentdoor-is-agent"]).toBe("true");
 
     // Browser request
     const browserRes = await request(app, "GET", "/api/data", {
@@ -236,13 +236,13 @@ describe("AgentGate E2E: Detection Middleware", () => {
       Cookie: "session=abc",
       Referer: "https://example.com/",
     });
-    expect(browserRes.headers["x-agentgate-is-agent"]).toBe("false");
+    expect(browserRes.headers["x-agentdoor-is-agent"]).toBe("false");
 
     // Self-identification agent request
     const agent2Res = await request(app, "GET", "/api/data", {
       "User-Agent": "custom-bot/1.0",
       "X-Agent-Framework": "CrewAI/0.5.0",
     });
-    expect(agent2Res.headers["x-agentgate-is-agent"]).toBe("true");
+    expect(agent2Res.headers["x-agentdoor-is-agent"]).toBe("true");
   });
 });

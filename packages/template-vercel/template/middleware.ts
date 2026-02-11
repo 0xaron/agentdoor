@@ -1,13 +1,13 @@
-import { createAgentGateMiddleware } from "@agentgate/next";
+import { createAgentDoorMiddleware } from "@agentdoor/next";
 
-export default createAgentGateMiddleware({
+export default createAgentDoorMiddleware({
   scopes: [
     { id: "data.read", description: "Read application data", price: "$0.001/req" },
     { id: "data.write", description: "Write application data", price: "$0.01/req" },
   ],
   service: {
     name: "My Agent-Ready API",
-    description: "API with AgentGate authentication",
+    description: "API with AgentDoor authentication",
   },
   x402: {
     network: "base",
@@ -17,5 +17,5 @@ export default createAgentGateMiddleware({
 });
 
 export const config = {
-  matcher: ["/api/:path*", "/.well-known/:path*", "/agentgate/:path*"],
+  matcher: ["/api/:path*", "/.well-known/:path*", "/agentdoor/:path*"],
 };

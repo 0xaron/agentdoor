@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Constants
+ * @agentdoor/core - Constants
  *
  * Default values, version strings, prefixes, and configuration defaults.
  */
@@ -8,8 +8,8 @@
 // Version
 // ---------------------------------------------------------------------------
 
-/** Current AgentGate protocol version */
-export const AGENTGATE_VERSION = "1.0";
+/** Current AgentDoor protocol version */
+export const AGENTDOOR_VERSION = "1.0";
 
 /** Current package version */
 export const PACKAGE_VERSION = "0.1.0";
@@ -48,22 +48,22 @@ export const NONCE_LENGTH = 32;
 // ---------------------------------------------------------------------------
 
 /** Discovery document endpoint */
-export const DISCOVERY_PATH = "/.well-known/agentgate.json";
+export const DISCOVERY_PATH = "/.well-known/agentdoor.json";
 
 /** A2A agent card endpoint */
 export const A2A_AGENT_CARD_PATH = "/.well-known/agent-card.json";
 
 /** Registration endpoint */
-export const REGISTER_PATH = "/agentgate/register";
+export const REGISTER_PATH = "/agentdoor/register";
 
 /** Registration verification endpoint */
-export const REGISTER_VERIFY_PATH = "/agentgate/register/verify";
+export const REGISTER_VERIFY_PATH = "/agentdoor/register/verify";
 
 /** Auth endpoint for returning agents */
-export const AUTH_PATH = "/agentgate/auth";
+export const AUTH_PATH = "/agentdoor/auth";
 
 /** Health check endpoint */
-export const HEALTH_PATH = "/agentgate/health";
+export const HEALTH_PATH = "/agentdoor/health";
 
 // ---------------------------------------------------------------------------
 // Default Rate Limits
@@ -92,12 +92,12 @@ export const DEFAULT_CHALLENGE_EXPIRY_SECONDS = 300;
 export const DEFAULT_JWT_EXPIRY = "1h";
 
 /** Challenge message format prefix */
-export const CHALLENGE_PREFIX = "agentgate";
+export const CHALLENGE_PREFIX = "agentdoor";
 
-/** Challenge message format for registration: agentgate:register:{agent_id}:{timestamp}:{nonce} */
+/** Challenge message format for registration: agentdoor:register:{agent_id}:{timestamp}:{nonce} */
 export const CHALLENGE_REGISTER_ACTION = "register";
 
-/** Challenge message format for auth: agentgate:auth:{agent_id}:{timestamp} */
+/** Challenge message format for auth: agentdoor:auth:{agent_id}:{timestamp} */
 export const CHALLENGE_AUTH_ACTION = "auth";
 
 // ---------------------------------------------------------------------------
@@ -135,10 +135,10 @@ export const AUTH_METHODS = [
 export const DISCOVERY_CACHE_CONTROL = "public, max-age=3600";
 
 /** Default service name if not configured */
-export const DEFAULT_SERVICE_NAME = "AgentGate Service";
+export const DEFAULT_SERVICE_NAME = "AgentDoor Service";
 
 /** Default service description if not configured */
-export const DEFAULT_SERVICE_DESCRIPTION = "An AgentGate-enabled API service";
+export const DEFAULT_SERVICE_DESCRIPTION = "An AgentDoor-enabled API service";
 
 // ---------------------------------------------------------------------------
 // x402 Defaults
@@ -165,7 +165,7 @@ export const KNOWN_AGENT_USER_AGENTS: ReadonlyArray<{
   { pattern: /autogen/i, framework: "autogen" },
   { pattern: /openclaw/i, framework: "openclaw" },
   { pattern: /openai-agents/i, framework: "openai-agents" },
-  { pattern: /agentgate-sdk/i, framework: "agentgate-sdk" },
+  { pattern: /agentdoor-sdk/i, framework: "agentdoor-sdk" },
   { pattern: /python-requests/i, framework: "python-requests" },
   { pattern: /python-httpx/i, framework: "python-httpx" },
   { pattern: /axios/i, framework: "axios" },

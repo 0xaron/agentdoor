@@ -1,5 +1,5 @@
 {
-  "name": "agentgate-cloudflare-starter",
+  "name": "agentdoor-cloudflare-starter",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "hono": "^4.6.0",
-    "@agentgate/hono": "^0.1.0"
+    "@agentdoor/hono": "^0.1.0"
   },
   "devDependencies": {
     "wrangler": "^3.0.0",

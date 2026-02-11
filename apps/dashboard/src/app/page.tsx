@@ -226,7 +226,7 @@ export default async function DashboardPage() {
       {/* Header */}
       <header style={styles.header}>
         <div>
-          <h1 style={styles.title}>AgentGate Dashboard</h1>
+          <h1 style={styles.title}>AgentDoor Dashboard</h1>
           <p style={styles.subtitle}>
             Agent registrations, usage analytics, and revenue tracking
           </p>

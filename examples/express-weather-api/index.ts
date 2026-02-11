@@ -1,12 +1,12 @@
 import express from "express";
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 
 const app = express();
 app.use(express.json());
 
-// --- AgentGate: 3 lines to make your API agent-ready ---
+// --- AgentDoor: 3 lines to make your API agent-ready ---
 app.use(
-  agentgate({
+  agentdoor({
     scopes: [
       {
         id: "weather.read",
@@ -34,10 +34,10 @@ app.use(
   })
 );
 // --- That's it. Your API is now agent-ready. ---
-// AgentGate automatically:
-//   - Serves /.well-known/agentgate.json (discovery)
-//   - Mounts /agentgate/register + /agentgate/register/verify (registration)
-//   - Mounts /agentgate/auth (returning agents)
+// AgentDoor automatically:
+//   - Serves /.well-known/agentdoor.json (discovery)
+//   - Mounts /agentdoor/register + /agentdoor/register/verify (registration)
+//   - Mounts /agentdoor/auth (returning agents)
 //   - Applies auth middleware to all routes (sets req.agent, req.isAgent)
 
 // Sample weather data
@@ -124,8 +124,8 @@ app.get("/api/forecast", (req, res) => {
 const PORT = parseInt(process.env.PORT || "3000", 10);
 app.listen(PORT, () => {
   console.log(`Weather API running on http://localhost:${PORT}`);
-  console.log(`Discovery: http://localhost:${PORT}/.well-known/agentgate.json`);
-  console.log(`Register:  POST http://localhost:${PORT}/agentgate/register`);
+  console.log(`Discovery: http://localhost:${PORT}/.well-known/agentdoor.json`);
+  console.log(`Register:  POST http://localhost:${PORT}/agentdoor/register`);
   console.log(`Weather:   http://localhost:${PORT}/api/weather?city=san-francisco`);
   console.log(`Forecast:  http://localhost:${PORT}/api/forecast?city=austin&days=5`);
 });

@@ -11,13 +11,13 @@
 import { describe, it, expect } from "vitest";
 import express from "express";
 import * as http from "node:http";
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 import {
   MemoryStore,
   generateKeypair,
   signChallenge,
   RateLimiter,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // HTTP request helper
@@ -87,7 +87,7 @@ function createAppWithRateLimit(maxRequests: number) {
   const app = express();
 
   app.use(
-    agentgate({
+    agentdoor({
       scopes: TEST_SCOPES,
       store,
       service: { name: "Rate Limit Test API" },
@@ -130,7 +130,7 @@ async function registerAgent(
   scopes: string[] = ["data.read"],
 ) {
   const keypair = generateKeypair();
-  const regRes = await request(app, "POST", "/agentgate/register", {
+  const regRes = await request(app, "POST", "/agentdoor/register", {
     public_key: keypair.publicKey,
     scopes_requested: scopes,
     metadata: { framework: "vitest" },
@@ -139,7 +139,7 @@ async function registerAgent(
 
   const { agent_id, challenge } = regRes.body;
   const signature = signChallenge(challenge.message, keypair.secretKey);
-  const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+  const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
     agent_id,
     signature,
   });
@@ -155,7 +155,7 @@ async function registerAgent(
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Rate Limiting", () => {
+describe("AgentDoor E2E: Rate Limiting", () => {
   it("allows requests within the rate limit", async () => {
     const { app } = createAppWithRateLimit(5);
     const { apiKey } = await registerAgent(app);
@@ -235,7 +235,7 @@ describe("AgentGate E2E: Rate Limiting", () => {
     const store = new MemoryStore();
     const app = express();
     app.use(
-      agentgate({
+      agentdoor({
         scopes: TEST_SCOPES,
         store,
         service: { name: "Rate Limit Test" },
@@ -244,14 +244,14 @@ describe("AgentGate E2E: Rate Limiting", () => {
     );
 
     const keypair = generateKeypair();
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
     });
     const { agent_id, challenge } = regRes.body;
     const signature = signChallenge(challenge.message, keypair.secretKey);
 
-    const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+    const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature,
     });
@@ -264,14 +264,14 @@ describe("AgentGate E2E: Rate Limiting", () => {
   it("rate limit info is included in the discovery document", async () => {
     const app = express();
     app.use(
-      agentgate({
+      agentdoor({
         scopes: TEST_SCOPES,
         service: { name: "Rate Limit Test" },
         rateLimit: { requests: 200, window: "1h" },
       }),
     );
 
-    const res = await request(app, "GET", "/.well-known/agentgate.json");
+    const res = await request(app, "GET", "/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
     expect(res.body.rate_limits).toBeDefined();
     expect(res.body.rate_limits.default).toBe("200/1h");

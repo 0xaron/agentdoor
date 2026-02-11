@@ -1,9 +1,9 @@
 import type {
-  AgentGateConfig,
+  AgentDoorConfig,
   AgentContext,
   ScopeDefinition,
   Agent,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // In-memory stores (edge-compatible, no native deps)
@@ -86,13 +86,13 @@ async function verifyEd25519(
 // Discovery document generation
 // ---------------------------------------------------------------------------
 
-function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
+function buildDiscoveryDocument(config: AgentDoorConfig): Record<string, unknown> {
   return {
-    agentgate_version: "1.0",
-    service_name: config.service?.name ?? "AgentGate Service",
+    agentdoor_version: "1.0",
+    service_name: config.service?.name ?? "AgentDoor Service",
     service_description: config.service?.description ?? "",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
       id: s.id,
       description: s.description,
@@ -134,7 +134,7 @@ function jsonResponse(body: unknown, status: number, extraHeaders?: Record<strin
 // Configuration
 // ---------------------------------------------------------------------------
 
-export interface AgentGateVercelConfig extends AgentGateConfig {
+export interface AgentDoorVercelConfig extends AgentDoorConfig {
   /**
    * Path patterns that require agent auth verification.
    * Defaults to `["/api/"]`.
@@ -143,7 +143,7 @@ export interface AgentGateVercelConfig extends AgentGateConfig {
 
   /**
    * When `true`, unauthenticated requests to protected paths pass through
-   * with `x-agentgate-authenticated` header set to `"false"`.
+   * with `x-agentdoor-authenticated` header set to `"false"`.
    * When `false` (default), unauthenticated requests receive a 401.
    */
   passthrough?: boolean;
@@ -157,43 +157,43 @@ export interface AgentGateVercelConfig extends AgentGateConfig {
  * Creates a Vercel Edge middleware function that uses standard Web APIs.
  *
  * Handles:
- * 1. `GET /.well-known/agentgate.json` — discovery document
- * 2. `POST /agentgate/register` — agent registration + challenge
- * 3. `POST /agentgate/register/verify` — challenge verification
- * 4. `POST /agentgate/auth` — returning agent authentication
+ * 1. `GET /.well-known/agentdoor.json` — discovery document
+ * 2. `POST /agentdoor/register` — agent registration + challenge
+ * 3. `POST /agentdoor/register/verify` — challenge verification
+ * 4. `POST /agentdoor/auth` — returning agent authentication
  * 5. Auth guard for protected path prefixes
  *
  * Non-matching requests are passed through (returns `null`), signaling
  * that the Vercel platform should continue to the origin.
  */
-export function createEdgeMiddleware(config: AgentGateVercelConfig) {
+export function createEdgeMiddleware(config: AgentDoorVercelConfig) {
   const protectedPrefixes = config.protectedPaths ?? ["/api/"];
   const passthrough = config.passthrough ?? false;
 
-  return async function agentGateEdgeMiddleware(request: Request): Promise<Response | null> {
+  return async function agentDoorEdgeMiddleware(request: Request): Promise<Response | null> {
     const url = new URL(request.url);
     const pathname = url.pathname;
     const method = request.method;
 
     // ---- Discovery ----
-    if (pathname === "/.well-known/agentgate.json" && method === "GET") {
+    if (pathname === "/.well-known/agentdoor.json" && method === "GET") {
       return jsonResponse(buildDiscoveryDocument(config), 200, {
         "Cache-Control": "public, max-age=3600",
       });
     }
 
     // ---- Registration ----
-    if (pathname === "/agentgate/register" && method === "POST") {
+    if (pathname === "/agentdoor/register" && method === "POST") {
       return handleRegister(request, config);
     }
 
     // ---- Registration verify ----
-    if (pathname === "/agentgate/register/verify" && method === "POST") {
+    if (pathname === "/agentdoor/register/verify" && method === "POST") {
       return handleRegisterVerify(request, config);
     }
 
     // ---- Auth (returning agents) ----
-    if (pathname === "/agentgate/auth" && method === "POST") {
+    if (pathname === "/agentdoor/auth" && method === "POST") {
       return handleAuth(request);
     }
 
@@ -203,7 +203,7 @@ export function createEdgeMiddleware(config: AgentGateVercelConfig) {
       return handleAuthGuard(request, passthrough, config);
     }
 
-    // Non-AgentGate routes — return null to pass through to origin.
+    // Non-AgentDoor routes — return null to pass through to origin.
     return null;
   };
 }
@@ -214,7 +214,7 @@ export function createEdgeMiddleware(config: AgentGateVercelConfig) {
 
 async function handleRegister(
   request: Request,
-  config: AgentGateVercelConfig,
+  config: AgentDoorVercelConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -259,7 +259,7 @@ async function handleRegister(
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
+  const message = `agentdoor:register:${agentId}:${timestamp}:${nonce}`;
   const expiresAt = Date.now() + 5 * 60 * 1000;
 
   pendingChallenges.set(agentId, {
@@ -287,7 +287,7 @@ async function handleRegister(
 
 async function handleRegisterVerify(
   request: Request,
-  config: AgentGateVercelConfig,
+  config: AgentDoorVercelConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -404,7 +404,7 @@ async function handleAuth(request: Request): Promise<Response> {
     return jsonResponse({ error: "Unknown agent_id" }, 404);
   }
 
-  const message = `agentgate:auth:${agentId}:${timestamp}`;
+  const message = `agentdoor:auth:${agentId}:${timestamp}`;
   const valid = await verifyEd25519(message, signature, agent.publicKey);
   if (!valid) {
     return jsonResponse({ error: "Invalid signature" }, 400);
@@ -422,7 +422,7 @@ async function handleAuth(request: Request): Promise<Response> {
 async function handleAuthGuard(
   request: Request,
   passthrough: boolean,
-  config: AgentGateVercelConfig,
+  config: AgentDoorVercelConfig,
 ): Promise<Response> {
   const authHeader = request.headers.get("authorization");
 
@@ -475,9 +475,9 @@ async function handleAuthGuard(
   // Return a response that signals the platform to continue to origin
   // with the agent context injected as headers.
   const headers = new Headers(request.headers);
-  headers.set("x-agentgate-agent", JSON.stringify(agentContext));
-  headers.set("x-agentgate-authenticated", "true");
-  headers.set("x-agentgate-agent-id", matchedAgent.id);
+  headers.set("x-agentdoor-agent", JSON.stringify(agentContext));
+  headers.set("x-agentdoor-authenticated", "true");
+  headers.set("x-agentdoor-agent-id", matchedAgent.id);
 
   // Return a 200 with agent context headers. In a real Vercel deployment,
   // you would use NextResponse.next() — here we return a JSON response
@@ -485,9 +485,9 @@ async function handleAuthGuard(
   return new Response(null, {
     status: 200,
     headers: {
-      "x-agentgate-agent": JSON.stringify(agentContext),
-      "x-agentgate-authenticated": "true",
-      "x-agentgate-agent-id": matchedAgent.id,
+      "x-agentdoor-agent": JSON.stringify(agentContext),
+      "x-agentdoor-authenticated": "true",
+      "x-agentdoor-agent-id": matchedAgent.id,
     },
   });
 }
@@ -500,7 +500,7 @@ function passthroughResponse(_request: Request): Response {
   return new Response(null, {
     status: 200,
     headers: {
-      "x-agentgate-authenticated": "false",
+      "x-agentdoor-authenticated": "false",
     },
   });
 }

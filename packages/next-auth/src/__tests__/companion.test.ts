@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextAuthCompanion } from "../companion.js";
 import type { NextAuthProviderResult, NextAuthAgentUser } from "../companion.js";
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 /** Creates a mock Agent for testing. */
 function createMockAgent(overrides: Partial<Agent> = {}): Agent {
@@ -56,8 +56,8 @@ describe("NextAuthCompanion", () => {
     it("returns a provider with correct structure", () => {
       const provider = companion.createProvider();
 
-      expect(provider.id).toBe("agentgate");
-      expect(provider.name).toBe("AgentGate Agent");
+      expect(provider.id).toBe("agentdoor");
+      expect(provider.name).toBe("AgentDoor Agent");
       expect(provider.type).toBe("credentials");
       expect(provider.credentials).toHaveProperty("agentId");
       expect(provider.credentials).toHaveProperty("apiKey");
@@ -140,7 +140,7 @@ describe("NextAuthCompanion", () => {
       const provider = companion.createProvider();
       const user = await provider.authorize({ agentId: "ag_test_1", apiKey: "key123" });
 
-      expect(user!.email).toBe("ag_test_1@agentgate.local");
+      expect(user!.email).toBe("ag_test_1@agentdoor.local");
     });
   });
 

@@ -1,5 +1,5 @@
 {
-  "name": "agentgate-railway-starter",
+  "name": "agentdoor-railway-starter",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "express": "^4.18.0",
-    "@agentgate/express": "^0.1.0"
+    "@agentdoor/express": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

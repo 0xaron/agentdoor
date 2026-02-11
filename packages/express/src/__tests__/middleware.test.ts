@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import express from "express";
 import * as http from "node:http";
-import { agentgate } from "../index.js";
+import { agentdoor } from "../index.js";
 import {
   MemoryStore,
   generateKeypair,
@@ -10,9 +10,9 @@ import {
   hashApiKey,
   verifyToken,
   resolveConfig,
-  AGENTGATE_VERSION,
+  AGENTDOOR_VERSION,
   API_KEY_PREFIX,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Test helper: make HTTP requests to an Express app without supertest
@@ -84,14 +84,14 @@ const TEST_SCOPES = [
 ];
 
 /**
- * Helper: creates a fresh Express app with agentgate middleware and a test route.
+ * Helper: creates a fresh Express app with agentdoor middleware and a test route.
  * Returns the app, the store, and a helper to perform full registration.
  */
 function createTestApp(overrides?: Record<string, unknown>) {
   const store = new MemoryStore();
   const app = express();
   app.use(
-    agentgate({
+    agentdoor({
       scopes: TEST_SCOPES,
       store,
       ...overrides,
@@ -116,7 +116,7 @@ async function registerAgent(
   const keypair = generateKeypair();
 
   // Step 1: Register
-  const regRes = await makeRequest(app, "POST", "/agentgate/register", {
+  const regRes = await makeRequest(app, "POST", "/agentdoor/register", {
     public_key: keypair.publicKey,
     scopes_requested: scopesRequested,
   });
@@ -128,7 +128,7 @@ async function registerAgent(
   // Step 2: Sign the challenge and verify
   const signature = signChallenge(challenge.message, keypair.secretKey);
 
-  const verifyRes = await makeRequest(app, "POST", "/agentgate/register/verify", {
+  const verifyRes = await makeRequest(app, "POST", "/agentdoor/register/verify", {
     agent_id,
     signature,
   });
@@ -149,29 +149,29 @@ async function registerAgent(
 // Tests
 // ===========================================================================
 
-describe("agentgate() Express middleware", () => {
+describe("agentdoor() Express middleware", () => {
   // -------------------------------------------------------------------------
   // Discovery endpoint
   // -------------------------------------------------------------------------
 
-  describe("GET /.well-known/agentgate.json", () => {
+  describe("GET /.well-known/agentdoor.json", () => {
     it("returns 200 with a valid discovery document", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/.well-known/agentgate.json");
+      const res = await makeRequest(app, "GET", "/.well-known/agentdoor.json");
 
       expect(res.status).toBe(200);
-      expect(res.body.agentgate_version).toBe(AGENTGATE_VERSION);
+      expect(res.body.agentdoor_version).toBe(AGENTDOOR_VERSION);
       expect(res.body.service_name).toEqual(expect.any(String));
-      expect(res.body.registration_endpoint).toBe("/agentgate/register");
-      expect(res.body.auth_endpoint).toBe("/agentgate/auth");
+      expect(res.body.registration_endpoint).toBe("/agentdoor/register");
+      expect(res.body.auth_endpoint).toBe("/agentdoor/auth");
       expect(res.body.auth_methods).toEqual(expect.arrayContaining(["ed25519-challenge", "jwt"]));
     });
 
     it("includes scopes_available from configuration", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/.well-known/agentgate.json");
+      const res = await makeRequest(app, "GET", "/.well-known/agentdoor.json");
 
       expect(res.body.scopes_available).toHaveLength(2);
       expect(res.body.scopes_available[0]).toMatchObject({
@@ -187,7 +187,7 @@ describe("agentgate() Express middleware", () => {
     it("includes rate_limits information", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/.well-known/agentgate.json");
+      const res = await makeRequest(app, "GET", "/.well-known/agentdoor.json");
 
       expect(res.body.rate_limits).toBeDefined();
       expect(res.body.rate_limits.registration).toEqual(expect.any(String));
@@ -197,11 +197,11 @@ describe("agentgate() Express middleware", () => {
     it("sets proper Content-Type and Cache-Control headers", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/.well-known/agentgate.json");
+      const res = await makeRequest(app, "GET", "/.well-known/agentdoor.json");
 
       expect(res.headers["content-type"]).toContain("application/json");
       expect(res.headers["cache-control"]).toContain("public");
-      expect(res.headers["x-agentgate-version"]).toBe(AGENTGATE_VERSION);
+      expect(res.headers["x-agentdoor-version"]).toBe(AGENTDOOR_VERSION);
     });
   });
 
@@ -209,11 +209,11 @@ describe("agentgate() Express middleware", () => {
   // Health endpoint
   // -------------------------------------------------------------------------
 
-  describe("GET /agentgate/health", () => {
+  describe("GET /agentdoor/health", () => {
     it("returns 200 with status healthy", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/agentgate/health");
+      const res = await makeRequest(app, "GET", "/agentdoor/health");
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("healthy");
@@ -222,9 +222,9 @@ describe("agentgate() Express middleware", () => {
     it("includes version and uptime info", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/agentgate/health");
+      const res = await makeRequest(app, "GET", "/agentdoor/health");
 
-      expect(res.body.version).toBe(AGENTGATE_VERSION);
+      expect(res.body.version).toBe(AGENTDOOR_VERSION);
       expect(res.body.uptime_ms).toEqual(expect.any(Number));
       expect(res.body.uptime_ms).toBeGreaterThanOrEqual(0);
     });
@@ -232,7 +232,7 @@ describe("agentgate() Express middleware", () => {
     it("includes a timestamp", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/agentgate/health");
+      const res = await makeRequest(app, "GET", "/agentdoor/health");
 
       expect(res.body.timestamp).toEqual(expect.any(String));
       // The timestamp should be a valid ISO 8601 date
@@ -243,7 +243,7 @@ describe("agentgate() Express middleware", () => {
     it("includes storage connectivity status", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/agentgate/health");
+      const res = await makeRequest(app, "GET", "/agentdoor/health");
 
       expect(res.body.storage).toBeDefined();
       expect(res.body.storage.status).toBe("connected");
@@ -254,12 +254,12 @@ describe("agentgate() Express middleware", () => {
   // Registration flow
   // -------------------------------------------------------------------------
 
-  describe("POST /agentgate/register (step 1)", () => {
+  describe("POST /agentdoor/register (step 1)", () => {
     it("returns 201 with agent_id and challenge on valid request", async () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: ["test.read"],
       });
@@ -275,7 +275,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 400 when public_key is missing", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         scopes_requested: ["test.read"],
       });
 
@@ -288,7 +288,7 @@ describe("agentgate() Express middleware", () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
       });
 
@@ -301,7 +301,7 @@ describe("agentgate() Express middleware", () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: [],
       });
@@ -314,7 +314,7 @@ describe("agentgate() Express middleware", () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: ["nonexistent.scope"],
       });
@@ -333,7 +333,7 @@ describe("agentgate() Express middleware", () => {
       const reg = await registerAgent(app, ["test.read"]);
 
       // Try to register the same public key again
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: reg.keypair.publicKey,
         scopes_requested: ["test.read"],
       });
@@ -347,24 +347,24 @@ describe("agentgate() Express middleware", () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: ["test.read"],
       });
 
       expect(res.body.challenge.message).toContain(res.body.agent_id);
-      // Challenge format: agentgate:register:{agent_id}:{timestamp}:{nonce}
-      expect(res.body.challenge.message).toMatch(/^agentgate:register:ag_/);
+      // Challenge format: agentdoor:register:{agent_id}:{timestamp}:{nonce}
+      expect(res.body.challenge.message).toMatch(/^agentdoor:register:ag_/);
     });
   });
 
-  describe("POST /agentgate/register/verify (step 2)", () => {
+  describe("POST /agentdoor/register/verify (step 2)", () => {
     it("returns 200 with agent_id, api_key, and token on valid signature", async () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
       // Step 1
-      const regRes = await makeRequest(app, "POST", "/agentgate/register", {
+      const regRes = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: ["test.read"],
       });
@@ -376,7 +376,7 @@ describe("agentgate() Express middleware", () => {
       const verifyRes = await makeRequest(
         app,
         "POST",
-        "/agentgate/register/verify",
+        "/agentdoor/register/verify",
         { agent_id, signature },
       );
 
@@ -394,7 +394,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 400 when agent_id is missing", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register/verify", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register/verify", {
         signature: "bogus",
       });
 
@@ -406,7 +406,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 400 when signature is missing", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register/verify", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register/verify", {
         agent_id: "ag_test123",
       });
 
@@ -418,7 +418,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 404 when agent_id has no pending registration", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register/verify", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register/verify", {
         agent_id: "ag_nonexistent_id_12345",
         signature: "bogus_signature",
       });
@@ -432,7 +432,7 @@ describe("agentgate() Express middleware", () => {
       const keypair = generateKeypair();
 
       // Step 1
-      const regRes = await makeRequest(app, "POST", "/agentgate/register", {
+      const regRes = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: ["test.read"],
       });
@@ -449,7 +449,7 @@ describe("agentgate() Express middleware", () => {
       const verifyRes = await makeRequest(
         app,
         "POST",
-        "/agentgate/register/verify",
+        "/agentdoor/register/verify",
         { agent_id, signature: wrongSignature },
       );
 
@@ -528,7 +528,7 @@ describe("agentgate() Express middleware", () => {
   // Auth endpoint (returning agents)
   // -------------------------------------------------------------------------
 
-  describe("POST /agentgate/auth", () => {
+  describe("POST /agentdoor/auth", () => {
     it("returns 200 with a fresh token on valid auth request", async () => {
       const { app } = createTestApp({
         jwt: { secret: "test-secret-that-is-long-enough" },
@@ -536,12 +536,12 @@ describe("agentgate() Express middleware", () => {
 
       const reg = await registerAgent(app, ["test.read"]);
 
-      // Build auth request: sign "agentgate:auth:{agent_id}:{timestamp}"
+      // Build auth request: sign "agentdoor:auth:{agent_id}:{timestamp}"
       const timestamp = new Date().toISOString();
-      const authMessage = `agentgate:auth:${reg.agentId}:${timestamp}`;
+      const authMessage = `agentdoor:auth:${reg.agentId}:${timestamp}`;
       const signature = signChallenge(authMessage, reg.keypair.secretKey);
 
-      const authRes = await makeRequest(app, "POST", "/agentgate/auth", {
+      const authRes = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: reg.agentId,
         timestamp,
         signature,
@@ -562,7 +562,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 400 when agent_id is missing", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/auth", {
+      const res = await makeRequest(app, "POST", "/agentdoor/auth", {
         timestamp: new Date().toISOString(),
         signature: "bogus",
       });
@@ -574,7 +574,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 400 when timestamp is missing", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/auth", {
+      const res = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: "ag_test",
         signature: "bogus",
       });
@@ -586,7 +586,7 @@ describe("agentgate() Express middleware", () => {
     it("returns 400 when signature is missing", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "POST", "/agentgate/auth", {
+      const res = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: "ag_test",
         timestamp: new Date().toISOString(),
       });
@@ -600,10 +600,10 @@ describe("agentgate() Express middleware", () => {
 
       const timestamp = new Date().toISOString();
       const keypair = generateKeypair();
-      const authMessage = `agentgate:auth:ag_nonexistent:${timestamp}`;
+      const authMessage = `agentdoor:auth:ag_nonexistent:${timestamp}`;
       const signature = signChallenge(authMessage, keypair.secretKey);
 
-      const res = await makeRequest(app, "POST", "/agentgate/auth", {
+      const res = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: "ag_nonexistent",
         timestamp,
         signature,
@@ -620,10 +620,10 @@ describe("agentgate() Express middleware", () => {
 
       const timestamp = new Date().toISOString();
       const wrongKeypair = generateKeypair();
-      const authMessage = `agentgate:auth:${reg.agentId}:${timestamp}`;
+      const authMessage = `agentdoor:auth:${reg.agentId}:${timestamp}`;
       const wrongSignature = signChallenge(authMessage, wrongKeypair.secretKey);
 
-      const authRes = await makeRequest(app, "POST", "/agentgate/auth", {
+      const authRes = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: reg.agentId,
         timestamp,
         signature: wrongSignature,
@@ -640,10 +640,10 @@ describe("agentgate() Express middleware", () => {
 
       // Use a timestamp from 10 minutes ago (exceeds 5-minute window)
       const oldTimestamp = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-      const authMessage = `agentgate:auth:${reg.agentId}:${oldTimestamp}`;
+      const authMessage = `agentdoor:auth:${reg.agentId}:${oldTimestamp}`;
       const signature = signChallenge(authMessage, reg.keypair.secretKey);
 
-      const authRes = await makeRequest(app, "POST", "/agentgate/auth", {
+      const authRes = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: reg.agentId,
         timestamp: oldTimestamp,
         signature,
@@ -658,7 +658,7 @@ describe("agentgate() Express middleware", () => {
 
       const reg = await registerAgent(app, ["test.read"]);
 
-      const authRes = await makeRequest(app, "POST", "/agentgate/auth", {
+      const authRes = await makeRequest(app, "POST", "/agentdoor/auth", {
         agent_id: reg.agentId,
         timestamp: "not-a-date",
         signature: "bogus",
@@ -777,23 +777,23 @@ describe("agentgate() Express middleware", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Auth guard is NOT applied to agentgate own routes
+  // Auth guard is NOT applied to agentdoor own routes
   // -------------------------------------------------------------------------
 
-  describe("Auth guard skips agentgate routes", () => {
+  describe("Auth guard skips agentdoor routes", () => {
     it("discovery endpoint works without auth", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/.well-known/agentgate.json");
+      const res = await makeRequest(app, "GET", "/.well-known/agentdoor.json");
 
       expect(res.status).toBe(200);
-      expect(res.body.agentgate_version).toBeDefined();
+      expect(res.body.agentdoor_version).toBeDefined();
     });
 
     it("health endpoint works without auth", async () => {
       const { app } = createTestApp();
 
-      const res = await makeRequest(app, "GET", "/agentgate/health");
+      const res = await makeRequest(app, "GET", "/agentdoor/health");
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("healthy");
@@ -803,7 +803,7 @@ describe("agentgate() Express middleware", () => {
       const { app } = createTestApp();
       const keypair = generateKeypair();
 
-      const res = await makeRequest(app, "POST", "/agentgate/register", {
+      const res = await makeRequest(app, "POST", "/agentdoor/register", {
         public_key: keypair.publicKey,
         scopes_requested: ["test.read"],
       });
@@ -822,7 +822,7 @@ describe("agentgate() Express middleware", () => {
         service: { name: "My Test API", description: "A test API service" },
       });
 
-      const res = await makeRequest(app, "GET", "/.well-known/agentgate.json");
+      const res = await makeRequest(app, "GET", "/.well-known/agentdoor.json");
 
       expect(res.body.service_name).toBe("My Test API");
       expect(res.body.service_description).toBe("A test API service");
@@ -831,7 +831,7 @@ describe("agentgate() Express middleware", () => {
     it("uses the provided store instance", async () => {
       const store = new MemoryStore();
       const app = express();
-      app.use(agentgate({ scopes: TEST_SCOPES, store }));
+      app.use(agentdoor({ scopes: TEST_SCOPES, store }));
       app.get("/api/test", (req, res) => {
         res.json({ isAgent: req.isAgent, agent: req.agent ?? null });
       });
@@ -848,7 +848,7 @@ describe("agentgate() Express middleware", () => {
       const store = new MemoryStore();
       const app = express();
       app.use(
-        agentgate({
+        agentdoor({
           scopes: TEST_SCOPES,
           store,
           enableAuthGuard: false,

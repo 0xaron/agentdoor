@@ -1,7 +1,7 @@
 /**
- * @agentgate/stytch - Stytch Companion Plugin for AgentGate
+ * @agentdoor/stytch - Stytch Companion Plugin for AgentDoor
  *
- * Bridges AgentGate with Stytch Connected Apps by creating
+ * Bridges AgentDoor with Stytch Connected Apps by creating
  * Stytch user records for registered agents.
  */
 

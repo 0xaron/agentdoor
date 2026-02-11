@@ -1,7 +1,7 @@
 /**
  * x402 Bazaar Integration
  *
- * Manages the lifecycle of AgentGate service listings on the x402 Bazaar
+ * Manages the lifecycle of AgentDoor service listings on the x402 Bazaar
  * marketplace. Supports publishing, updating, delisting, searching, and
  * bulk syncing from a registry.
  */
@@ -123,7 +123,7 @@ function buildListingData(
     paymentAddress,
     network,
     currency,
-    agentgateVersion: doc.agentgate_version,
+    agentdoorVersion: doc.agentdoor_version,
     registrationEndpoint: doc.registration_endpoint,
     authEndpoint: doc.auth_endpoint,
     authMethods: doc.auth_methods,
@@ -152,7 +152,7 @@ export class BazaarIntegration {
   /**
    * Publish a new service listing on the Bazaar marketplace.
    *
-   * @param serviceUrl - Base URL of the AgentGate service
+   * @param serviceUrl - Base URL of the AgentDoor service
    * @param discoveryDoc - The parsed discovery document
    * @returns The created BazaarListing
    */
@@ -194,7 +194,7 @@ export class BazaarIntegration {
   /**
    * Update an existing service listing on the Bazaar marketplace.
    *
-   * @param serviceUrl - Base URL of the AgentGate service
+   * @param serviceUrl - Base URL of the AgentDoor service
    * @param discoveryDoc - The updated discovery document
    * @returns The updated BazaarListing
    */

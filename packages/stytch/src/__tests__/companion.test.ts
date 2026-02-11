@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StytchCompanion } from "../companion.js";
 import type { StytchClientInterface } from "../companion.js";
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 /** Creates a mock Stytch client for testing. */
 function createMockStytchClient(): StytchClientInterface {
@@ -134,7 +134,7 @@ describe("StytchCompanion", () => {
 
       expect(mockClient.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
-          email: "ag_test_1@agents.agentgate.stytch.io",
+          email: "ag_test_1@agents.agentdoor.stytch.io",
         }),
       );
     });

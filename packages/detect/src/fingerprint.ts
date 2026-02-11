@@ -78,7 +78,7 @@ const DEFAULT_WEIGHTS: Record<string, number> = {
  *
  * @example
  * ```ts
- * import { classifyRequest } from "@agentgate/detect";
+ * import { classifyRequest } from "@agentdoor/detect";
  *
  * const result = classifyRequest({
  *   headers: { "user-agent": "python-requests/2.31.0" },

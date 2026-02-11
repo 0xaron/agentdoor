@@ -27,11 +27,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@agentgate/core": path.resolve(__dirname, "packages/core/src/index.ts"),
-      "@agentgate/express": path.resolve(__dirname, "packages/express/src/index.ts"),
-      "@agentgate/next": path.resolve(__dirname, "packages/next/src/middleware.ts"),
-      "@agentgate/hono": path.resolve(__dirname, "packages/hono/src/middleware.ts"),
-      "@agentgate/detect": path.resolve(__dirname, "packages/detect/src/index.ts"),
+      "@agentdoor/core": path.resolve(__dirname, "packages/core/src/index.ts"),
+      "@agentdoor/express": path.resolve(__dirname, "packages/express/src/index.ts"),
+      "@agentdoor/next": path.resolve(__dirname, "packages/next/src/middleware.ts"),
+      "@agentdoor/hono": path.resolve(__dirname, "packages/hono/src/middleware.ts"),
+      "@agentdoor/detect": path.resolve(__dirname, "packages/detect/src/index.ts"),
     },
   },
 });

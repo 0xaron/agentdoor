@@ -1,8 +1,8 @@
 /**
- * @agentgate/bazaar
+ * @agentdoor/bazaar
  *
  * x402 Bazaar Integration - automatically publishes, updates, and delists
- * AgentGate-enabled services on the x402 Bazaar marketplace.
+ * AgentDoor-enabled services on the x402 Bazaar marketplace.
  *
  * @packageDocumentation
  */

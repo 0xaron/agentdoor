@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FirebaseCompanion } from "../companion.js";
 import type { FirebaseAdminInterface } from "../companion.js";
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 /** Creates a mock Firebase Admin interface for testing. */
 function createMockFirebaseAdmin(): FirebaseAdminInterface {
@@ -112,10 +112,10 @@ describe("FirebaseCompanion", () => {
       expect(mockAdmin.setCustomUserClaims).toHaveBeenCalledWith(
         "ag_test_1",
         {
-          agentgate_is_agent: true,
-          agentgate_agent_id: "ag_test_1",
-          agentgate_scopes: ["data.read"],
-          agentgate_wallet: null,
+          agentdoor_is_agent: true,
+          agentdoor_agent_id: "ag_test_1",
+          agentdoor_scopes: ["data.read"],
+          agentdoor_wallet: null,
         },
       );
     });
@@ -127,7 +127,7 @@ describe("FirebaseCompanion", () => {
       expect(mockAdmin.setCustomUserClaims).toHaveBeenCalledWith(
         "ag_test_1",
         expect.objectContaining({
-          agentgate_wallet: "0xABC123",
+          agentdoor_wallet: "0xABC123",
         }),
       );
     });
@@ -198,10 +198,10 @@ describe("FirebaseCompanion", () => {
       const result = await companion.onAgentRegistered(agent);
 
       expect(result.customClaims).toEqual({
-        agentgate_is_agent: true,
-        agentgate_agent_id: "ag_test_1",
-        agentgate_scopes: ["data.read", "data.write"],
-        agentgate_wallet: null,
+        agentdoor_is_agent: true,
+        agentdoor_agent_id: "ag_test_1",
+        agentdoor_scopes: ["data.read", "data.write"],
+        agentdoor_wallet: null,
       });
     });
 
@@ -331,7 +331,7 @@ describe("FirebaseCompanion", () => {
       const lastCall = calls[calls.length - 1];
       expect(lastCall[1]).toEqual(
         expect.objectContaining({
-          agentgate_scopes: ["data.read", "data.write", "admin"],
+          agentdoor_scopes: ["data.read", "data.write", "admin"],
         }),
       );
     });

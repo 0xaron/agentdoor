@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler, Hono } from "hono";
 import type {
-  AgentGateConfig,
+  AgentDoorConfig,
   AgentContext,
   ScopeDefinition,
   Agent,
@@ -8,8 +8,8 @@ import type {
   ChallengeData,
   WebhooksConfig,
   ReputationConfig,
-} from "@agentgate/core";
-import { MemoryStore, WebhookEmitter, ReputationManager } from "@agentgate/core";
+} from "@agentdoor/core";
+import { MemoryStore, WebhookEmitter, ReputationManager } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers (Web Crypto API — works on CF Workers, Deno, Bun, Node 20+)
@@ -55,7 +55,7 @@ async function issueJwt(
     scopes: agent.scopes,
     public_key: agent.publicKey,
     metadata: agent.metadata,
-    iss: "agentgate",
+    iss: "agentdoor",
     iat: now,
     exp,
   };
@@ -139,7 +139,7 @@ const agentSpending = new Map<string, number>();
  * Check whether an agent has exceeded any configured spending cap.
  */
 function checkSpendingCap(
-  config: AgentGateHonoConfig,
+  config: AgentDoorHonoConfig,
   agentId: string,
 ): { currentSpend: number; cap: number } | null {
   const caps = config.spendingCaps?.defaultCaps;
@@ -161,13 +161,13 @@ function checkSpendingCap(
 // Discovery document generation
 // ---------------------------------------------------------------------------
 
-function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
+function buildDiscoveryDocument(config: AgentDoorConfig): Record<string, unknown> {
   return {
-    agentgate_version: "1.0",
-    service_name: config.service?.name ?? "AgentGate Service",
+    agentdoor_version: "1.0",
+    service_name: config.service?.name ?? "AgentDoor Service",
     service_description: config.service?.description ?? "",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
       id: s.id,
       description: s.description,
@@ -196,15 +196,15 @@ function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown
 // ---------------------------------------------------------------------------
 
 /**
- * Variables that AgentGate middleware sets on the Hono context.
+ * Variables that AgentDoor middleware sets on the Hono context.
  * Consumers can declare these in their app type:
  *
  * ```ts
- * type Env = { Variables: AgentGateVariables };
+ * type Env = { Variables: AgentDoorVariables };
  * const app = new Hono<Env>();
  * ```
  */
-export interface AgentGateVariables {
+export interface AgentDoorVariables {
   agent: AgentContext | null;
   isAgent: boolean;
 }
@@ -213,7 +213,7 @@ export interface AgentGateVariables {
 // Configuration
 // ---------------------------------------------------------------------------
 
-export interface AgentGateHonoConfig extends AgentGateConfig {
+export interface AgentDoorHonoConfig extends AgentDoorConfig {
   /**
    * Path prefix patterns that require agent auth verification.
    * Defaults to `["/api"]`.
@@ -228,8 +228,8 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
   passthrough?: boolean;
 
   /**
-   * Base path prefix for AgentGate routes. Defaults to empty string.
-   * Set to e.g. "/v1" to mount routes at "/v1/agentgate/register" etc.
+   * Base path prefix for AgentDoor routes. Defaults to empty string.
+   * Set to e.g. "/v1" to mount routes at "/v1/agentdoor/register" etc.
    */
   basePath?: string;
 
@@ -238,7 +238,7 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
    * store is created automatically (suitable for development and testing).
    *
    * For production, supply a persistent store (SQLite, Postgres, etc.)
-   * from @agentgate/core.
+   * from @agentdoor/core.
    */
   store?: AgentStore;
 }
@@ -248,17 +248,17 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
 // ---------------------------------------------------------------------------
 
 /**
- * Mount all AgentGate routes onto a Hono app instance. This registers the
+ * Mount all AgentDoor routes onto a Hono app instance. This registers the
  * discovery, register, verify, and auth endpoints as explicit routes, plus
  * an auth guard middleware for protected paths.
  *
  * ```ts
  * import { Hono } from "hono";
- * import { agentgate } from "@agentgate/hono";
+ * import { agentdoor } from "@agentdoor/hono";
  *
  * const app = new Hono();
  *
- * agentgate(app, {
+ * agentdoor(app, {
  *   scopes: [{ id: "data.read", description: "Read data" }],
  *   pricing: { "data.read": "$0.001/req" },
  * });
@@ -271,14 +271,14 @@ export interface AgentGateHonoConfig extends AgentGateConfig {
  * export default app;
  * ```
  */
-export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: AgentGateHonoConfig): void {
+export function agentdoor(app: Hono<{ Variables: AgentDoorVariables }>, config: AgentDoorHonoConfig): void {
   const base = config.basePath ?? "";
   const store: AgentStore = config.store ?? new MemoryStore();
   const webhookEmitter = new WebhookEmitter(config.webhooks as WebhooksConfig | undefined);
   const reputationManager = new ReputationManager(config.reputation as ReputationConfig | undefined);
 
   // Discovery endpoint.
-  app.get(`${base}/.well-known/agentgate.json`, (c: Context) => {
+  app.get(`${base}/.well-known/agentdoor.json`, (c: Context) => {
     const doc = buildDiscoveryDocument(config);
     return c.json(doc, 200, {
       "Cache-Control": "public, max-age=3600",
@@ -286,17 +286,17 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
   });
 
   // Registration endpoint.
-  app.post(`${base}/agentgate/register`, async (c: Context) => {
+  app.post(`${base}/agentdoor/register`, async (c: Context) => {
     return handleRegister(c, config, store);
   });
 
   // Registration verification endpoint.
-  app.post(`${base}/agentgate/register/verify`, async (c: Context) => {
+  app.post(`${base}/agentdoor/register/verify`, async (c: Context) => {
     return handleRegisterVerify(c, config, store, webhookEmitter);
   });
 
   // Auth endpoint (returning agents).
-  app.post(`${base}/agentgate/auth`, async (c: Context) => {
+  app.post(`${base}/agentdoor/auth`, async (c: Context) => {
     return handleAuth(c, config, store, webhookEmitter);
   });
 
@@ -310,14 +310,14 @@ export function agentgate(app: Hono<{ Variables: AgentGateVariables }>, config: 
 
 /**
  * Create a Hono middleware that only mounts the auth guard on protected paths.
- * Useful when you want to mount AgentGate routes manually but still get
+ * Useful when you want to mount AgentDoor routes manually but still get
  * automatic auth verification.
  */
 export function createAuthGuardMiddleware(
-  config: AgentGateHonoConfig,
+  config: AgentDoorHonoConfig,
   storeOverride?: AgentStore,
   reputationManagerOverride?: ReputationManager,
-): MiddlewareHandler<{ Variables: AgentGateVariables }> {
+): MiddlewareHandler<{ Variables: AgentDoorVariables }> {
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = storeOverride ?? config.store ?? new MemoryStore();
@@ -411,7 +411,7 @@ export function createAuthGuardMiddleware(
 
     // Add reputation warning header if gate returned a "warn" action
     if (reputationResult.action === "warn") {
-      c.header("x-agentgate-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
+      c.header("x-agentdoor-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
     }
 
     await next();
@@ -419,23 +419,23 @@ export function createAuthGuardMiddleware(
 }
 
 /**
- * Create a standalone Hono middleware that handles all AgentGate routes
- * and auth guard in a single middleware function. Alternative to `agentgate()`
+ * Create a standalone Hono middleware that handles all AgentDoor routes
+ * and auth guard in a single middleware function. Alternative to `agentdoor()`
  * for more control over middleware ordering.
  *
  * ```ts
  * import { Hono } from "hono";
- * import { createAgentGateMiddleware } from "@agentgate/hono";
+ * import { createAgentDoorMiddleware } from "@agentdoor/hono";
  *
  * const app = new Hono();
- * app.use("*", createAgentGateMiddleware({
+ * app.use("*", createAgentDoorMiddleware({
  *   scopes: [{ id: "data.read", description: "Read data" }],
  * }));
  * ```
  */
-export function createAgentGateMiddleware(
-  config: AgentGateHonoConfig,
-): MiddlewareHandler<{ Variables: AgentGateVariables }> {
+export function createAgentDoorMiddleware(
+  config: AgentDoorHonoConfig,
+): MiddlewareHandler<{ Variables: AgentDoorVariables }> {
   const base = config.basePath ?? "";
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
   const passthrough = config.passthrough ?? false;
@@ -459,7 +459,7 @@ export function createAgentGateMiddleware(
     }
 
     // Discovery.
-    if (pathname === `${base}/.well-known/agentgate.json` && method === "GET") {
+    if (pathname === `${base}/.well-known/agentdoor.json` && method === "GET") {
       const doc = buildDiscoveryDocument(config);
       return c.json(doc, 200, {
         "Cache-Control": "public, max-age=3600",
@@ -467,17 +467,17 @@ export function createAgentGateMiddleware(
     }
 
     // Register.
-    if (pathname === `${base}/agentgate/register` && method === "POST") {
+    if (pathname === `${base}/agentdoor/register` && method === "POST") {
       return handleRegister(c, config, store);
     }
 
     // Verify.
-    if (pathname === `${base}/agentgate/register/verify` && method === "POST") {
+    if (pathname === `${base}/agentdoor/register/verify` && method === "POST") {
       return handleRegisterVerify(c, config, store, webhookEmitter);
     }
 
     // Auth.
-    if (pathname === `${base}/agentgate/auth` && method === "POST") {
+    if (pathname === `${base}/agentdoor/auth` && method === "POST") {
       return handleAuth(c, config, store, webhookEmitter);
     }
 
@@ -561,14 +561,14 @@ export function createAgentGateMiddleware(
 
       // Add reputation warning header if gate returned a "warn" action
       if (reputationResult.action === "warn") {
-        c.header("x-agentgate-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
+        c.header("x-agentdoor-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
       }
 
       await next();
       return;
     }
 
-    // Non-protected, non-AgentGate routes.
+    // Non-protected, non-AgentDoor routes.
     c.set("agent", null);
     c.set("isAgent", false);
     await next();
@@ -579,7 +579,7 @@ export function createAgentGateMiddleware(
 // Route handler implementations
 // ---------------------------------------------------------------------------
 
-async function handleRegister(c: Context, config: AgentGateHonoConfig, store: AgentStore): Promise<Response> {
+async function handleRegister(c: Context, config: AgentDoorHonoConfig, store: AgentStore): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = await c.req.json<Record<string, unknown>>();
@@ -619,7 +619,7 @@ async function handleRegister(c: Context, config: AgentGateHonoConfig, store: Ag
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
+  const message = `agentdoor:register:${agentId}:${timestamp}:${nonce}`;
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   // Persist challenge to AgentStore
@@ -653,7 +653,7 @@ async function handleRegister(c: Context, config: AgentGateHonoConfig, store: Ag
 
 async function handleRegisterVerify(
   c: Context,
-  config: AgentGateHonoConfig,
+  config: AgentDoorHonoConfig,
   store: AgentStore,
   webhookEmitter: WebhookEmitter,
 ): Promise<Response> {
@@ -741,7 +741,7 @@ async function handleRegisterVerify(
   }).catch(() => {});
 
   // Issue a JWT token for immediate use.
-  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtSecret = config.jwt?.secret ?? "agentdoor-edge-default-secret";
   const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
   const agentCtx: AgentContext = {
     id: agentId,
@@ -776,7 +776,7 @@ async function handleRegisterVerify(
   return c.json(responseBody, 200);
 }
 
-async function handleAuth(c: Context, config: AgentGateHonoConfig, store: AgentStore, webhookEmitter: WebhookEmitter): Promise<Response> {
+async function handleAuth(c: Context, config: AgentDoorHonoConfig, store: AgentStore, webhookEmitter: WebhookEmitter): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = await c.req.json<Record<string, unknown>>();
@@ -801,14 +801,14 @@ async function handleAuth(c: Context, config: AgentGateHonoConfig, store: AgentS
     return c.json({ error: "Unknown agent_id" }, 404);
   }
 
-  const message = `agentgate:auth:${agentId}:${timestamp}`;
+  const message = `agentdoor:auth:${agentId}:${timestamp}`;
   const valid = await verifyEd25519(message, signature, agent.publicKey);
   if (!valid) {
     return c.json({ error: "Invalid signature" }, 400);
   }
 
   // Issue a JWT token.
-  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtSecret = config.jwt?.secret ?? "agentdoor-edge-default-secret";
   const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
   const agentCtx: AgentContext = {
     id: agentId,

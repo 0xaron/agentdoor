@@ -1,17 +1,17 @@
 /**
- * @agentgate/detect — Agent traffic detection and fingerprinting.
+ * @agentdoor/detect — Agent traffic detection and fingerprinting.
  *
  * Classifies HTTP requests as agent or human traffic using multiple signal
  * detectors: User-Agent analysis, header patterns, IP range checking,
  * behavioral patterns, and self-identification headers.
  *
- * Can be used standalone (detect-only mode) or as part of the full AgentGate
+ * Can be used standalone (detect-only mode) or as part of the full AgentDoor
  * middleware stack.
  *
  * @example Express detect-only mode
  * ```ts
  * import express from "express";
- * import { detect } from "@agentgate/detect";
+ * import { detect } from "@agentdoor/detect";
  *
  * const app = express();
  * app.use(detect({
@@ -21,7 +21,7 @@
  *
  * @example Direct classification
  * ```ts
- * import { classifyRequest } from "@agentgate/detect";
+ * import { classifyRequest } from "@agentdoor/detect";
  *
  * const result = classifyRequest({
  *   headers: { "user-agent": "python-requests/2.31.0" },

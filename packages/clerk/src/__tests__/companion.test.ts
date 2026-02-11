@@ -86,7 +86,7 @@ describe("ClerkCompanion", () => {
       );
     });
 
-    it("includes agentgate metadata in public metadata", async () => {
+    it("includes agentdoor metadata in public metadata", async () => {
       await companion.syncAgent({
         agentId: "ag_test_1",
         publicKey: "pubkey_base64",
@@ -97,8 +97,8 @@ describe("ClerkCompanion", () => {
       expect(mockClient.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
           publicMetadata: expect.objectContaining({
-            agentgate: true,
-            agentgate_id: "ag_test_1",
+            agentdoor: true,
+            agentdoor_id: "ag_test_1",
             scopes: ["data.read", "data.write"],
             reputation: 75,
           }),
@@ -116,7 +116,7 @@ describe("ClerkCompanion", () => {
       expect(mockClient.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
           privateMetadata: expect.objectContaining({
-            agentgate_public_key: "pubkey_base64",
+            agentdoor_public_key: "pubkey_base64",
           }),
         }),
       );

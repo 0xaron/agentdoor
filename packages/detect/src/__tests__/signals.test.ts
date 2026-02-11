@@ -97,11 +97,11 @@ describe("analyzeUserAgent", () => {
     expect(result.data?.framework).toBe("DSPy");
   });
 
-  it("detects AgentGate SDK with confidence 1.0", () => {
-    const result = analyzeUserAgent(req({ userAgent: "AgentGate-SDK/0.1.0" }));
+  it("detects AgentDoor SDK with confidence 1.0", () => {
+    const result = analyzeUserAgent(req({ userAgent: "AgentDoor-SDK/0.1.0" }));
     expect(result.signal).toBe("user-agent:framework");
     expect(result.confidence).toBe(1.0);
-    expect(result.data?.framework).toBe("AgentGate SDK");
+    expect(result.data?.framework).toBe("AgentDoor SDK");
   });
 
   it("detects browser-use with confidence 0.90", () => {
@@ -775,16 +775,16 @@ describe("analyzeSelfIdentification", () => {
     expect(result.reason).toContain("X-Agent-Framework");
   });
 
-  it("detects X-AgentGate-Agent-Id header with confidence 1.0", () => {
+  it("detects X-AgentDoor-Agent-Id header with confidence 1.0", () => {
     const result = analyzeSelfIdentification(
       req({
-        headers: { "x-agentgate-agent-id": "agent-abc-123" },
+        headers: { "x-agentdoor-agent-id": "agent-abc-123" },
       }),
     );
-    expect(result.signal).toBe("self-id:agentgate");
+    expect(result.signal).toBe("self-id:agentdoor");
     expect(result.confidence).toBe(1.0);
     expect(result.data?.agentId).toBe("agent-abc-123");
-    expect(result.reason).toContain("X-AgentGate-Agent-Id");
+    expect(result.reason).toContain("X-AgentDoor-Agent-Id");
   });
 
   it("detects X-Bot header with confidence 0.9", () => {
@@ -820,12 +820,12 @@ describe("analyzeSelfIdentification", () => {
     expect(result.reason).toContain("No self-identification");
   });
 
-  it("prioritizes X-Agent-Framework over X-AgentGate-Agent-Id", () => {
+  it("prioritizes X-Agent-Framework over X-AgentDoor-Agent-Id", () => {
     const result = analyzeSelfIdentification(
       req({
         headers: {
           "x-agent-framework": "MyFramework",
-          "x-agentgate-agent-id": "agent-1",
+          "x-agentdoor-agent-id": "agent-1",
         },
       }),
     );
@@ -833,16 +833,16 @@ describe("analyzeSelfIdentification", () => {
     expect(result.data?.framework).toBe("MyFramework");
   });
 
-  it("prioritizes X-AgentGate-Agent-Id over X-Bot", () => {
+  it("prioritizes X-AgentDoor-Agent-Id over X-Bot", () => {
     const result = analyzeSelfIdentification(
       req({
         headers: {
-          "x-agentgate-agent-id": "agent-2",
+          "x-agentdoor-agent-id": "agent-2",
           "x-bot": "true",
         },
       }),
     );
-    expect(result.signal).toBe("self-id:agentgate");
+    expect(result.signal).toBe("self-id:agentdoor");
     expect(result.data?.agentId).toBe("agent-2");
   });
 });

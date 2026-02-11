@@ -1,13 +1,13 @@
 import { Router } from "express";
-import type { AgentStore } from "@agentgate/core";
-import { AGENTGATE_VERSION } from "@agentgate/core";
+import type { AgentStore } from "@agentdoor/core";
+import { AGENTDOOR_VERSION } from "@agentdoor/core";
 
 /**
- * Creates a router for GET /agentgate/health.
+ * Creates a router for GET /agentdoor/health.
  *
- * Returns the health status of the AgentGate middleware including:
+ * Returns the health status of the AgentDoor middleware including:
  * - Current status (healthy/degraded)
- * - AgentGate version
+ * - AgentDoor version
  * - Server uptime
  * - Storage connectivity check
  * - Current timestamp (useful for agents to check clock skew)
@@ -16,7 +16,7 @@ export function createHealthRouter(store: AgentStore): Router {
   const router = Router();
   const startedAt = new Date();
 
-  router.get("/agentgate/health", async (_req, res) => {
+  router.get("/agentdoor/health", async (_req, res) => {
     const now = new Date();
     const uptimeMs = now.getTime() - startedAt.getTime();
 
@@ -35,7 +35,7 @@ export function createHealthRouter(store: AgentStore): Router {
 
     res.status(isHealthy ? 200 : 503).json({
       status: isHealthy ? "healthy" : "degraded",
-      version: AGENTGATE_VERSION,
+      version: AGENTDOOR_VERSION,
       uptime_ms: uptimeMs,
       timestamp: now.toISOString(),
       storage: {

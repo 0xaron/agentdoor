@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/fastify",
+  "name": "@agentdoor/fastify",
   "version": "0.1.0",
-  "description": "Fastify plugin for AgentGate - agent authentication with schema validation",
+  "description": "Fastify plugin for AgentDoor - agent authentication with schema validation",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
-  "dependencies": { "@agentgate/core": "workspace:*" },
+  "dependencies": { "@agentdoor/core": "workspace:*" },
   "peerDependencies": { "fastify": ">=4" },
   "devDependencies": {
     "typescript": "^5.7.0",

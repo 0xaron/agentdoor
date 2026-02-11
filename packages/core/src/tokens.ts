@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - JWT Token Issuance & Verification
+ * @agentdoor/core - JWT Token Issuance & Verification
  *
  * Uses the `jose` library for standards-compliant JWT handling.
  * Tokens carry agent identity, scopes, and metadata in their claims.
@@ -14,8 +14,8 @@ import type { AgentContext } from "./types.js";
 // Types
 // ---------------------------------------------------------------------------
 
-/** Claims embedded in an AgentGate JWT. */
-export interface AgentGateJWTClaims {
+/** Claims embedded in an AgentDoor JWT. */
+export interface AgentDoorJWTClaims {
   /** Agent identifier */
   agent_id: string;
   /** Granted scopes */
@@ -76,7 +76,7 @@ export async function issueToken(
   agent: AgentContext,
   secret: string,
   expiresIn: string = DEFAULT_JWT_EXPIRY,
-  issuer: string = "agentgate",
+  issuer: string = "agentdoor",
 ): Promise<string> {
   const key = encodeSecret(secret);
 
@@ -86,7 +86,7 @@ export async function issueToken(
     public_key: agent.publicKey,
     metadata: agent.metadata,
     reputation: agent.reputation,
-  } satisfies AgentGateJWTClaims)
+  } satisfies AgentDoorJWTClaims)
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(agent.id)
     .setIssuedAt()
@@ -146,14 +146,14 @@ export function computeExpirationDate(expiresIn: string): Date {
  *
  * @param token - The JWT string to verify
  * @param secret - HMAC secret used for signing
- * @param issuer - Expected token issuer (default: "agentgate")
+ * @param issuer - Expected token issuer (default: "agentdoor")
  * @returns Verified token result with agent context
  * @throws InvalidTokenError if the token is invalid, expired, or malformed
  */
 export async function verifyToken(
   token: string,
   secret: string,
-  issuer: string = "agentgate",
+  issuer: string = "agentdoor",
 ): Promise<TokenVerifyResult> {
   const key = encodeSecret(secret);
 
@@ -163,7 +163,7 @@ export async function verifyToken(
       algorithms: ["HS256"],
     });
 
-    const claims = payload as unknown as AgentGateJWTClaims & {
+    const claims = payload as unknown as AgentDoorJWTClaims & {
       sub?: string;
       iat?: number;
       exp?: number;

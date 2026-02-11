@@ -5,7 +5,7 @@ import * as os from "node:os";
 import { CredentialStore } from "../credentials.js";
 import type { ServiceCredentials } from "../credentials.js";
 
-const tmpDir = path.join(os.tmpdir(), `agentgate-creds-test-${Date.now()}`);
+const tmpDir = path.join(os.tmpdir(), `agentdoor-creds-test-${Date.now()}`);
 let store: CredentialStore;
 
 beforeEach(() => {

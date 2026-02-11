@@ -8,13 +8,13 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in AgentGate, please report it responsibly.
+If you discover a security vulnerability in AgentDoor, please report it responsibly.
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
 ### How to Report
 
-1. Email your findings to the maintainers via GitHub's [private vulnerability reporting](https://github.com/0xaron/agentgate/security/advisories/new).
+1. Email your findings to the maintainers via GitHub's [private vulnerability reporting](https://github.com/0xaron/agentdoor/security/advisories/new).
 2. Include a description of the vulnerability, steps to reproduce, and any potential impact.
 3. If possible, include a proof of concept or minimal reproduction.
 
@@ -29,9 +29,9 @@ If you discover a security vulnerability in AgentGate, please report it responsi
 
 The following are in scope:
 
-- All packages published under `@agentgate/*` on npm
-- The `agentgate` and `agentgate-fastapi` packages on PyPI
-- The AgentGate discovery protocol and authentication flow
+- All packages published under `@agentdoor/*` on npm
+- The `agentdoor` and `agentdoor-fastapi` packages on PyPI
+- The AgentDoor discovery protocol and authentication flow
 - Cryptographic operations (Ed25519 signing/verification, JWT issuance)
 - Storage drivers (memory, SQLite, PostgreSQL, Redis)
 
@@ -43,7 +43,7 @@ The following are in scope:
 
 ## Security Design
 
-AgentGate's authentication is built on Ed25519 challenge-response:
+AgentDoor's authentication is built on Ed25519 challenge-response:
 
 - Private keys never leave the agent
 - Challenge nonces expire after 5 minutes

@@ -2,7 +2,7 @@
   "name": "example-hono-cloudflare",
   "version": "0.1.0",
   "private": true,
-  "description": "Example Hono app on Cloudflare Workers with AgentGate middleware",
+  "description": "Example Hono app on Cloudflare Workers with AgentDoor middleware",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev src/index.ts",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "hono": "^4.6.0",
-    "@agentgate/hono": "workspace:*"
+    "@agentdoor/hono": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",

@@ -1,5 +1,5 @@
 /**
- * @agentgate/fastify — Fastify plugin for AgentGate.
+ * @agentdoor/fastify — Fastify plugin for AgentDoor.
  *
  * Registers discovery, registration, verification, and auth routes as a
  * Fastify plugin with JSON schema validation. Decorates requests with
@@ -8,11 +8,11 @@
  * @example
  * ```ts
  * import Fastify from "fastify";
- * import { agentgatePlugin } from "@agentgate/fastify";
+ * import { agentdoorPlugin } from "@agentdoor/fastify";
  *
  * const app = Fastify();
  *
- * app.register(agentgatePlugin, {
+ * app.register(agentdoorPlugin, {
  *   scopes: [{ id: "data.read", description: "Read data" }],
  *   pricing: { "data.read": "$0.001/req" },
  * });
@@ -28,5 +28,5 @@
  * ```
  */
 
-export { agentgatePlugin } from "./plugin.js";
-export type { AgentGateFastifyConfig } from "./plugin.js";
+export { agentdoorPlugin } from "./plugin.js";
+export type { AgentDoorFastifyConfig } from "./plugin.js";

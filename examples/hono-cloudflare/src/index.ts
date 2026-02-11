@@ -1,16 +1,16 @@
 import { Hono } from "hono";
-import { createAgentGateMiddleware, type AgentGateVariables } from "@agentgate/hono";
+import { createAgentDoorMiddleware, type AgentDoorVariables } from "@agentdoor/hono";
 
 type Bindings = {
   X402_WALLET: string;
 };
 
-const app = new Hono<{ Bindings: Bindings; Variables: AgentGateVariables }>();
+const app = new Hono<{ Bindings: Bindings; Variables: AgentDoorVariables }>();
 
-// --- AgentGate: 3 lines to make your Cloudflare Worker agent-ready ---
+// --- AgentDoor: 3 lines to make your Cloudflare Worker agent-ready ---
 app.use(
   "/*",
-  createAgentGateMiddleware({
+  createAgentDoorMiddleware({
     scopes: [
       {
         id: "stocks.read",

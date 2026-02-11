@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AgentGate Dashboard",
+  title: "AgentDoor Dashboard",
   description:
-    "Monitor agent registrations, usage, and revenue for your AgentGate-enabled APIs.",
+    "Monitor agent registrations, usage, and revenue for your AgentDoor-enabled APIs.",
 };
 
 export default function RootLayout({

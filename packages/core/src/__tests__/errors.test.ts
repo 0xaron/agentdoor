@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  AgentGateError,
+  AgentDoorError,
   InvalidSignatureError,
   ChallengeExpiredError,
   AgentNotFoundError,
@@ -13,51 +13,51 @@ import {
 } from "../errors.js";
 
 // ---------------------------------------------------------------------------
-// AgentGateError (base)
+// AgentDoorError (base)
 // ---------------------------------------------------------------------------
 
-describe("AgentGateError", () => {
+describe("AgentDoorError", () => {
   it("instantiates with message, code, and statusCode", () => {
-    const err = new AgentGateError("test error", "TEST_CODE", 418);
+    const err = new AgentDoorError("test error", "TEST_CODE", 418);
     expect(err.message).toBe("test error");
     expect(err.code).toBe("TEST_CODE");
     expect(err.statusCode).toBe(418);
-    expect(err.name).toBe("AgentGateError");
+    expect(err.name).toBe("AgentDoorError");
   });
 
-  it("defaults code to AGENTGATE_ERROR", () => {
-    const err = new AgentGateError("test");
-    expect(err.code).toBe("AGENTGATE_ERROR");
+  it("defaults code to AGENTDOOR_ERROR", () => {
+    const err = new AgentDoorError("test");
+    expect(err.code).toBe("AGENTDOOR_ERROR");
   });
 
   it("defaults statusCode to 500", () => {
-    const err = new AgentGateError("test");
+    const err = new AgentDoorError("test");
     expect(err.statusCode).toBe(500);
   });
 
   it("supports optional details", () => {
-    const err = new AgentGateError("test", "CODE", 500, { key: "value" });
+    const err = new AgentDoorError("test", "CODE", 500, { key: "value" });
     expect(err.details).toEqual({ key: "value" });
   });
 
   it("is instanceof Error", () => {
-    const err = new AgentGateError("test");
+    const err = new AgentDoorError("test");
     expect(err).toBeInstanceOf(Error);
   });
 
-  it("is instanceof AgentGateError", () => {
-    const err = new AgentGateError("test");
-    expect(err).toBeInstanceOf(AgentGateError);
+  it("is instanceof AgentDoorError", () => {
+    const err = new AgentDoorError("test");
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 
   it("has a stack trace", () => {
-    const err = new AgentGateError("test");
+    const err = new AgentDoorError("test");
     expect(err.stack).toBeDefined();
   });
 
   describe("toJSON", () => {
     it("serializes to JSON response format", () => {
-      const err = new AgentGateError("test error", "TEST_CODE", 400);
+      const err = new AgentDoorError("test error", "TEST_CODE", 400);
       const json = err.toJSON();
       expect(json).toEqual({
         error: {
@@ -68,14 +68,14 @@ describe("AgentGateError", () => {
     });
 
     it("includes details when present", () => {
-      const err = new AgentGateError("test", "CODE", 500, { foo: "bar" });
+      const err = new AgentDoorError("test", "CODE", 500, { foo: "bar" });
       const json = err.toJSON();
       expect(json.error).toHaveProperty("details");
       expect((json.error as Record<string, unknown>).details).toEqual({ foo: "bar" });
     });
 
     it("omits details when not present", () => {
-      const err = new AgentGateError("test", "CODE", 500);
+      const err = new AgentDoorError("test", "CODE", 500);
       const json = err.toJSON();
       expect(json.error).not.toHaveProperty("details");
     });
@@ -100,9 +100,9 @@ describe("InvalidSignatureError", () => {
     expect(err.message).toBe("bad sig");
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new InvalidSignatureError();
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 
   it("is instanceof Error", () => {
@@ -124,9 +124,9 @@ describe("ChallengeExpiredError", () => {
     expect(err.name).toBe("ChallengeExpiredError");
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new ChallengeExpiredError();
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -143,9 +143,9 @@ describe("AgentNotFoundError", () => {
     expect(err.name).toBe("AgentNotFoundError");
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new AgentNotFoundError();
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -182,9 +182,9 @@ describe("RateLimitExceededError", () => {
     expect(err.message).toBe("slow down");
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new RateLimitExceededError(1000);
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -195,7 +195,7 @@ describe("RateLimitExceededError", () => {
 describe("InvalidConfigError", () => {
   it("prepends standard prefix to message", () => {
     const err = new InvalidConfigError("missing scopes");
-    expect(err.message).toBe("Invalid AgentGate configuration: missing scopes");
+    expect(err.message).toBe("Invalid AgentDoor configuration: missing scopes");
     expect(err.code).toBe("INVALID_CONFIG");
     expect(err.statusCode).toBe(500);
     expect(err.name).toBe("InvalidConfigError");
@@ -206,9 +206,9 @@ describe("InvalidConfigError", () => {
     expect(err.details).toEqual({ field: "scopes" });
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new InvalidConfigError("test");
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -230,9 +230,9 @@ describe("DuplicateAgentError", () => {
     expect(err.message).toBe("duplicate key");
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new DuplicateAgentError();
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -260,9 +260,9 @@ describe("InvalidScopeError", () => {
     expect(err.details).toEqual({ invalid_scopes: ["a", "b"] });
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new InvalidScopeError(["test"]);
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -279,9 +279,9 @@ describe("InvalidTokenError", () => {
     expect(err.name).toBe("InvalidTokenError");
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new InvalidTokenError();
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -304,9 +304,9 @@ describe("AgentSuspendedError", () => {
     expect(err.details).toEqual({ agent_id: "ag_456", status: "banned" });
   });
 
-  it("is instanceof AgentGateError", () => {
+  it("is instanceof AgentDoorError", () => {
     const err = new AgentSuspendedError("ag_123", "suspended");
-    expect(err).toBeInstanceOf(AgentGateError);
+    expect(err).toBeInstanceOf(AgentDoorError);
   });
 });
 
@@ -327,9 +327,9 @@ describe("Error hierarchy", () => {
     new AgentSuspendedError("ag_1", "banned"),
   ];
 
-  it("all are instanceof AgentGateError", () => {
+  it("all are instanceof AgentDoorError", () => {
     for (const err of errors) {
-      expect(err).toBeInstanceOf(AgentGateError);
+      expect(err).toBeInstanceOf(AgentDoorError);
     }
   });
 

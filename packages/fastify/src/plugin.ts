@@ -1,10 +1,10 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type {
-  AgentGateConfig,
+  AgentDoorConfig,
   AgentContext,
   ScopeDefinition,
   Agent,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Fastify type augmentation
@@ -98,13 +98,13 @@ async function verifyEd25519(
 // Discovery document generation
 // ---------------------------------------------------------------------------
 
-function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
+function buildDiscoveryDocument(config: AgentDoorConfig): Record<string, unknown> {
   return {
-    agentgate_version: "1.0",
-    service_name: config.service?.name ?? "AgentGate Service",
+    agentdoor_version: "1.0",
+    service_name: config.service?.name ?? "AgentDoor Service",
     service_description: config.service?.description ?? "",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
       id: s.id,
       description: s.description,
@@ -172,7 +172,7 @@ const authSchema = {
 // Configuration
 // ---------------------------------------------------------------------------
 
-export interface AgentGateFastifyConfig extends AgentGateConfig {
+export interface AgentDoorFastifyConfig extends AgentDoorConfig {
   /**
    * Path prefix patterns that require agent auth verification.
    * Defaults to `["/api"]`.
@@ -187,8 +187,8 @@ export interface AgentGateFastifyConfig extends AgentGateConfig {
   passthrough?: boolean;
 
   /**
-   * Base path prefix for AgentGate routes. Defaults to empty string.
-   * Set to e.g. "/v1" to mount routes at "/v1/agentgate/register" etc.
+   * Base path prefix for AgentDoor routes. Defaults to empty string.
+   * Set to e.g. "/v1" to mount routes at "/v1/agentdoor/register" etc.
    */
   basePath?: string;
 }
@@ -198,23 +198,23 @@ export interface AgentGateFastifyConfig extends AgentGateConfig {
 // ---------------------------------------------------------------------------
 
 /**
- * AgentGate Fastify plugin. Registers all AgentGate routes and an onRequest
+ * AgentDoor Fastify plugin. Registers all AgentDoor routes and an onRequest
  * hook for auth guard on protected paths. Decorates requests with `agent`
  * and `isAgent`.
  *
  * ```ts
  * import Fastify from "fastify";
- * import { agentgatePlugin } from "@agentgate/fastify";
+ * import { agentdoorPlugin } from "@agentdoor/fastify";
  *
  * const app = Fastify();
- * app.register(agentgatePlugin, {
+ * app.register(agentdoorPlugin, {
  *   scopes: [{ id: "data.read", description: "Read data" }],
  * });
  * ```
  */
-async function agentgatePluginFn(
+async function agentdoorPluginFn(
   fastify: FastifyInstance,
-  config: AgentGateFastifyConfig,
+  config: AgentDoorFastifyConfig,
 ): Promise<void> {
   const base = config.basePath ?? "";
   const protectedPrefixes = config.protectedPaths ?? ["/api"];
@@ -225,24 +225,24 @@ async function agentgatePluginFn(
   fastify.decorateRequest("isAgent", false);
 
   // ---- Discovery endpoint ----
-  fastify.get(`${base}/.well-known/agentgate.json`, async (_request, reply) => {
+  fastify.get(`${base}/.well-known/agentdoor.json`, async (_request, reply) => {
     const doc = buildDiscoveryDocument(config);
     reply.header("Cache-Control", "public, max-age=3600");
     return reply.status(200).send(doc);
   });
 
   // ---- Registration endpoint ----
-  fastify.post(`${base}/agentgate/register`, { schema: registerSchema }, async (request, reply) => {
+  fastify.post(`${base}/agentdoor/register`, { schema: registerSchema }, async (request, reply) => {
     return handleRegister(request, reply, config);
   });
 
   // ---- Registration verification endpoint ----
-  fastify.post(`${base}/agentgate/register/verify`, { schema: verifySchema }, async (request, reply) => {
+  fastify.post(`${base}/agentdoor/register/verify`, { schema: verifySchema }, async (request, reply) => {
     return handleRegisterVerify(request, reply, config);
   });
 
   // ---- Auth endpoint ----
-  fastify.post(`${base}/agentgate/auth`, { schema: authSchema }, async (request, reply) => {
+  fastify.post(`${base}/agentdoor/auth`, { schema: authSchema }, async (request, reply) => {
     return handleAuth(request, reply);
   });
 
@@ -250,12 +250,12 @@ async function agentgatePluginFn(
   fastify.addHook("onRequest", async (request, reply) => {
     const pathname = new URL(request.url, `http://${request.hostname || "localhost"}`).pathname;
 
-    // Skip AgentGate endpoints themselves.
+    // Skip AgentDoor endpoints themselves.
     if (
-      pathname === `${base}/.well-known/agentgate.json` ||
-      pathname === `${base}/agentgate/register` ||
-      pathname === `${base}/agentgate/register/verify` ||
-      pathname === `${base}/agentgate/auth`
+      pathname === `${base}/.well-known/agentdoor.json` ||
+      pathname === `${base}/agentdoor/register` ||
+      pathname === `${base}/agentdoor/register/verify` ||
+      pathname === `${base}/agentdoor/auth`
     ) {
       request.agent = null;
       request.isAgent = false;
@@ -332,7 +332,7 @@ async function agentgatePluginFn(
 async function handleRegister(
   request: FastifyRequest,
   reply: FastifyReply,
-  config: AgentGateFastifyConfig,
+  config: AgentDoorFastifyConfig,
 ): Promise<void> {
   const body = request.body as Record<string, unknown>;
 
@@ -361,7 +361,7 @@ async function handleRegister(
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
+  const message = `agentdoor:register:${agentId}:${timestamp}:${nonce}`;
   const expiresAt = Date.now() + 5 * 60 * 1000;
 
   pendingChallenges.set(agentId, {
@@ -387,7 +387,7 @@ async function handleRegister(
 async function handleRegisterVerify(
   request: FastifyRequest,
   reply: FastifyReply,
-  config: AgentGateFastifyConfig,
+  config: AgentDoorFastifyConfig,
 ): Promise<void> {
   const body = request.body as Record<string, unknown>;
 
@@ -485,7 +485,7 @@ async function handleAuth(
     return reply.status(404).send({ error: "Unknown agent_id" });
   }
 
-  const message = `agentgate:auth:${agentId}:${timestamp}`;
+  const message = `agentdoor:auth:${agentId}:${timestamp}`;
   const valid = await verifyEd25519(message, signature, agent.publicKey);
   if (!valid) {
     return reply.status(400).send({ error: "Invalid signature" });
@@ -506,7 +506,7 @@ async function handleAuth(
 
 // Attach fastify-plugin metadata so Fastify does not encapsulate the plugin.
 // This allows decorators and hooks to be visible to sibling routes.
-(agentgatePluginFn as any)[Symbol.for("skip-override")] = true;
-(agentgatePluginFn as any)[Symbol.for("fastify.display-name")] = "agentgate";
+(agentdoorPluginFn as any)[Symbol.for("skip-override")] = true;
+(agentdoorPluginFn as any)[Symbol.for("fastify.display-name")] = "agentdoor";
 
-export const agentgatePlugin = agentgatePluginFn;
+export const agentdoorPlugin = agentdoorPluginFn;

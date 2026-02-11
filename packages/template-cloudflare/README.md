@@ -1,11 +1,11 @@
 # Agent-Ready Worker (Cloudflare)
 
-Deploy an agent-ready API to Cloudflare Workers in minutes. Built with Hono, AgentGate, and x402 micropayments.
+Deploy an agent-ready API to Cloudflare Workers in minutes. Built with Hono, AgentDoor, and x402 micropayments.
 
 ## What You Get
 
-- **AgentGate middleware** for Hono that handles agent authentication, capability discovery, and x402 payments
-- **`.well-known/agentgate`** endpoint auto-served for agent discovery
+- **AgentDoor middleware** for Hono that handles agent authentication, capability discovery, and x402 payments
+- **`.well-known/agentdoor`** endpoint auto-served for agent discovery
 - **x402 micropayments** via USDC on Base network
 - **Sample API routes** with scope-based access control
 - **Edge-first**: Runs on Cloudflare's global network with near-zero cold starts
@@ -53,7 +53,7 @@ Set variables in `wrangler.toml` under `[vars]` or use Cloudflare dashboard secr
 
 ```
 ├── src/
-│   └── index.ts         # Hono app with AgentGate middleware and routes
+│   └── index.ts         # Hono app with AgentDoor middleware and routes
 ├── wrangler.toml        # Cloudflare Workers configuration
 ├── tsconfig.json        # TypeScript configuration
 └── package.json
@@ -61,8 +61,8 @@ Set variables in `wrangler.toml` under `[vars]` or use Cloudflare dashboard secr
 
 ## How It Works
 
-1. **Agent Discovery**: Agents find your API via `/.well-known/agentgate`
-2. **Authentication**: AgentGate middleware validates agent credentials and scopes
+1. **Agent Discovery**: Agents find your API via `/.well-known/agentdoor`
+2. **Authentication**: AgentDoor middleware validates agent credentials and scopes
 3. **Payment**: x402 handles micropayments for API access (USDC on Base)
 4. **Access**: Authenticated agents can call your API endpoints
 
@@ -76,7 +76,7 @@ Set variables in `wrangler.toml` under `[vars]` or use Cloudflare dashboard secr
 
 ## Learn More
 
-- [AgentGate Documentation](https://github.com/agentgate/agentgate)
+- [AgentDoor Documentation](https://github.com/agentdoor/agentdoor)
 - [x402 Protocol](https://www.x402.org/)
 - [Hono Documentation](https://hono.dev/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)

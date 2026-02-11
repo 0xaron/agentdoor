@@ -1,15 +1,15 @@
 /**
- * @agentgate/core - Discovery Document Generation
+ * @agentdoor/core - Discovery Document Generation
  *
- * Generates the /.well-known/agentgate.json discovery document
- * from an AgentGateConfig. This document tells agents everything
+ * Generates the /.well-known/agentdoor.json discovery document
+ * from an AgentDoorConfig. This document tells agents everything
  * they need to know: scopes, pricing, how to register, and payment info.
  */
 
 import type { ResolvedConfig } from "./config.js";
 import type { DiscoveryDocument } from "./types.js";
 import {
-  AGENTGATE_VERSION,
+  AGENTDOOR_VERSION,
   REGISTER_PATH,
   AUTH_PATH,
   A2A_AGENT_CARD_PATH,
@@ -23,13 +23,13 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
- * Generate a /.well-known/agentgate.json discovery document from a resolved config.
+ * Generate a /.well-known/agentdoor.json discovery document from a resolved config.
  *
  * The discovery document follows the convention of /.well-known/openid-configuration
  * and /.well-known/agent-card.json, providing agents with all information needed
  * to register and authenticate.
  *
- * @param config - Resolved AgentGate configuration
+ * @param config - Resolved AgentDoor configuration
  * @returns The complete DiscoveryDocument
  */
 export function generateDiscoveryDocument(config: ResolvedConfig): DiscoveryDocument {
@@ -86,7 +86,7 @@ export function generateDiscoveryDocument(config: ResolvedConfig): DiscoveryDocu
   authMethods.push("jwt"); // JWT is always available after initial auth
 
   const doc: DiscoveryDocument = {
-    agentgate_version: AGENTGATE_VERSION,
+    agentdoor_version: AGENTDOOR_VERSION,
     service_name: config.service.name,
     service_description: config.service.description,
     registration_endpoint: REGISTER_PATH,
@@ -133,7 +133,7 @@ export function getDiscoveryHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
     "Cache-Control": DISCOVERY_CACHE_CONTROL,
-    "X-AgentGate-Version": AGENTGATE_VERSION,
+    "X-AgentDoor-Version": AGENTDOOR_VERSION,
   };
 }
 
@@ -156,8 +156,8 @@ export function validateDiscoveryDocument(doc: unknown): {
 
   const d = doc as Record<string, unknown>;
 
-  if (typeof d.agentgate_version !== "string") {
-    errors.push("Missing or invalid 'agentgate_version'");
+  if (typeof d.agentdoor_version !== "string") {
+    errors.push("Missing or invalid 'agentdoor_version'");
   }
   if (typeof d.service_name !== "string") {
     errors.push("Missing or invalid 'service_name'");

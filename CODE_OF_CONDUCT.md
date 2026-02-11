@@ -3,7 +3,7 @@
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in the
-AgentGate community a welcoming experience for everyone.
+AgentDoor community a welcoming experience for everyone.
 
 We pledge to act and interact in ways that contribute to an open, welcoming,
 diverse, inclusive, and healthy community.
@@ -35,7 +35,7 @@ response to any behavior that they deem inappropriate or harmful.
 ## Reporting
 
 Instances of unacceptable behavior may be reported by opening an issue at
-[github.com/0xaron/agentgate/issues](https://github.com/0xaron/agentgate/issues)
+[github.com/0xaron/agentdoor/issues](https://github.com/0xaron/agentdoor/issues)
 or by contacting the maintainers directly through GitHub.
 
 All reports will be reviewed and investigated promptly and fairly. Maintainers

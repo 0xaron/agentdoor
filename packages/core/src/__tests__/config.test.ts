@@ -54,7 +54,7 @@ describe("resolveConfig", () => {
     expect(typeof resolved.jwt.secret).toBe("string");
     expect(resolved.jwt.secret.length).toBeGreaterThanOrEqual(16);
     expect(resolved.jwt.expiresIn).toBe("1h");
-    expect(resolved.service.name).toBe("AgentGate Service");
+    expect(resolved.service.name).toBe("AgentDoor Service");
     expect(resolved.challengeExpirySeconds).toBe(300);
     expect(resolved.companion.a2aAgentCard).toBe(true);
     expect(resolved.companion.mcpServer).toBe(false);

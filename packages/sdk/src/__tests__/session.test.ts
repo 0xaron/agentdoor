@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { Session, SessionError } from "../session.js";
 import type { ServiceCredentials } from "../credentials.js";
-import type { AgentGateDiscoveryDocument } from "../discovery.js";
+import type { AgentDoorDiscoveryDocument } from "../discovery.js";
 
 /** Minimal valid discovery document for Session construction. */
-const mockDiscovery: AgentGateDiscoveryDocument = {
-  agentgate_version: "1.0",
+const mockDiscovery: AgentDoorDiscoveryDocument = {
+  agentdoor_version: "1.0",
   service_name: "Test Service",
-  registration_endpoint: "/agentgate/register",
-  auth_endpoint: "/agentgate/auth",
+  registration_endpoint: "/agentdoor/register",
+  auth_endpoint: "/agentdoor/auth",
   scopes_available: [{ id: "test.read", description: "Read test data" }],
 };
 
@@ -390,7 +390,7 @@ describe("Session - custom headers", () => {
     const headers = getCapturedInit()?.headers as Record<string, string>;
     expect(headers["X-Custom-Header"]).toBe("custom-value");
     expect(headers["Authorization"]).toBe("Bearer agk_live_testkey");
-    expect(headers["User-Agent"]).toBe("agentgate-sdk/0.1.0");
+    expect(headers["User-Agent"]).toBe("agentdoor-sdk/0.1.0");
   });
 });
 

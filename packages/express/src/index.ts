@@ -1,14 +1,14 @@
 /**
- * @agentgate/express - Express.js middleware adapter for AgentGate
+ * @agentdoor/express - Express.js middleware adapter for AgentDoor
  *
  * Make your Express API agent-ready in 3 lines of code:
  *
  * ```typescript
  * import express from "express";
- * import { agentgate } from "@agentgate/express";
+ * import { agentdoor } from "@agentdoor/express";
  *
  * const app = express();
- * app.use(agentgate({
+ * app.use(agentdoor({
  *   scopes: [{ id: "data.read", description: "Read data" }],
  * }));
  *
@@ -24,8 +24,8 @@
  */
 
 // Main factory function
-export { agentgate } from "./middleware.js";
-export type { AgentGateExpressOptions } from "./middleware.js";
+export { agentdoor } from "./middleware.js";
+export type { AgentDoorExpressOptions } from "./middleware.js";
 
 // Route creators (for advanced usage / custom mounting)
 export { createDiscoveryRouter } from "./routes/discovery.js";
@@ -37,9 +37,9 @@ export { createHealthRouter } from "./routes/health.js";
 export { createAuthGuard } from "./auth-guard.js";
 
 // Re-export commonly used types from core so consumers
-// don't need to separately install @agentgate/core for types
+// don't need to separately install @agentdoor/core for types
 export type {
-  AgentGateConfig,
+  AgentDoorConfig,
   AgentContext,
   Agent,
   ScopeDefinition,
@@ -47,4 +47,4 @@ export type {
   RateLimitConfig,
   AgentStore,
   ResolvedConfig,
-} from "@agentgate/core";
+} from "@agentdoor/core";

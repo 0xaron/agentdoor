@@ -1,5 +1,5 @@
 /**
- * @agentgate/clerk - Clerk Companion Plugin for AgentGate
+ * @agentdoor/clerk - Clerk Companion Plugin for AgentDoor
  *
  * Syncs agent registrations to Clerk so agent accounts appear
  * in the Clerk dashboard alongside human users. Supports webhook

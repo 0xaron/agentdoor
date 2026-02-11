@@ -1,5 +1,5 @@
 {
-  "name": "agentgate-vercel-starter",
+  "name": "agentdoor-vercel-starter",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -12,7 +12,7 @@
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@agentgate/next": "^0.1.0"
+    "@agentdoor/next": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

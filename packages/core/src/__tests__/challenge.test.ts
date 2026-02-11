@@ -20,7 +20,7 @@ describe("createChallenge", () => {
     expect(typeof challenge.nonce).toBe("string");
     expect(challenge.nonce.length).toBeGreaterThan(0);
     expect(typeof challenge.message).toBe("string");
-    expect(challenge.message).toContain("agentgate:register:");
+    expect(challenge.message).toContain("agentdoor:register:");
     expect(challenge.expiresAt).toBeInstanceOf(Date);
     expect(challenge.createdAt).toBeInstanceOf(Date);
   });
@@ -74,14 +74,14 @@ describe("verifyChallenge", () => {
 describe("buildRegistrationChallenge", () => {
   it("returns a formatted string", () => {
     const msg = buildRegistrationChallenge("ag_abc", 1700000000, "nonce123");
-    expect(msg).toBe("agentgate:register:ag_abc:1700000000:nonce123");
+    expect(msg).toBe("agentdoor:register:ag_abc:1700000000:nonce123");
   });
 });
 
 describe("buildAuthMessage", () => {
   it("returns a formatted string", () => {
     const msg = buildAuthMessage("ag_abc", "2024-01-01T00:00:00Z");
-    expect(msg).toBe("agentgate:auth:ag_abc:2024-01-01T00:00:00Z");
+    expect(msg).toBe("agentdoor:auth:ag_abc:2024-01-01T00:00:00Z");
   });
 });
 
@@ -111,10 +111,10 @@ describe("isChallengeExpired", () => {
 
 describe("parseChallengeMessage", () => {
   it("parses a registration challenge message", () => {
-    const msg = "agentgate:register:ag_abc:1700000000:nonce123";
+    const msg = "agentdoor:register:ag_abc:1700000000:nonce123";
     const parsed = parseChallengeMessage(msg);
     expect(parsed).not.toBeNull();
-    expect(parsed!.prefix).toBe("agentgate");
+    expect(parsed!.prefix).toBe("agentdoor");
     expect(parsed!.action).toBe("register");
     expect(parsed!.agentId).toBe("ag_abc");
     expect(parsed!.timestamp).toBe(1700000000);
@@ -122,10 +122,10 @@ describe("parseChallengeMessage", () => {
   });
 
   it("parses an auth challenge message", () => {
-    const msg = "agentgate:auth:ag_abc:1700000000";
+    const msg = "agentdoor:auth:ag_abc:1700000000";
     const parsed = parseChallengeMessage(msg);
     expect(parsed).not.toBeNull();
-    expect(parsed!.prefix).toBe("agentgate");
+    expect(parsed!.prefix).toBe("agentdoor");
     expect(parsed!.action).toBe("auth");
     expect(parsed!.agentId).toBe("ag_abc");
     expect(parsed!.timestamp).toBe(1700000000);
@@ -135,6 +135,6 @@ describe("parseChallengeMessage", () => {
   it("returns null for invalid format", () => {
     expect(parseChallengeMessage("invalid")).toBeNull();
     expect(parseChallengeMessage("wrong:prefix:ag_abc:123")).toBeNull();
-    expect(parseChallengeMessage("agentgate:register:ag_abc:notanumber:nonce")).toBeNull();
+    expect(parseChallengeMessage("agentdoor:register:ag_abc:notanumber:nonce")).toBeNull();
   });
 });

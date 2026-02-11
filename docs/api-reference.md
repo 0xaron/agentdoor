@@ -1,20 +1,20 @@
 # API Reference
 
-Complete reference for all HTTP endpoints exposed by the AgentGate middleware. These endpoints are mounted automatically when you add the AgentGate middleware to your server.
+Complete reference for all HTTP endpoints exposed by the AgentDoor middleware. These endpoints are mounted automatically when you add the AgentDoor middleware to your server.
 
 ## Endpoints Overview
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/.well-known/agentgate.json` | Discovery document |
-| `POST` | `/agentgate/register` | Start agent registration |
-| `POST` | `/agentgate/register/verify` | Complete registration via challenge-response |
-| `POST` | `/agentgate/auth` | **Token refresh** -- obtain a fresh JWT via signed challenge |
-| `GET` | `/agentgate/health` | Health check |
+| `GET` | `/.well-known/agentdoor.json` | Discovery document |
+| `POST` | `/agentdoor/register` | Start agent registration |
+| `POST` | `/agentdoor/register/verify` | Complete registration via challenge-response |
+| `POST` | `/agentdoor/auth` | **Token refresh** -- obtain a fresh JWT via signed challenge |
+| `GET` | `/agentdoor/health` | Health check |
 
 ---
 
-## `GET /.well-known/agentgate.json`
+## `GET /.well-known/agentdoor.json`
 
 Returns the discovery document describing the service's capabilities, available scopes, pricing, auth methods, and registration endpoints. This is a static JSON response that should be CDN-cached.
 
@@ -25,7 +25,7 @@ Agents fetch this document first to learn how to interact with your service -- a
 No request body or parameters required.
 
 ```
-GET /.well-known/agentgate.json HTTP/1.1
+GET /.well-known/agentdoor.json HTTP/1.1
 Host: api.example.com
 ```
 
@@ -43,11 +43,11 @@ Cache-Control: public, max-age=3600
 
 ```json
 {
-  "agentgate_version": "1.0",
+  "agentdoor_version": "1.0",
   "service_name": "Example API",
   "service_description": "Real-time weather data and forecasts",
-  "registration_endpoint": "/agentgate/register",
-  "auth_endpoint": "/agentgate/auth",
+  "registration_endpoint": "/agentdoor/register",
+  "auth_endpoint": "/agentdoor/auth",
   "scopes_available": [
     {
       "id": "weather.read",
@@ -89,7 +89,7 @@ Cache-Control: public, max-age=3600
 
 | Field | Type | Description |
 |---|---|---|
-| `agentgate_version` | `string` | Protocol version. Currently `"1.0"`. |
+| `agentdoor_version` | `string` | Protocol version. Currently `"1.0"`. |
 | `service_name` | `string` | Human/agent-readable service name. |
 | `service_description` | `string` | Brief description of the service. |
 | `registration_endpoint` | `string` | Path for agent registration. |
@@ -119,14 +119,14 @@ Cache-Control: public, max-age=3600
 
 ---
 
-## `POST /agentgate/register`
+## `POST /agentdoor/register`
 
 Initiates agent registration. The agent provides its public key (Ed25519 or secp256k1), requested scopes, and optional metadata. The server responds with a challenge nonce that the agent must sign to prove key ownership.
 
 ### Request
 
 ```
-POST /agentgate/register HTTP/1.1
+POST /agentdoor/register HTTP/1.1
 Host: api.example.com
 Content-Type: application/json
 ```
@@ -164,7 +164,7 @@ Content-Type: application/json
   "agent_id": "ag_V1StGXR8_Z5jdHi6B",
   "challenge": {
     "nonce": "dGhpcyBpcyBhIHJhbmRvbSBub25jZQ==",
-    "message": "agentgate:register:ag_V1StGXR8_Z5jdHi6B:1707400000:dGhpcyBpcyBhIHJhbmRvbSBub25jZQ==",
+    "message": "agentdoor:register:ag_V1StGXR8_Z5jdHi6B:1707400000:dGhpcyBpcyBhIHJhbmRvbSBub25jZQ==",
     "expires_at": "2026-02-08T12:05:00Z"
   }
 }
@@ -176,7 +176,7 @@ Content-Type: application/json
 |---|---|---|
 | `agent_id` | `string` | Unique agent identifier (prefixed with `ag_`). |
 | `challenge.nonce` | `string` | Base64-encoded random nonce (32 bytes). |
-| `challenge.message` | `string` | The exact string the agent must sign. Format: `agentgate:register:<agent_id>:<timestamp>:<nonce>`. |
+| `challenge.message` | `string` | The exact string the agent must sign. Format: `agentdoor:register:<agent_id>:<timestamp>:<nonce>`. |
 | `challenge.expires_at` | `string` | ISO 8601 timestamp. Challenge expires after 5 minutes. |
 
 ### Errors
@@ -203,14 +203,14 @@ Content-Type: application/json
 
 ---
 
-## `POST /agentgate/register/verify`
+## `POST /agentdoor/register/verify`
 
 Completes agent registration by verifying the signed challenge. The agent signs the `challenge.message` from the registration response with its private key and submits the signature. On success, the server issues credentials (API key and JWT).
 
 ### Request
 
 ```
-POST /agentgate/register/verify HTTP/1.1
+POST /agentdoor/register/verify HTTP/1.1
 Host: api.example.com
 Content-Type: application/json
 ```
@@ -281,7 +281,7 @@ Content-Type: application/json
 
 ---
 
-## `POST /agentgate/auth` (Token Refresh)
+## `POST /agentdoor/auth` (Token Refresh)
 
 **This is the token refresh endpoint.** Agents obtain a fresh JWT by signing a timestamped message with their Ed25519 private key. Use this when the current JWT has expired or is about to expire.
 
@@ -290,7 +290,7 @@ Unlike typical JWT refresh tokens, this endpoint requires a **cryptographic sign
 ### Request
 
 ```
-POST /agentgate/auth HTTP/1.1
+POST /agentdoor/auth HTTP/1.1
 Host: api.example.com
 Content-Type: application/json
 ```
@@ -311,7 +311,7 @@ Content-Type: application/json
 |---|---|---|---|
 | `agent_id` | `string` | Yes | The agent's unique identifier from registration. |
 | `timestamp` | `string` | Yes | Current ISO 8601 timestamp. Must be within 5 minutes of server time. |
-| `signature` | `string` | Yes | Base64-encoded signature of the string `agentgate:auth:<agent_id>:<timestamp>`, signed with the agent's private key. |
+| `signature` | `string` | Yes | Base64-encoded signature of the string `agentdoor:auth:<agent_id>:<timestamp>`, signed with the agent's private key. |
 
 ### Response -- Success
 
@@ -342,18 +342,18 @@ Content-Type: application/json
 
 ### SDK Automation
 
-If you're using the AgentGate SDK (TypeScript or Python), **you don't need to call this endpoint manually**. The SDK's `Session` object automatically refreshes the token 30 seconds before expiry and retries on `401` responses. See the [SDK Token Refresh guide](./agent-sdk.md#token-refresh) for details.
+If you're using the AgentDoor SDK (TypeScript or Python), **you don't need to call this endpoint manually**. The SDK's `Session` object automatically refreshes the token 30 seconds before expiry and retries on `401` responses. See the [SDK Token Refresh guide](./agent-sdk.md#token-refresh) for details.
 
 ---
 
-## `GET /agentgate/health`
+## `GET /agentdoor/health`
 
-Health check endpoint. Returns the current status of the AgentGate middleware, including storage connectivity and basic statistics.
+Health check endpoint. Returns the current status of the AgentDoor middleware, including storage connectivity and basic statistics.
 
 ### Request
 
 ```
-GET /agentgate/health HTTP/1.1
+GET /agentdoor/health HTTP/1.1
 Host: api.example.com
 ```
 
@@ -383,7 +383,7 @@ Host: api.example.com
 | Field | Type | Description |
 |---|---|---|
 | `status` | `string` | `"healthy"` or `"degraded"`. |
-| `version` | `string` | AgentGate package version. |
+| `version` | `string` | AgentDoor package version. |
 | `uptime_seconds` | `number` | Seconds since the middleware was initialized. |
 | `storage.driver` | `string` | Active storage driver name. |
 | `storage.connected` | `boolean` | Whether the storage backend is reachable. |
@@ -430,7 +430,7 @@ X-PAYMENT: <x402-payment-payload>
 
 ### Middleware Behavior
 
-The AgentGate auth middleware runs on every request and:
+The AgentDoor auth middleware runs on every request and:
 
 1. Checks for an `Authorization: Bearer` header.
 2. If the token starts with `agk_live_`, looks up the agent by API key hash.
@@ -487,7 +487,7 @@ interface AgentContext {
 
 ## Error Response Format
 
-All AgentGate error responses follow a consistent format:
+All AgentDoor error responses follow a consistent format:
 
 ```json
 {

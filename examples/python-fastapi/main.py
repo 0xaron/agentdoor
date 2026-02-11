@@ -1,7 +1,7 @@
-"""Python FastAPI example with AgentGate middleware.
+"""Python FastAPI example with AgentDoor middleware.
 
 Demonstrates how to make a FastAPI application agent-ready using the
-agentgate-fastapi adapter. Agents can discover, register, authenticate,
+agentdoor-fastapi adapter. Agents can discover, register, authenticate,
 and access protected endpoints programmatically.
 
 Run with:
@@ -10,21 +10,21 @@ Run with:
 
 from fastapi import Depends, FastAPI
 
-from agentgate_fastapi import AgentGate, AgentGateConfig, AgentContext
+from agentdoor_fastapi import AgentDoor, AgentDoorConfig, AgentContext
 
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="AgentGate Python Example",
-    description="A sample FastAPI app with AgentGate agent authentication",
+    title="AgentDoor Python Example",
+    description="A sample FastAPI app with AgentDoor agent authentication",
 )
 
-# --- AgentGate: 3 lines to make your API agent-ready ---
-gate = AgentGate(
+# --- AgentDoor: 3 lines to make your API agent-ready ---
+gate = AgentDoor(
     app,
-    config=AgentGateConfig(
+    config=AgentDoorConfig(
         service_name="Python Example API",
         scopes=[
             {"name": "read", "description": "Read access to items"},
@@ -34,10 +34,10 @@ gate = AgentGate(
     ),
 )
 # --- That's it. Your API is now agent-ready. ---
-# AgentGate automatically:
-#   - Serves /.well-known/agentgate.json (discovery)
-#   - Mounts /agentgate/register + /agentgate/register/verify (registration)
-#   - Mounts /agentgate/auth (returning agents)
+# AgentDoor automatically:
+#   - Serves /.well-known/agentdoor.json (discovery)
+#   - Mounts /agentdoor/register + /agentdoor/register/verify (registration)
+#   - Mounts /agentdoor/auth (returning agents)
 
 # ---------------------------------------------------------------------------
 # Sample data

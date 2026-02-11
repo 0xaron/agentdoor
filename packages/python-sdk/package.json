@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/python-sdk",
+  "name": "@agentdoor/python-sdk",
   "version": "0.1.0",
   "private": true,
   "scripts": {

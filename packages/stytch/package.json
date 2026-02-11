@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/stytch",
+  "name": "@agentdoor/stytch",
   "version": "0.1.0",
-  "description": "Stytch companion plugin for AgentGate - bridge agents with Stytch Connected Apps",
+  "description": "Stytch companion plugin for AgentDoor - bridge agents with Stytch Connected Apps",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/stytch"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "stytch",
     "auth",
     "agent",

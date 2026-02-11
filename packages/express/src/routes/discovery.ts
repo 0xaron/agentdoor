@@ -1,10 +1,10 @@
 import { Router } from "express";
-import type { ResolvedConfig } from "@agentgate/core";
-import { generateDiscoveryDocument } from "@agentgate/core";
+import type { ResolvedConfig } from "@agentdoor/core";
+import { generateDiscoveryDocument } from "@agentdoor/core";
 
 /**
- * Creates a router that serves the AgentGate discovery document
- * at GET /.well-known/agentgate.json.
+ * Creates a router that serves the AgentDoor discovery document
+ * at GET /.well-known/agentdoor.json.
  *
  * The discovery document is generated once from config and cached
  * in memory. It tells agents everything they need to know:
@@ -22,10 +22,10 @@ export function createDiscoveryRouter(config: ResolvedConfig): Router {
   const discoveryDocument = generateDiscoveryDocument(config);
   const documentBody = JSON.stringify(discoveryDocument);
 
-  router.get("/.well-known/agentgate.json", (_req, res) => {
+  router.get("/.well-known/agentdoor.json", (_req, res) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=3600");
-    res.setHeader("X-AgentGate-Version", discoveryDocument.agentgate_version);
+    res.setHeader("X-AgentDoor-Version", discoveryDocument.agentdoor_version);
     res.status(200).send(documentBody);
   });
 

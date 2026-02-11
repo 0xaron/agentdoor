@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/vercel",
+  "name": "@agentdoor/vercel",
   "version": "0.1.0",
-  "description": "Vercel Edge middleware for AgentGate - lightweight agent auth at the edge",
+  "description": "Vercel Edge middleware for AgentDoor - lightweight agent auth at the edge",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
-  "dependencies": { "@agentgate/core": "workspace:*" },
+  "dependencies": { "@agentdoor/core": "workspace:*" },
   "devDependencies": {
     "typescript": "^5.7.0",
     "vitest": "^2.1.0",

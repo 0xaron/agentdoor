@@ -2,10 +2,10 @@
  * Dashboard API - Config Endpoint (Phase 3.4)
  *
  * GET /api/config
- * Returns the current AgentGate configuration including scopes,
+ * Returns the current AgentDoor configuration including scopes,
  * rate limits, and x402 settings.
  *
- * In production this would read from the actual AgentGateConfig.
+ * In production this would read from the actual AgentDoorConfig.
  * For now, returns a representative sample configuration.
  */
 
@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 import type { ApiResponse } from "@/lib/types";
 
 /** Shape of the configuration data returned by this endpoint. */
-interface AgentGateConfigResponse {
+interface AgentDoorConfigResponse {
   service: {
     name: string;
     description: string;
@@ -71,10 +71,10 @@ interface AgentGateConfigResponse {
 
 export async function GET() {
   try {
-    const config: AgentGateConfigResponse = {
+    const config: AgentDoorConfigResponse = {
       service: {
-        name: "AgentGate Service",
-        description: "An AgentGate-enabled API service",
+        name: "AgentDoor Service",
+        description: "An AgentDoor-enabled API service",
         version: "1.0",
         mode: "live",
       },
@@ -135,7 +135,7 @@ export async function GET() {
       success: true,
       data: config,
       timestamp: new Date().toISOString(),
-    } satisfies ApiResponse<AgentGateConfigResponse>);
+    } satisfies ApiResponse<AgentDoorConfigResponse>);
   } catch (error) {
     return NextResponse.json(
       {

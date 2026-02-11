@@ -1,8 +1,8 @@
 /**
- * E2E Integration Tests for AgentGate
+ * E2E Integration Tests for AgentDoor
  *
  * Tests the full loop:
- *   1. Express server with agentgate middleware starts
+ *   1. Express server with agentdoor middleware starts
  *   2. Agent SDK discovers the service
  *   3. Agent registers via challenge-response
  *   4. Agent makes authenticated requests
@@ -19,7 +19,7 @@ import {
   resolveConfig,
   MemoryStore,
   generateDiscoveryDocument,
-  AGENTGATE_VERSION,
+  AGENTDOOR_VERSION,
   hashApiKey,
   createChallenge,
   verifyToken,
@@ -41,7 +41,7 @@ describe("E2E Integration Tests", () => {
       expect(typeof keypair.secretKey).toBe("string");
 
       // Sign a message
-      const message = "agentgate:test:message:12345";
+      const message = "agentdoor:test:message:12345";
       const signature = signChallenge(message, keypair.secretKey);
 
       expect(signature).toBeDefined();
@@ -73,7 +73,7 @@ describe("E2E Integration Tests", () => {
       expect(challenge.agentId).toBe(agentId);
       expect(challenge.nonce).toBeDefined();
       expect(challenge.message).toContain(agentId);
-      expect(challenge.message).toContain("agentgate:register:");
+      expect(challenge.message).toContain("agentdoor:register:");
       expect(challenge.expiresAt).toBeInstanceOf(Date);
       expect(challenge.expiresAt.getTime()).toBeGreaterThan(Date.now());
 
@@ -164,11 +164,11 @@ describe("E2E Integration Tests", () => {
 
       const doc = generateDiscoveryDocument(config);
 
-      expect(doc.agentgate_version).toBe(AGENTGATE_VERSION);
+      expect(doc.agentdoor_version).toBe(AGENTDOOR_VERSION);
       expect(doc.service_name).toBe("E2E Test Service");
       expect(doc.service_description).toBe("End-to-end test service");
-      expect(doc.registration_endpoint).toBe("/agentgate/register");
-      expect(doc.auth_endpoint).toBe("/agentgate/auth");
+      expect(doc.registration_endpoint).toBe("/agentdoor/register");
+      expect(doc.auth_endpoint).toBe("/agentdoor/auth");
       expect(doc.scopes_available).toHaveLength(2);
       expect(doc.auth_methods).toContain("ed25519-challenge");
       expect(doc.payment).toBeDefined();
@@ -293,7 +293,7 @@ describe("E2E Integration Tests", () => {
 
       // 10. Agent re-authenticates (token refresh)
       const timestamp = new Date().toISOString();
-      const authMessage = `agentgate:auth:ag_simulation_test:${timestamp}`;
+      const authMessage = `agentdoor:auth:ag_simulation_test:${timestamp}`;
       const authSignature = signChallenge(authMessage, keypair.secretKey);
 
       // Server verifies auth signature
@@ -369,7 +369,7 @@ describe("E2E Integration Tests", () => {
       expect(a2!.rateLimit.requests).toBe(500);
 
       // Agent 1's signature doesn't work for agent 2's messages
-      const msg = "agentgate:auth:ag_multi_2:2024-01-01T00:00:00Z";
+      const msg = "agentdoor:auth:ag_multi_2:2024-01-01T00:00:00Z";
       const sig = signChallenge(msg, agent1Keypair.secretKey);
       const validForAgent2 = verifySignature(msg, sig, agent2Keypair.publicKey);
       expect(validForAgent2).toBe(false);

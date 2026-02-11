@@ -1,12 +1,12 @@
 /**
  * Dashboard Store Bridge
  *
- * Bridges the DashboardApi with an AgentGate core AgentStore instance,
+ * Bridges the DashboardApi with an AgentDoor core AgentStore instance,
  * allowing the dashboard to read real agent data from any supported
  * storage backend (memory, SQLite, PostgreSQL).
  */
 
-import type { AgentStore } from "@agentgate/core";
+import type { AgentStore } from "@agentdoor/core";
 import { DashboardApi } from "./api.js";
 import type {
   DashboardApiConfig,
@@ -30,7 +30,7 @@ export interface DashboardStoreConfig {
 // ---------------------------------------------------------------------------
 
 /**
- * A DashboardApi implementation backed by an AgentGate core AgentStore.
+ * A DashboardApi implementation backed by an AgentDoor core AgentStore.
  *
  * Reads agent data directly from the store and computes dashboard
  * statistics from the stored agent records.
@@ -195,7 +195,7 @@ class AgentStoreDashboardApi extends DashboardApi {
 // ---------------------------------------------------------------------------
 
 /**
- * Create a DashboardApi instance backed by an AgentGate core AgentStore.
+ * Create a DashboardApi instance backed by an AgentDoor core AgentStore.
  *
  * This bridges the dashboard frontend with actual storage data,
  * allowing the dashboard to display real agent registrations,
@@ -206,7 +206,7 @@ class AgentStoreDashboardApi extends DashboardApi {
  *
  * @example
  * ```ts
- * import { MemoryStore } from "@agentgate/core";
+ * import { MemoryStore } from "@agentdoor/core";
  * import { createDashboardStore } from "./store";
  *
  * const store = new MemoryStore();

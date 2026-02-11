@@ -1,4 +1,4 @@
-"""Tests for the AgentGate FastAPI middleware.
+"""Tests for the AgentDoor FastAPI middleware.
 
 Uses FastAPI TestClient (backed by httpx) to exercise the full
 registration, verification, and authentication flow.
@@ -14,7 +14,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from nacl.signing import SigningKey
 
-from agentgate_fastapi import AgentGate, AgentGateConfig, AgentContext
+from agentdoor_fastapi import AgentDoor, AgentDoorConfig, AgentContext
 
 
 # ---------------------------------------------------------------------------
@@ -36,10 +36,10 @@ def _sign(message: str, signing_key: SigningKey) -> str:
     return base64.b64encode(signed.signature).decode()
 
 
-def _create_app(config: AgentGateConfig | None = None) -> tuple[FastAPI, AgentGate]:
-    """Create a test FastAPI app with AgentGate mounted."""
+def _create_app(config: AgentDoorConfig | None = None) -> tuple[FastAPI, AgentDoor]:
+    """Create a test FastAPI app with AgentDoor mounted."""
     app = FastAPI()
-    cfg = config or AgentGateConfig(
+    cfg = config or AgentDoorConfig(
         service_name="Test Service",
         scopes=[
             {"name": "read", "description": "Read access"},
@@ -47,7 +47,7 @@ def _create_app(config: AgentGateConfig | None = None) -> tuple[FastAPI, AgentGa
         ],
         token_ttl_seconds=3600,
     )
-    gate = AgentGate(app, config=cfg)
+    gate = AgentDoor(app, config=cfg)
 
     @app.get("/protected")
     async def protected(agent: AgentContext = Depends(gate.agent_required())):
@@ -68,25 +68,25 @@ def _create_app(config: AgentGateConfig | None = None) -> tuple[FastAPI, AgentGa
 
 
 class TestDiscovery:
-    """Tests for GET /.well-known/agentgate.json."""
+    """Tests for GET /.well-known/agentdoor.json."""
 
     def test_returns_discovery_document(self) -> None:
         app, _ = _create_app()
         client = TestClient(app)
-        resp = client.get("/.well-known/agentgate.json")
+        resp = client.get("/.well-known/agentdoor.json")
         assert resp.status_code == 200
         data = resp.json()
         assert data["service_name"] == "Test Service"
-        assert data["agentgate_version"] == "0.1"
-        assert data["registration_endpoint"] == "/agentgate/register"
-        assert data["verification_endpoint"] == "/agentgate/register/verify"
-        assert data["auth_endpoint"] == "/agentgate/auth"
+        assert data["agentdoor_version"] == "0.1"
+        assert data["registration_endpoint"] == "/agentdoor/register"
+        assert data["verification_endpoint"] == "/agentdoor/register/verify"
+        assert data["auth_endpoint"] == "/agentdoor/auth"
         assert len(data["scopes"]) == 2
 
     def test_token_ttl_in_discovery(self) -> None:
         app, _ = _create_app()
         client = TestClient(app)
-        resp = client.get("/.well-known/agentgate.json")
+        resp = client.get("/.well-known/agentdoor.json")
         assert resp.json()["token_ttl_seconds"] == 3600
 
 
@@ -98,7 +98,7 @@ class TestRegistration:
         client = TestClient(app)
         pub, _, _ = _generate_keypair()
 
-        resp = client.post("/agentgate/register", json={
+        resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read"],
@@ -113,7 +113,7 @@ class TestRegistration:
         client = TestClient(app)
         pub, _, _ = _generate_keypair()
 
-        resp = client.post("/agentgate/register", json={
+        resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["nonexistent"],
@@ -131,7 +131,7 @@ class TestVerification:
         pub, _, signing_key = _generate_keypair()
 
         # Step 1: Register
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read"],
@@ -143,7 +143,7 @@ class TestVerification:
         challenge = reg_data["challenge"]
         signature = _sign(challenge, signing_key)
 
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": challenge,
             "signature": signature,
@@ -157,7 +157,7 @@ class TestVerification:
         app, _ = _create_app()
         client = TestClient(app)
 
-        resp = client.post("/agentgate/register/verify", json={
+        resp = client.post("/agentdoor/register/verify", json={
             "registration_id": "nonexistent",
             "challenge": "whatever",
             "signature": "whatever",
@@ -170,7 +170,7 @@ class TestVerification:
         pub, _, signing_key = _generate_keypair()
 
         # Register
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read"],
@@ -180,7 +180,7 @@ class TestVerification:
         # Sign wrong message
         wrong_signature = _sign("wrong-message", signing_key)
 
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": reg_data["challenge"],
             "signature": wrong_signature,
@@ -192,7 +192,7 @@ class TestVerification:
         client = TestClient(app)
         pub, _, signing_key = _generate_keypair()
 
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read"],
@@ -201,7 +201,7 @@ class TestVerification:
 
         # Send wrong challenge
         signature = _sign("wrong-challenge", signing_key)
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": "wrong-challenge",
             "signature": signature,
@@ -216,7 +216,7 @@ class TestAuthentication:
         self, client: TestClient, signing_key: SigningKey, pub: str
     ) -> dict:
         """Helper: run the full registration flow and return verify data."""
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read", "write"],
@@ -224,7 +224,7 @@ class TestAuthentication:
         reg_data = reg_resp.json()
         challenge = reg_data["challenge"]
         signature = _sign(challenge, signing_key)
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": challenge,
             "signature": signature,
@@ -240,7 +240,7 @@ class TestAuthentication:
         timestamp = str(int(time.time()))
         signature = _sign(timestamp, signing_key)
 
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": agent_data["agent_id"],
             "api_key": agent_data["api_key"],
             "timestamp": timestamp,
@@ -260,7 +260,7 @@ class TestAuthentication:
         timestamp = str(int(time.time()))
         signature = _sign(timestamp, signing_key)
 
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": agent_data["agent_id"],
             "api_key": "wrong-key",
             "timestamp": timestamp,
@@ -278,7 +278,7 @@ class TestAuthentication:
         stale_timestamp = str(int(time.time()) - 600)
         signature = _sign(stale_timestamp, signing_key)
 
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": agent_data["agent_id"],
             "api_key": agent_data["api_key"],
             "timestamp": stale_timestamp,
@@ -294,7 +294,7 @@ class TestAuthentication:
         timestamp = str(int(time.time()))
         signature = _sign(timestamp, signing_key)
 
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": "nonexistent",
             "api_key": "whatever",
             "timestamp": timestamp,
@@ -310,7 +310,7 @@ class TestProtectedRoutes:
         self, client: TestClient, signing_key: SigningKey, pub: str
     ) -> str:
         """Helper: register + authenticate and return a bearer token."""
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read", "write"],
@@ -318,7 +318,7 @@ class TestProtectedRoutes:
         reg_data = reg_resp.json()
         challenge = reg_data["challenge"]
         sig = _sign(challenge, signing_key)
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": challenge,
             "signature": sig,
@@ -327,7 +327,7 @@ class TestProtectedRoutes:
 
         timestamp = str(int(time.time()))
         ts_sig = _sign(timestamp, signing_key)
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": verify_data["agent_id"],
             "api_key": verify_data["api_key"],
             "timestamp": timestamp,
@@ -380,14 +380,14 @@ class TestProtectedRoutes:
     def test_scope_enforcement_missing_scope(self) -> None:
         """Agent missing a required scope gets 403."""
         app = FastAPI()
-        cfg = AgentGateConfig(
+        cfg = AgentDoorConfig(
             service_name="Test",
             scopes=[
                 {"name": "read", "description": "Read"},
                 {"name": "admin", "description": "Admin"},
             ],
         )
-        gate = AgentGate(app, config=cfg)
+        gate = AgentDoor(app, config=cfg)
 
         @app.get("/admin-only")
         async def admin_only(
@@ -399,7 +399,7 @@ class TestProtectedRoutes:
         pub, _, signing_key = _generate_keypair()
 
         # Register with only "read" scope
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "limited-agent",
             "public_key": pub,
             "scopes": ["read"],
@@ -407,7 +407,7 @@ class TestProtectedRoutes:
         reg_data = reg_resp.json()
         challenge = reg_data["challenge"]
         sig = _sign(challenge, signing_key)
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": challenge,
             "signature": sig,
@@ -416,7 +416,7 @@ class TestProtectedRoutes:
 
         timestamp = str(int(time.time()))
         ts_sig = _sign(timestamp, signing_key)
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": verify_data["agent_id"],
             "api_key": verify_data["api_key"],
             "timestamp": timestamp,
@@ -434,12 +434,12 @@ class TestProtectedRoutes:
     def test_expired_token_rejected(self) -> None:
         """An expired token should return 401."""
         app = FastAPI()
-        cfg = AgentGateConfig(
+        cfg = AgentDoorConfig(
             service_name="Test",
             scopes=[{"name": "read", "description": "Read"}],
             token_ttl_seconds=0,  # Tokens expire immediately
         )
-        gate = AgentGate(app, config=cfg)
+        gate = AgentDoor(app, config=cfg)
 
         @app.get("/protected")
         async def protected(
@@ -451,7 +451,7 @@ class TestProtectedRoutes:
         pub, _, signing_key = _generate_keypair()
 
         # Full registration
-        reg_resp = client.post("/agentgate/register", json={
+        reg_resp = client.post("/agentdoor/register", json={
             "agent_name": "test-agent",
             "public_key": pub,
             "scopes": ["read"],
@@ -459,7 +459,7 @@ class TestProtectedRoutes:
         reg_data = reg_resp.json()
         challenge = reg_data["challenge"]
         sig = _sign(challenge, signing_key)
-        verify_resp = client.post("/agentgate/register/verify", json={
+        verify_resp = client.post("/agentdoor/register/verify", json={
             "registration_id": reg_data["registration_id"],
             "challenge": challenge,
             "signature": sig,
@@ -468,7 +468,7 @@ class TestProtectedRoutes:
 
         timestamp = str(int(time.time()))
         ts_sig = _sign(timestamp, signing_key)
-        auth_resp = client.post("/agentgate/auth", json={
+        auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": verify_data["agent_id"],
             "api_key": verify_data["api_key"],
             "timestamp": timestamp,
@@ -492,17 +492,17 @@ class TestCustomRoutePrefix:
     def test_custom_prefix(self) -> None:
         """Routes should use the custom prefix."""
         app = FastAPI()
-        cfg = AgentGateConfig(
+        cfg = AgentDoorConfig(
             service_name="Custom",
             scopes=[{"name": "read", "description": "Read"}],
             route_prefix="/custom/auth",
         )
-        AgentGate(app, config=cfg)
+        AgentDoor(app, config=cfg)
 
         client = TestClient(app)
 
         # Discovery should reflect custom prefix
-        resp = client.get("/.well-known/agentgate.json")
+        resp = client.get("/.well-known/agentdoor.json")
         assert resp.status_code == 200
         data = resp.json()
         assert data["registration_endpoint"] == "/custom/auth/register"

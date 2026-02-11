@@ -1,4 +1,4 @@
-"""Credential storage for AgentGate agent identities and tokens.
+"""Credential storage for AgentDoor agent identities and tokens.
 
 Provides both in-memory and file-based credential stores for persisting
 agent keypairs, API keys, and authentication tokens across sessions.
@@ -121,12 +121,12 @@ class InMemoryCredentialStore(CredentialStore):
 class FileCredentialStore(CredentialStore):
     """File-based credential store.
 
-    Persists credentials to ``~/.agentgate/credentials.json`` by default.
+    Persists credentials to ``~/.agentdoor/credentials.json`` by default.
     The file is created with restricted permissions (600) to protect
     secret key material.
     """
 
-    DEFAULT_PATH = Path.home() / ".agentgate" / "credentials.json"
+    DEFAULT_PATH = Path.home() / ".agentdoor" / "credentials.json"
 
     def __init__(self, path: str | Path | None = None) -> None:
         self._path = Path(path) if path else self.DEFAULT_PATH

@@ -1,27 +1,27 @@
 import type {
-  AgentGateConfig,
+  AgentDoorConfig,
   AgentContext,
   ScopeDefinition,
   Agent,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Cloudflare environment bindings
 // ---------------------------------------------------------------------------
 
 /**
- * Cloudflare Workers environment bindings for AgentGate.
- * When using Durable Objects, bind the AgentGateDurableObject in wrangler.toml:
+ * Cloudflare Workers environment bindings for AgentDoor.
+ * When using Durable Objects, bind the AgentDoorDurableObject in wrangler.toml:
  *
  * ```toml
  * [durable_objects]
  * bindings = [
- *   { name = "AGENTGATE_DO", class_name = "AgentGateDurableObject" }
+ *   { name = "AGENTDOOR_DO", class_name = "AgentDoorDurableObject" }
  * ]
  * ```
  */
 export interface CloudflareEnv {
-  AGENTGATE_DO?: {
+  AGENTDOOR_DO?: {
     idFromName(name: string): { toString(): string };
     get(id: { toString(): string }): {
       fetch(request: Request): Promise<Response>;
@@ -111,13 +111,13 @@ async function verifyEd25519(
 // Discovery document generation
 // ---------------------------------------------------------------------------
 
-function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
+function buildDiscoveryDocument(config: AgentDoorConfig): Record<string, unknown> {
   return {
-    agentgate_version: "1.0",
-    service_name: config.service?.name ?? "AgentGate Service",
+    agentdoor_version: "1.0",
+    service_name: config.service?.name ?? "AgentDoor Service",
     service_description: config.service?.description ?? "",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
       id: s.id,
       description: s.description,
@@ -159,7 +159,7 @@ function jsonResponse(body: unknown, status: number, extraHeaders?: Record<strin
 // Configuration
 // ---------------------------------------------------------------------------
 
-export interface AgentGateCloudflareConfig extends AgentGateConfig {
+export interface AgentDoorCloudflareConfig extends AgentDoorConfig {
   /**
    * Path prefix patterns that require agent auth verification.
    * Defaults to `["/api/"]`.
@@ -168,14 +168,14 @@ export interface AgentGateCloudflareConfig extends AgentGateConfig {
 
   /**
    * When `true`, unauthenticated requests to protected paths pass through
-   * with an `x-agentgate-authenticated: false` header.
+   * with an `x-agentdoor-authenticated: false` header.
    * When `false` (default), unauthenticated requests receive a 401.
    */
   passthrough?: boolean;
 
   /**
-   * When `true`, delegate agent storage to the AgentGateDurableObject
-   * (requires AGENTGATE_DO binding in the environment).
+   * When `true`, delegate agent storage to the AgentDoorDurableObject
+   * (requires AGENTDOOR_DO binding in the environment).
    * When `false` (default), use in-memory Maps.
    */
   useDurableObjects?: boolean;
@@ -192,15 +192,15 @@ export interface AgentGateCloudflareConfig extends AgentGateConfig {
  * ```toml
  * [durable_objects]
  * bindings = [
- *   { name = "AGENTGATE_DO", class_name = "AgentGateDurableObject" }
+ *   { name = "AGENTDOOR_DO", class_name = "AgentDoorDurableObject" }
  * ]
  *
  * [[migrations]]
  * tag = "v1"
- * new_classes = ["AgentGateDurableObject"]
+ * new_classes = ["AgentDoorDurableObject"]
  * ```
  */
-export class AgentGateDurableObject {
+export class AgentDoorDurableObject {
   private agents: Map<string, StoredAgent> = new Map();
   private challenges: Map<string, PendingChallenge> = new Map();
   private state: {
@@ -212,7 +212,7 @@ export class AgentGateDurableObject {
     };
   };
 
-  constructor(state: typeof AgentGateDurableObject.prototype.state) {
+  constructor(state: typeof AgentDoorDurableObject.prototype.state) {
     this.state = state;
   }
 
@@ -335,20 +335,20 @@ export class AgentGateDurableObject {
 
 /**
  * Create a standalone Cloudflare Workers fetch handler that handles all
- * AgentGate routes. Uses in-memory Maps for state.
+ * AgentDoor routes. Uses in-memory Maps for state.
  *
  * ```ts
- * import { createAgentGateWorker } from "@agentgate/cloudflare";
+ * import { createAgentDoorWorker } from "@agentdoor/cloudflare";
  *
  * export default {
- *   fetch: createAgentGateWorker({
+ *   fetch: createAgentDoorWorker({
  *     scopes: [{ id: "data.read", description: "Read data" }],
  *   }),
  * };
  * ```
  */
-export function createAgentGateWorker(
-  config: AgentGateCloudflareConfig,
+export function createAgentDoorWorker(
+  config: AgentDoorCloudflareConfig,
 ): (request: Request, env?: CloudflareEnv) => Promise<Response> {
   return (request: Request, env?: CloudflareEnv) => handleRequest(request, env ?? {}, config);
 }
@@ -365,31 +365,31 @@ export function createAgentGateWorker(
 export async function handleRequest(
   request: Request,
   env: CloudflareEnv,
-  config: AgentGateCloudflareConfig,
+  config: AgentDoorCloudflareConfig,
 ): Promise<Response> {
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method;
 
   // ---- Discovery ----
-  if (pathname === "/.well-known/agentgate.json" && method === "GET") {
+  if (pathname === "/.well-known/agentdoor.json" && method === "GET") {
     return jsonResponse(buildDiscoveryDocument(config), 200, {
       "Cache-Control": "public, max-age=3600",
     });
   }
 
   // ---- Registration ----
-  if (pathname === "/agentgate/register" && method === "POST") {
+  if (pathname === "/agentdoor/register" && method === "POST") {
     return handleRegister(request, env, config);
   }
 
   // ---- Registration verify ----
-  if (pathname === "/agentgate/register/verify" && method === "POST") {
+  if (pathname === "/agentdoor/register/verify" && method === "POST") {
     return handleRegisterVerify(request, env, config);
   }
 
   // ---- Auth (returning agents) ----
-  if (pathname === "/agentgate/auth" && method === "POST") {
+  if (pathname === "/agentdoor/auth" && method === "POST") {
     return handleAuth(request, env, config);
   }
 
@@ -400,7 +400,7 @@ export async function handleRequest(
     return handleAuthGuard(request, env, config);
   }
 
-  // Non-AgentGate routes — return 404 (in a real worker, you would call
+  // Non-AgentDoor routes — return 404 (in a real worker, you would call
   // the origin or return your own response here).
   return jsonResponse({ error: "Not found" }, 404);
 }
@@ -412,7 +412,7 @@ export async function handleRequest(
 async function handleRegister(
   request: Request,
   _env: CloudflareEnv,
-  config: AgentGateCloudflareConfig,
+  config: AgentDoorCloudflareConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -457,7 +457,7 @@ async function handleRegister(
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
+  const message = `agentdoor:register:${agentId}:${timestamp}:${nonce}`;
   const expiresAt = Date.now() + 5 * 60 * 1000;
 
   pendingChallenges.set(agentId, {
@@ -486,7 +486,7 @@ async function handleRegister(
 async function handleRegisterVerify(
   request: Request,
   _env: CloudflareEnv,
-  config: AgentGateCloudflareConfig,
+  config: AgentDoorCloudflareConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -582,7 +582,7 @@ async function handleRegisterVerify(
 async function handleAuth(
   request: Request,
   _env: CloudflareEnv,
-  config: AgentGateCloudflareConfig,
+  config: AgentDoorCloudflareConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -607,7 +607,7 @@ async function handleAuth(
     return jsonResponse({ error: "Unknown agent_id" }, 404);
   }
 
-  const message = `agentgate:auth:${agentId}:${timestamp}`;
+  const message = `agentdoor:auth:${agentId}:${timestamp}`;
   const valid = await verifyEd25519(message, signature, agent.publicKey);
   if (!valid) {
     return jsonResponse({ error: "Invalid signature" }, 400);
@@ -649,7 +649,7 @@ async function handleAuth(
 async function handleAuthGuard(
   request: Request,
   _env: CloudflareEnv,
-  config: AgentGateCloudflareConfig,
+  config: AgentDoorCloudflareConfig,
 ): Promise<Response> {
   const passthrough = config.passthrough ?? false;
   const authHeader = request.headers.get("authorization");
@@ -704,9 +704,9 @@ async function handleAuthGuard(
   return new Response(null, {
     status: 200,
     headers: {
-      "x-agentgate-agent": JSON.stringify(agentContext),
-      "x-agentgate-authenticated": "true",
-      "x-agentgate-agent-id": matchedAgent.id,
+      "x-agentdoor-agent": JSON.stringify(agentContext),
+      "x-agentdoor-authenticated": "true",
+      "x-agentdoor-agent-id": matchedAgent.id,
     },
   });
 }
@@ -715,7 +715,7 @@ function passthroughResponse(): Response {
   return new Response(null, {
     status: 200,
     headers: {
-      "x-agentgate-authenticated": "false",
+      "x-agentdoor-authenticated": "false",
     },
   });
 }

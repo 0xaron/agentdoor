@@ -1,6 +1,6 @@
-# Contributing to AgentGate
+# Contributing to AgentDoor
 
-Thank you for your interest in contributing to AgentGate! This guide will help you get started.
+Thank you for your interest in contributing to AgentDoor! This guide will help you get started.
 
 ## Development Setup
 
@@ -14,8 +14,8 @@ Thank you for your interest in contributing to AgentGate! This guide will help y
 
 ```bash
 # Clone the repository
-git clone https://github.com/0xaron/agentgate.git
-cd agentgate
+git clone https://github.com/0xaron/agentdoor.git
+cd agentdoor
 
 # Install dependencies
 pnpm install
@@ -35,7 +35,7 @@ pnpm lint
 
 ## Project Structure
 
-AgentGate is a monorepo managed with [pnpm workspaces](https://pnpm.io/workspaces) and [Turborepo](https://turbo.build/repo). Key directories:
+AgentDoor is a monorepo managed with [pnpm workspaces](https://pnpm.io/workspaces) and [Turborepo](https://turbo.build/repo). Key directories:
 
 - `packages/` — All npm/PyPI packages (core, adapters, integrations)
 - `apps/` — Applications (dashboard)
@@ -72,7 +72,7 @@ pnpm test
 pnpm test:coverage
 
 # Run tests for a specific package
-pnpm --filter @agentgate/core test
+pnpm --filter @agentdoor/core test
 ```
 
 Coverage thresholds are enforced: 75% lines, 75% branches, 80% functions, 75% statements.
@@ -113,4 +113,4 @@ Open an issue describing:
 
 ## License
 
-By contributing to AgentGate, you agree that your contributions will be licensed under the [MIT License](./LICENSE).
+By contributing to AgentDoor, you agree that your contributions will be licensed under the [MIT License](./LICENSE).

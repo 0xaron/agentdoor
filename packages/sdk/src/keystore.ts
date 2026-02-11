@@ -2,7 +2,7 @@
  * Local Ed25519 keypair management.
  *
  * Generates Ed25519 keypairs using tweetnacl.
- * Saves and loads from a configurable file path (default: ~/.agentgate/keys.json).
+ * Saves and loads from a configurable file path (default: ~/.agentdoor/keys.json).
  * Auto-generates a keypair if none exists on disk.
  */
 
@@ -41,9 +41,9 @@ function resolvePath(filePath: string): string {
 }
 
 /**
- * Default key file path: ~/.agentgate/keys.json
+ * Default key file path: ~/.agentdoor/keys.json
  */
-export const DEFAULT_KEY_PATH = "~/.agentgate/keys.json";
+export const DEFAULT_KEY_PATH = "~/.agentdoor/keys.json";
 
 /**
  * Generate a fresh Ed25519 keypair.
@@ -98,12 +98,12 @@ export function loadKeypair(filePath: string): Keypair | null {
   try {
     stored = JSON.parse(raw) as StoredKeypair;
   } catch {
-    throw new Error(`AgentGate: Invalid keypair file at ${resolved} -- failed to parse JSON`);
+    throw new Error(`AgentDoor: Invalid keypair file at ${resolved} -- failed to parse JSON`);
   }
 
   if (!stored.publicKey || !stored.secretKey) {
     throw new Error(
-      `AgentGate: Keypair file at ${resolved} is missing required fields (publicKey, secretKey)`,
+      `AgentDoor: Keypair file at ${resolved} is missing required fields (publicKey, secretKey)`,
     );
   }
 
@@ -112,12 +112,12 @@ export function loadKeypair(filePath: string): Keypair | null {
 
   if (publicKey.length !== 32) {
     throw new Error(
-      `AgentGate: Invalid public key length (${publicKey.length} bytes, expected 32) in ${resolved}`,
+      `AgentDoor: Invalid public key length (${publicKey.length} bytes, expected 32) in ${resolved}`,
     );
   }
   if (secretKey.length !== 64) {
     throw new Error(
-      `AgentGate: Invalid secret key length (${secretKey.length} bytes, expected 64) in ${resolved}`,
+      `AgentDoor: Invalid secret key length (${secretKey.length} bytes, expected 64) in ${resolved}`,
     );
   }
 

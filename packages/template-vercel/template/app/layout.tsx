@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Agent-Ready API | AgentGate",
-  description: "An API powered by AgentGate with x402 micropayments",
+  title: "Agent-Ready API | AgentDoor",
+  description: "An API powered by AgentDoor with x402 micropayments",
 };
 
 export default function RootLayout({

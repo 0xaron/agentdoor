@@ -1,14 +1,14 @@
 import { Router, json } from "express";
-import type { AgentGateConfig, AgentStore } from "@agentgate/core";
+import type { AgentDoorConfig, AgentStore } from "@agentdoor/core";
 import {
   resolveConfig,
   MemoryStore,
-  AGENTGATE_VERSION,
+  AGENTDOOR_VERSION,
   WebhookEmitter,
   ReputationManager,
   SpendingTracker,
-} from "@agentgate/core";
-import type { WebhooksConfig, ReputationConfig, SpendingCapsConfig } from "@agentgate/core";
+} from "@agentdoor/core";
+import type { WebhooksConfig, ReputationConfig, SpendingCapsConfig } from "@agentdoor/core";
 import { createDiscoveryRouter } from "./routes/discovery.js";
 import { createRegisterRouter } from "./routes/register.js";
 import { createAuthRouter } from "./routes/auth.js";
@@ -16,16 +16,16 @@ import { createHealthRouter } from "./routes/health.js";
 import { createAuthGuard } from "./auth-guard.js";
 
 /**
- * Options for the agentgate() factory beyond the core AgentGateConfig.
+ * Options for the agentdoor() factory beyond the core AgentDoorConfig.
  * These control Express-specific behavior.
  */
-export interface AgentGateExpressOptions extends AgentGateConfig {
+export interface AgentDoorExpressOptions extends AgentDoorConfig {
   /**
    * Custom agent store implementation. If not provided, an in-memory
    * store is created automatically (suitable for development and testing).
    *
    * For production, supply a persistent store (SQLite, Postgres, etc.)
-   * from @agentgate/core.
+   * from @agentdoor/core.
    */
   store?: AgentStore;
 
@@ -38,7 +38,7 @@ export interface AgentGateExpressOptions extends AgentGateConfig {
 
   /**
    * If true, the built-in JSON body parser will be applied to
-   * AgentGate routes. Set to false if your app already uses
+   * AgentDoor routes. Set to false if your app already uses
    * express.json() globally. Defaults to true.
    */
   enableBodyParser?: boolean;
@@ -70,19 +70,19 @@ export interface P1Services {
 }
 
 /**
- * Creates the AgentGate Express middleware.
+ * Creates the AgentDoor Express middleware.
  *
  * Usage:
  * ```typescript
- * import { agentgate } from "@agentgate/express";
+ * import { agentdoor } from "@agentdoor/express";
  *
- * app.use(agentgate({
+ * app.use(agentdoor({
  *   scopes: [{ id: "data.read", description: "Read data" }],
  *   pricing: { "data.read": "$0.001/req" },
  *   rateLimit: { requests: 1000, window: "1h" },
  *   // P1 features:
  *   webhooks: {
- *     endpoints: [{ url: "https://hooks.example.com/agentgate" }],
+ *     endpoints: [{ url: "https://hooks.example.com/agentdoor" }],
  *   },
  *   reputation: {
  *     gates: [{ minReputation: 30, action: "block" }],
@@ -94,17 +94,17 @@ export interface P1Services {
  * ```
  *
  * This mounts:
- * - GET  /.well-known/agentgate.json   (discovery)
- * - POST /agentgate/register           (registration step 1)
- * - POST /agentgate/register/verify    (registration step 2)
- * - POST /agentgate/auth               (returning agent auth)
- * - GET  /agentgate/health             (health check)
+ * - GET  /.well-known/agentdoor.json   (discovery)
+ * - POST /agentdoor/register           (registration step 1)
+ * - POST /agentdoor/register/verify    (registration step 2)
+ * - POST /agentdoor/auth               (returning agent auth)
+ * - GET  /agentdoor/health             (health check)
  * - Auth guard middleware on all subsequent routes
  *
- * @param options - AgentGate config + Express-specific options
+ * @param options - AgentDoor config + Express-specific options
  * @returns Express Router to mount with app.use()
  */
-export function agentgate(options: AgentGateExpressOptions): Router {
+export function agentdoor(options: AgentDoorExpressOptions): Router {
   // Resolve the config: validates via zod and applies all defaults.
   // This ensures JWT secret, rate limits, and other values are always present.
   const resolved = resolveConfig(options);
@@ -134,17 +134,17 @@ export function agentgate(options: AgentGateExpressOptions): Router {
 
   const router = Router();
 
-  // Apply JSON body parsing for AgentGate POST routes if needed
+  // Apply JSON body parsing for AgentDoor POST routes if needed
   if (enableBodyParser) {
     router.use(
-      ["/agentgate/register", "/agentgate/register/verify", "/agentgate/auth"],
+      ["/agentdoor/register", "/agentdoor/register/verify", "/agentdoor/auth"],
       json({ limit: "16kb" })
     );
   }
 
   // Log initialization
   console.log(
-    `[agentgate] v${AGENTGATE_VERSION} initialized with ${resolved.scopes.length} scope(s)`
+    `[agentdoor] v${AGENTDOOR_VERSION} initialized with ${resolved.scopes.length} scope(s)`
   );
 
   // Mount route handlers

@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - SQLite Storage Implementation
+ * @agentdoor/core - SQLite Storage Implementation
  *
  * Uses better-sqlite3 for synchronous, high-performance SQLite access.
  * Suitable for single-process production deployments.
@@ -9,8 +9,8 @@
  *   npm install -D @types/better-sqlite3
  *
  * Usage:
- *   import { SQLiteStore } from "@agentgate/core/storage/sqlite";
- *   const store = new SQLiteStore("./agentgate.db");
+ *   import { SQLiteStore } from "@agentdoor/core/storage/sqlite";
+ *   const store = new SQLiteStore("./agentdoor.db");
  */
 
 import type { Agent, ChallengeData, AgentStatus } from "../types.js";

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AgentRegistry } from "../registry.js";
-import { AgentGateCrawler } from "../crawler.js";
+import { AgentDoorCrawler } from "../crawler.js";
 import { createRegistryApi } from "../api.js";
 
 // ---------------------------------------------------------------------------
@@ -15,11 +15,11 @@ import { createRegistryApi } from "../api.js";
 
 function makeDiscoveryDoc(overrides?: Record<string, unknown>) {
   return {
-    agentgate_version: "0.1.0",
+    agentdoor_version: "0.1.0",
     service_name: "Test Service",
-    service_description: "A test AgentGate service",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    service_description: "A test AgentDoor service",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: [
       { id: "data.read", description: "Read data", price: "$0.001/req" },
       { id: "data.write", description: "Write data" },
@@ -73,7 +73,7 @@ function mockFetchNetworkError() {
 // Crawler Tests
 // ---------------------------------------------------------------------------
 
-describe("AgentGateCrawler", () => {
+describe("AgentDoorCrawler", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
   });
@@ -82,7 +82,7 @@ describe("AgentGateCrawler", () => {
     const doc = makeDiscoveryDoc();
     globalThis.fetch = mockFetchSuccess(doc);
 
-    const crawler = new AgentGateCrawler({ retryCount: 0 });
+    const crawler = new AgentDoorCrawler({ retryCount: 0 });
     const result = await crawler.crawl("https://example.com");
 
     expect(result.status).toBe("success");
@@ -92,7 +92,7 @@ describe("AgentGateCrawler", () => {
     expect(result.lastCrawled).toBeInstanceOf(Date);
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "https://example.com/.well-known/agentgate.json",
+      "https://example.com/.well-known/agentdoor.json",
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: "application/json",
@@ -105,7 +105,7 @@ describe("AgentGateCrawler", () => {
     const doc = makeDiscoveryDoc();
     globalThis.fetch = mockFetchSuccess(doc);
 
-    const crawler = new AgentGateCrawler({ retryCount: 0 });
+    const crawler = new AgentDoorCrawler({ retryCount: 0 });
     const result = await crawler.crawl("https://example.com///");
 
     expect(result.url).toBe("https://example.com");
@@ -115,7 +115,7 @@ describe("AgentGateCrawler", () => {
   it("should return failed status for HTTP errors", async () => {
     globalThis.fetch = mockFetchFailure(500);
 
-    const crawler = new AgentGateCrawler({ retryCount: 0 });
+    const crawler = new AgentDoorCrawler({ retryCount: 0 });
     const result = await crawler.crawl("https://example.com");
 
     expect(result.status).toBe("failed");
@@ -125,7 +125,7 @@ describe("AgentGateCrawler", () => {
   it("should return failed status for network errors", async () => {
     globalThis.fetch = mockFetchNetworkError();
 
-    const crawler = new AgentGateCrawler({ retryCount: 0 });
+    const crawler = new AgentDoorCrawler({ retryCount: 0 });
     const result = await crawler.crawl("https://example.com");
 
     expect(result.status).toBe("failed");
@@ -135,7 +135,7 @@ describe("AgentGateCrawler", () => {
   it("should reject invalid discovery documents", async () => {
     globalThis.fetch = mockFetchSuccess({ invalid: true });
 
-    const crawler = new AgentGateCrawler({ retryCount: 0 });
+    const crawler = new AgentDoorCrawler({ retryCount: 0 });
     const result = await crawler.crawl("https://example.com");
 
     expect(result.status).toBe("failed");
@@ -155,7 +155,7 @@ describe("AgentGateCrawler", () => {
 
     globalThis.fetch = fetchMock;
 
-    const crawler = new AgentGateCrawler({ retryCount: 1 });
+    const crawler = new AgentDoorCrawler({ retryCount: 1 });
     const result = await crawler.crawl("https://example.com");
 
     expect(result.status).toBe("success");
@@ -166,7 +166,7 @@ describe("AgentGateCrawler", () => {
     const doc = makeDiscoveryDoc();
     globalThis.fetch = mockFetchSuccess(doc);
 
-    const crawler = new AgentGateCrawler({
+    const crawler = new AgentDoorCrawler({
       maxConcurrency: 2,
       retryCount: 0,
     });
@@ -205,7 +205,7 @@ describe("AgentRegistry", () => {
     expect(entry.id).toMatch(/^reg_/);
     expect(entry.url).toBe("https://example.com");
     expect(entry.serviceName).toBe("Test Service");
-    expect(entry.serviceDescription).toBe("A test AgentGate service");
+    expect(entry.serviceDescription).toBe("A test AgentDoor service");
     expect(entry.scopes).toHaveLength(2);
     expect(entry.authMethods).toContain("challenge-response");
     expect(entry.hasPayment).toBe(true);

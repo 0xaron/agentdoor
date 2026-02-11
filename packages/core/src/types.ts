@@ -1,7 +1,7 @@
 /**
- * @agentgate/core - Type Definitions
+ * @agentdoor/core - Type Definitions
  *
- * All TypeScript interfaces for the AgentGate system.
+ * All TypeScript interfaces for the AgentDoor system.
  * Covers configuration, agents, auth flows, discovery, and storage.
  */
 
@@ -51,8 +51,8 @@ export interface StorageConfig {
   options?: Record<string, unknown>;
 }
 
-/** Top-level AgentGate configuration. */
-export interface AgentGateConfig {
+/** Top-level AgentDoor configuration. */
+export interface AgentDoorConfig {
   /** Available scopes that agents can request */
   scopes: ScopeDefinition[];
   /** Pricing map: scope_id -> price string, e.g. { "weather.read": "$0.001/req" } */
@@ -226,7 +226,7 @@ export interface ChallengeData {
 // Registration API Types
 // ---------------------------------------------------------------------------
 
-/** POST /agentgate/register request body. */
+/** POST /agentdoor/register request body. */
 export interface RegistrationRequest {
   /** Base64-encoded Ed25519 public key (32 bytes) */
   public_key: string;
@@ -238,7 +238,7 @@ export interface RegistrationRequest {
   metadata?: Record<string, string>;
 }
 
-/** POST /agentgate/register response body. */
+/** POST /agentdoor/register response body. */
 export interface RegistrationResponse {
   /** Assigned agent ID */
   agent_id: string;
@@ -253,7 +253,7 @@ export interface RegistrationResponse {
   };
 }
 
-/** POST /agentgate/register/verify request body. */
+/** POST /agentdoor/register/verify request body. */
 export interface VerifyRequest {
   /** Agent ID from registration step */
   agent_id: string;
@@ -261,7 +261,7 @@ export interface VerifyRequest {
   signature: string;
 }
 
-/** POST /agentgate/register/verify response body. */
+/** POST /agentdoor/register/verify response body. */
 export interface VerifyResponse {
   /** Agent ID */
   agent_id: string;
@@ -290,17 +290,17 @@ export interface VerifyResponse {
 // Auth API Types
 // ---------------------------------------------------------------------------
 
-/** POST /agentgate/auth request body (returning agents). */
+/** POST /agentdoor/auth request body (returning agents). */
 export interface AuthRequest {
   /** Agent ID */
   agent_id: string;
   /** Current timestamp (ISO 8601) */
   timestamp: string;
-  /** Signature of "agentgate:auth:{agent_id}:{timestamp}" */
+  /** Signature of "agentdoor:auth:{agent_id}:{timestamp}" */
   signature: string;
 }
 
-/** POST /agentgate/auth response body. */
+/** POST /agentdoor/auth response body. */
 export interface AuthResponse {
   /** Fresh JWT token */
   token: string;
@@ -312,10 +312,10 @@ export interface AuthResponse {
 // Discovery Document
 // ---------------------------------------------------------------------------
 
-/** The /.well-known/agentgate.json discovery document. */
+/** The /.well-known/agentdoor.json discovery document. */
 export interface DiscoveryDocument {
   /** Protocol version */
-  agentgate_version: string;
+  agentdoor_version: string;
   /** Service name */
   service_name: string;
   /** Service description */
@@ -463,7 +463,7 @@ export interface RateLimitResult {
 declare global {
   namespace Express {
     interface Request {
-      /** Agent context, set by AgentGate auth middleware when request is from a registered agent */
+      /** Agent context, set by AgentDoor auth middleware when request is from a registered agent */
       agent?: AgentContext;
       /** Whether this request is from an agent (registered or detected) */
       isAgent: boolean;

@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/clerk",
+  "name": "@agentdoor/clerk",
   "version": "0.1.0",
-  "description": "Clerk companion plugin for AgentGate - make agent accounts visible in Clerk dashboard",
+  "description": "Clerk companion plugin for AgentDoor - make agent accounts visible in Clerk dashboard",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/clerk"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "clerk",
     "auth",
     "agent",

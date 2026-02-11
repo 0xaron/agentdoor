@@ -2,7 +2,7 @@
   "name": "example-nextjs-saas",
   "version": "0.1.0",
   "private": true,
-  "description": "Example Next.js SaaS app with AgentGate middleware - agents and humans share the same API",
+  "description": "Example Next.js SaaS app with AgentDoor middleware - agents and humans share the same API",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +12,7 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@agentgate/next": "workspace:*"
+    "@agentdoor/next": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

@@ -15,7 +15,7 @@ export default function Home() {
         Agent-Ready API
       </h1>
       <p style={{ color: "#666", marginBottom: "2rem" }}>
-        Powered by <strong>AgentGate</strong> + <strong>x402</strong>{" "}
+        Powered by <strong>AgentDoor</strong> + <strong>x402</strong>{" "}
         micropayments
       </p>
 
@@ -41,8 +41,8 @@ export default function Home() {
         </h2>
         <p>
           Agents can discover this API at{" "}
-          <a href="/.well-known/agentgate" style={{ color: "#0070f3" }}>
-            /.well-known/agentgate
+          <a href="/.well-known/agentdoor" style={{ color: "#0070f3" }}>
+            /.well-known/agentdoor
           </a>
         </p>
       </section>
@@ -52,7 +52,7 @@ export default function Home() {
           How It Works
         </h2>
         <ol style={{ paddingLeft: "1.5rem" }}>
-          <li>Agent discovers capabilities via <code>/.well-known/agentgate</code></li>
+          <li>Agent discovers capabilities via <code>/.well-known/agentdoor</code></li>
           <li>Agent authenticates and negotiates scopes</li>
           <li>x402 handles micropayments (USDC on Base)</li>
           <li>Agent calls API endpoints with valid credentials</li>
@@ -62,10 +62,10 @@ export default function Home() {
       <footer style={{ color: "#999", fontSize: "0.875rem", borderTop: "1px solid #eee", paddingTop: "1rem" }}>
         Built with{" "}
         <a
-          href="https://github.com/agentgate/agentgate"
+          href="https://github.com/agentdoor/agentdoor"
           style={{ color: "#0070f3" }}
         >
-          AgentGate
+          AgentDoor
         </a>
       </footer>
     </main>

@@ -1,5 +1,5 @@
 /**
- * File-based credential caching for AgentGate SDK.
+ * File-based credential caching for AgentDoor SDK.
  *
  * Stores per-service credentials (api_key, token, scopes, expiration)
  * so that agents can skip re-registration on subsequent connections.
@@ -46,9 +46,9 @@ interface CredentialsFile {
 }
 
 /**
- * Default credentials file path: ~/.agentgate/credentials.json
+ * Default credentials file path: ~/.agentdoor/credentials.json
  */
-export const DEFAULT_CREDENTIALS_PATH = "~/.agentgate/credentials.json";
+export const DEFAULT_CREDENTIALS_PATH = "~/.agentdoor/credentials.json";
 
 /**
  * Resolve a file path, expanding `~` to the user's home directory.
@@ -145,7 +145,7 @@ export class CredentialStore {
   /**
    * Check whether we have a valid (non-expired) token for a service.
    * If no token is present but an API key is, returns true
-   * (API keys don't expire in the standard AgentGate flow).
+   * (API keys don't expire in the standard AgentDoor flow).
    */
   hasValidCredentials(baseUrl: string): boolean {
     const creds = this.get(baseUrl);
@@ -205,7 +205,7 @@ export class CredentialStore {
     const existing = file.services[key];
     if (!existing) {
       throw new Error(
-        `AgentGate: Cannot update token for ${baseUrl} -- no stored credentials found`,
+        `AgentDoor: Cannot update token for ${baseUrl} -- no stored credentials found`,
       );
     }
 

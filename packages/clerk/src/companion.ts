@@ -1,7 +1,7 @@
 /**
- * @agentgate/clerk - Clerk Companion
+ * @agentdoor/clerk - Clerk Companion
  *
- * Creates and manages Clerk user records for AgentGate agents.
+ * Creates and manages Clerk user records for AgentDoor agents.
  * Agent accounts appear in the Clerk dashboard with special metadata
  * to distinguish them from human users.
  */
@@ -22,9 +22,9 @@ export interface ClerkCompanionConfig {
   usernamePrefix?: string;
 }
 
-/** Mapping between an AgentGate agent and a Clerk user. */
+/** Mapping between an AgentDoor agent and a Clerk user. */
 export interface ClerkUserMapping {
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Clerk user ID */
   clerkUserId: string;
@@ -75,9 +75,9 @@ export interface ClerkClientInterface {
 // ---------------------------------------------------------------------------
 
 /**
- * Clerk companion plugin for AgentGate.
+ * Clerk companion plugin for AgentDoor.
  *
- * When agents register through AgentGate, this plugin automatically
+ * When agents register through AgentDoor, this plugin automatically
  * creates corresponding user records in Clerk. This allows SaaS owners
  * to manage both human and agent accounts from the Clerk dashboard.
  *
@@ -143,15 +143,15 @@ export class ClerkCompanion {
         // Update existing Clerk user
         const user = await this.clerkClient.updateUser(existing.clerkUserId, {
           publicMetadata: {
-            agentgate: true,
-            agentgate_id: agent.agentId,
+            agentdoor: true,
+            agentdoor_id: agent.agentId,
             scopes: agent.scopes,
             reputation: agent.reputation,
             ...this.config.metadata,
           },
           privateMetadata: {
-            agentgate_public_key: agent.publicKey,
-            agentgate_metadata: agent.metadata,
+            agentdoor_public_key: agent.publicKey,
+            agentdoor_metadata: agent.metadata,
           },
         });
 
@@ -174,15 +174,15 @@ export class ClerkCompanion {
       const user = await this.clerkClient.createUser({
         username,
         publicMetadata: {
-          agentgate: true,
-          agentgate_id: agent.agentId,
+          agentdoor: true,
+          agentdoor_id: agent.agentId,
           scopes: agent.scopes,
           reputation: agent.reputation,
           ...this.config.metadata,
         },
         privateMetadata: {
-          agentgate_public_key: agent.publicKey,
-          agentgate_metadata: agent.metadata,
+          agentdoor_public_key: agent.publicKey,
+          agentdoor_metadata: agent.metadata,
         },
       });
 
@@ -209,7 +209,7 @@ export class ClerkCompanion {
   /**
    * Remove an agent's Clerk user record.
    *
-   * @param agentId - AgentGate agent ID
+   * @param agentId - AgentDoor agent ID
    * @returns Whether the deletion succeeded
    */
   async removeAgent(agentId: string): Promise<ClerkSyncResult> {

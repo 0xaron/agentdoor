@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/cloudflare",
+  "name": "@agentdoor/cloudflare",
   "version": "0.1.0",
-  "description": "Cloudflare Workers adapter for AgentGate with Durable Objects",
+  "description": "Cloudflare Workers adapter for AgentDoor with Durable Objects",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
-  "dependencies": { "@agentgate/core": "workspace:*" },
+  "dependencies": { "@agentdoor/core": "workspace:*" },
   "devDependencies": {
     "typescript": "^5.7.0",
     "vitest": "^2.1.0",

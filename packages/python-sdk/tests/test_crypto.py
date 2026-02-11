@@ -1,10 +1,10 @@
-"""Tests for agentgate.crypto module."""
+"""Tests for agentdoor.crypto module."""
 
 from __future__ import annotations
 
 import base64
 
-from agentgate.crypto import generate_keypair, sign_message, verify_signature
+from agentdoor.crypto import generate_keypair, sign_message, verify_signature
 
 
 class TestGenerateKeypair:

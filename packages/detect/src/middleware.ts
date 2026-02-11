@@ -66,7 +66,7 @@ async function sendWebhook(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "AgentGate-Detect/0.1.0",
+        "User-Agent": "AgentDoor-Detect/0.1.0",
         ...headers,
       },
       body: JSON.stringify({
@@ -143,7 +143,7 @@ interface ExpressLikeResponse {
  * @example
  * ```ts
  * import express from "express";
- * import { detect } from "@agentgate/detect";
+ * import { detect } from "@agentdoor/detect";
  *
  * const app = express();
  *
@@ -154,9 +154,9 @@ interface ExpressLikeResponse {
  *
  * app.get("/api/data", (req, res) => {
  *   // Detection results available on headers:
- *   // x-agentgate-is-agent: "true"
- *   // x-agentgate-confidence: "0.82"
- *   // x-agentgate-framework: "LangChain"
+ *   // x-agentdoor-is-agent: "true"
+ *   // x-agentdoor-confidence: "0.82"
+ *   // x-agentdoor-framework: "LangChain"
  *   res.json({ data: "hello" });
  * });
  * ```
@@ -192,10 +192,10 @@ export function detect(
     // Set response headers with classification info.
     const setHeader = res.setHeader?.bind(res) ?? res.set?.bind(res);
     if (setHeader) {
-      setHeader("x-agentgate-is-agent", String(result.isAgent));
-      setHeader("x-agentgate-confidence", String(result.confidence));
+      setHeader("x-agentdoor-is-agent", String(result.isAgent));
+      setHeader("x-agentdoor-confidence", String(result.confidence));
       if (result.framework) {
-        setHeader("x-agentgate-framework", result.framework);
+        setHeader("x-agentdoor-framework", result.framework);
       }
     }
 
@@ -235,7 +235,7 @@ export function detect(
  * @example Hono
  * ```ts
  * import { Hono } from "hono";
- * import { createDetector } from "@agentgate/detect";
+ * import { createDetector } from "@agentdoor/detect";
  *
  * const app = new Hono();
  * const detector = createDetector({ threshold: 0.5 });
@@ -243,7 +243,7 @@ export function detect(
  * app.use("*", async (c, next) => {
  *   const result = detector(c.req.raw);
  *   c.set("detection", result);
- *   c.header("x-agentgate-is-agent", String(result.isAgent));
+ *   c.header("x-agentdoor-is-agent", String(result.isAgent));
  *   await next();
  * });
  * ```
@@ -263,7 +263,7 @@ export function createDetector(
  * @example
  * ```ts
  * import { Hono } from "hono";
- * import { detectMiddleware } from "@agentgate/detect";
+ * import { detectMiddleware } from "@agentdoor/detect";
  *
  * const app = new Hono();
  * app.use("*", detectMiddleware({
@@ -297,10 +297,10 @@ export function detectMiddleware(
     const normalized = normalizeFetchRequest(c.req.raw);
     const result = classifyRequest(normalized, config);
 
-    c.header("x-agentgate-is-agent", String(result.isAgent));
-    c.header("x-agentgate-confidence", String(result.confidence));
+    c.header("x-agentdoor-is-agent", String(result.isAgent));
+    c.header("x-agentdoor-confidence", String(result.confidence));
     if (result.framework) {
-      c.header("x-agentgate-framework", result.framework);
+      c.header("x-agentdoor-framework", result.framework);
     }
 
     // Webhook.

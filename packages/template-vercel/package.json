@@ -1,8 +1,8 @@
 {
-  "name": "@agentgate/template-vercel",
+  "name": "@agentdoor/template-vercel",
   "version": "0.1.0",
   "private": true,
-  "description": "Vercel deployment template - Agent-Ready API Starter with Next.js + AgentGate",
+  "description": "Vercel deployment template - Agent-Ready API Starter with Next.js + AgentDoor",
   "license": "MIT",
   "scripts": {
     "build": "echo 'Template package - deploy with Vercel'",

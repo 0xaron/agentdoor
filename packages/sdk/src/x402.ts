@@ -1,5 +1,5 @@
 /**
- * x402 payment header construction for AgentGate SDK.
+ * x402 payment header construction for AgentDoor SDK.
  *
  * Builds the X-PAYMENT header value from a wallet configuration,
  * following the x402 V2 protocol specification.
