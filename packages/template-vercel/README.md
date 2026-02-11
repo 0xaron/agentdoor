@@ -1,6 +1,6 @@
 # Agent-Ready API Starter (Vercel)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/agentdoor/agentdoor/tree/main/packages/template-vercel/template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/0xaron/agentdoor/tree/main/packages/template-vercel/template)
 
 Deploy an agent-ready API to Vercel in one click. Built with Next.js, AgentDoor, and x402 micropayments.
 
@@ -70,7 +70,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the landing page.
 
 ## Learn More
 
-- [AgentDoor Documentation](https://github.com/agentdoor/agentdoor)
+- [AgentDoor Documentation](https://github.com/0xaron/agentdoor)
 - [x402 Protocol](https://www.x402.org/)
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Vercel Documentation](https://vercel.com/docs)

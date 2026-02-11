@@ -76,7 +76,7 @@ Set variables in `wrangler.toml` under `[vars]` or use Cloudflare dashboard secr
 
 ## Learn More
 
-- [AgentDoor Documentation](https://github.com/agentdoor/agentdoor)
+- [AgentDoor Documentation](https://github.com/0xaron/agentdoor)
 - [x402 Protocol](https://www.x402.org/)
 - [Hono Documentation](https://hono.dev/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
