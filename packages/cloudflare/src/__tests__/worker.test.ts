@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createAgentGateWorker, handleRequest, AgentGateDurableObject } from "../index.js";
+import { createAgentDoorWorker, handleRequest, AgentDoorDurableObject } from "../index.js";
 import type { CloudflareEnv } from "../index.js";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,7 @@ const TEST_SCOPES = [
 ];
 
 function createHandler(opts: Record<string, unknown> = {}) {
-  return createAgentGateWorker({
+  return createAgentDoorWorker({
     scopes: TEST_SCOPES,
     ...opts,
   });
@@ -39,19 +39,19 @@ const mockEnv: CloudflareEnv = {};
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("@agentgate/cloudflare worker", () => {
+describe("@agentdoor/cloudflare worker", () => {
   describe("discovery endpoint", () => {
-    it("serves /.well-known/agentgate.json", async () => {
+    it("serves /.well-known/agentdoor.json", async () => {
       const handler = createHandler();
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await handler(req, mockEnv);
 
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body.agentgate_version).toBe("1.0");
-      expect(body.service_name).toBe("AgentGate Service");
-      expect(body.registration_endpoint).toBe("/agentgate/register");
-      expect(body.auth_endpoint).toBe("/agentgate/auth");
+      expect(body.agentdoor_version).toBe("1.0");
+      expect(body.service_name).toBe("AgentDoor Service");
+      expect(body.registration_endpoint).toBe("/agentdoor/register");
+      expect(body.auth_endpoint).toBe("/agentdoor/auth");
       expect(body.scopes_available).toHaveLength(2);
       expect(body.scopes_available[0].id).toBe("data.read");
       expect(body.auth_methods).toContain("ed25519-challenge");
@@ -59,7 +59,7 @@ describe("@agentgate/cloudflare worker", () => {
 
     it("includes Cache-Control header", async () => {
       const handler = createHandler();
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await handler(req, mockEnv);
 
       expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
@@ -69,7 +69,7 @@ describe("@agentgate/cloudflare worker", () => {
       const handler = createHandler({
         service: { name: "My Worker", description: "A test worker" },
       });
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await handler(req, mockEnv);
       const body = await res.json();
 
@@ -81,7 +81,7 @@ describe("@agentgate/cloudflare worker", () => {
   describe("registration validation", () => {
     it("rejects missing public_key", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         scopes_requested: ["data.read"],
       });
       const res = await handler(req, mockEnv);
@@ -93,7 +93,7 @@ describe("@agentgate/cloudflare worker", () => {
 
     it("rejects missing scopes_requested", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "dGVzdHB1YmtleQ==",
       });
       const res = await handler(req, mockEnv);
@@ -105,7 +105,7 @@ describe("@agentgate/cloudflare worker", () => {
 
     it("rejects empty scopes_requested array", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "dGVzdHB1YmtleQ==",
         scopes_requested: [],
       });
@@ -116,7 +116,7 @@ describe("@agentgate/cloudflare worker", () => {
 
     it("rejects invalid scopes", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "Y2xvdWRmbGFyZXRlc3RrZXk=",
         scopes_requested: ["nonexistent.scope"],
       });
@@ -129,7 +129,7 @@ describe("@agentgate/cloudflare worker", () => {
 
     it("accepts valid registration and returns challenge", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "Y2xvdWRmbGFyZXJlZ3Rlc3Q=",
         scopes_requested: ["data.read"],
         metadata: { framework: "test" },
@@ -141,13 +141,13 @@ describe("@agentgate/cloudflare worker", () => {
       expect(body.agent_id).toMatch(/^ag_/);
       expect(body.challenge).toBeDefined();
       expect(body.challenge.nonce).toBeDefined();
-      expect(body.challenge.message).toContain("agentgate:register:");
+      expect(body.challenge.message).toContain("agentdoor:register:");
       expect(body.challenge.expires_at).toBeDefined();
     });
 
     it("rejects invalid JSON body", async () => {
       const handler = createHandler();
-      const req = new Request("https://worker.example.com/agentgate/register", {
+      const req = new Request("https://worker.example.com/agentdoor/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "not valid json{{{",
@@ -161,9 +161,9 @@ describe("@agentgate/cloudflare worker", () => {
   });
 
   describe("auth validation", () => {
-    it("rejects missing fields on /agentgate/auth", async () => {
+    it("rejects missing fields on /agentdoor/auth", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/auth", {
+      const req = makeRequest("POST", "/agentdoor/auth", {
         agent_id: "ag_test",
       });
       const res = await handler(req, mockEnv);
@@ -173,9 +173,9 @@ describe("@agentgate/cloudflare worker", () => {
       expect(body.error).toContain("agent_id, signature, and timestamp are required");
     });
 
-    it("rejects unknown agent_id on /agentgate/auth", async () => {
+    it("rejects unknown agent_id on /agentdoor/auth", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/auth", {
+      const req = makeRequest("POST", "/agentdoor/auth", {
         agent_id: "ag_doesnotexist12345678",
         signature: "dGVzdHNpZw==",
         timestamp: new Date().toISOString(),
@@ -189,9 +189,9 @@ describe("@agentgate/cloudflare worker", () => {
   });
 
   describe("verify validation", () => {
-    it("rejects missing fields on /agentgate/register/verify", async () => {
+    it("rejects missing fields on /agentdoor/register/verify", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register/verify", {
+      const req = makeRequest("POST", "/agentdoor/register/verify", {
         agent_id: "ag_test",
       });
       const res = await handler(req, mockEnv);
@@ -201,9 +201,9 @@ describe("@agentgate/cloudflare worker", () => {
       expect(body.error).toContain("agent_id and signature are required");
     });
 
-    it("rejects unknown agent_id on /agentgate/register/verify", async () => {
+    it("rejects unknown agent_id on /agentdoor/register/verify", async () => {
       const handler = createHandler();
-      const req = makeRequest("POST", "/agentgate/register/verify", {
+      const req = makeRequest("POST", "/agentdoor/register/verify", {
         agent_id: "ag_doesnotexist12345678",
         signature: "dGVzdHNpZw==",
       });
@@ -238,7 +238,7 @@ describe("@agentgate/cloudflare worker", () => {
       expect(body.error).toBe("Invalid or expired token");
     });
 
-    it("returns 404 for non-AgentGate non-protected routes", async () => {
+    it("returns 404 for non-AgentDoor non-protected routes", async () => {
       const handler = createHandler();
       const req = makeRequest("GET", "/public/page");
       const res = await handler(req, mockEnv);
@@ -254,7 +254,7 @@ describe("@agentgate/cloudflare worker", () => {
       const res = await handler(req, mockEnv);
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-agentgate-authenticated")).toBe("false");
+      expect(res.headers.get("x-agentdoor-authenticated")).toBe("false");
     });
 
     it("returns passthrough response for protected path with invalid token", async () => {
@@ -265,27 +265,27 @@ describe("@agentgate/cloudflare worker", () => {
       const res = await handler(req, mockEnv);
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-agentgate-authenticated")).toBe("false");
+      expect(res.headers.get("x-agentdoor-authenticated")).toBe("false");
     });
   });
 
   describe("handleRequest direct usage", () => {
     it("works when called directly with env and config", async () => {
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await handleRequest(req, mockEnv, {
         scopes: TEST_SCOPES,
       });
 
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body.agentgate_version).toBe("1.0");
+      expect(body.agentdoor_version).toBe("1.0");
     });
   });
 
-  describe("AgentGateDurableObject", () => {
-    it("exports the AgentGateDurableObject class", () => {
-      expect(AgentGateDurableObject).toBeDefined();
-      expect(typeof AgentGateDurableObject).toBe("function");
+  describe("AgentDoorDurableObject", () => {
+    it("exports the AgentDoorDurableObject class", () => {
+      expect(AgentDoorDurableObject).toBeDefined();
+      expect(typeof AgentDoorDurableObject).toBe("function");
     });
 
     it("instantiates with a mock state", () => {
@@ -295,7 +295,7 @@ describe("@agentgate/cloudflare worker", () => {
         delete: async () => true,
         list: async () => new Map(),
       };
-      const obj = new AgentGateDurableObject({ storage: mockStorage });
+      const obj = new AgentDoorDurableObject({ storage: mockStorage });
       expect(obj).toBeDefined();
     });
 
@@ -306,7 +306,7 @@ describe("@agentgate/cloudflare worker", () => {
         delete: async () => true,
         list: async () => new Map(),
       };
-      const obj = new AgentGateDurableObject({ storage: mockStorage });
+      const obj = new AgentDoorDurableObject({ storage: mockStorage });
 
       const req = new Request("https://do.internal/do/agent/get", {
         method: "POST",
@@ -326,7 +326,7 @@ describe("@agentgate/cloudflare worker", () => {
         delete: async (key: string) => store.delete(key),
         list: async () => new Map(),
       };
-      const obj = new AgentGateDurableObject({ storage: mockStorage });
+      const obj = new AgentDoorDurableObject({ storage: mockStorage });
 
       const challenge = {
         nonce: "test-nonce",
@@ -365,7 +365,7 @@ describe("@agentgate/cloudflare worker", () => {
         delete: async () => true,
         list: async () => new Map(),
       };
-      const obj = new AgentGateDurableObject({ storage: mockStorage });
+      const obj = new AgentDoorDurableObject({ storage: mockStorage });
 
       const req = new Request("https://do.internal/do/unknown", {
         method: "POST",

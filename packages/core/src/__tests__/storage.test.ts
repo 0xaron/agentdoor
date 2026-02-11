@@ -125,7 +125,7 @@ describe("MemoryStore - Challenge Management", () => {
     return {
       agentId,
       nonce: "test-nonce",
-      message: `agentgate:register:${agentId}:1700000000:test-nonce`,
+      message: `agentdoor:register:${agentId}:1700000000:test-nonce`,
       expiresAt: new Date(Date.now() + expiresInMs),
       createdAt: new Date(),
     };

@@ -1,15 +1,15 @@
 import type {
-  AgentGateConfig,
+  AgentDoorConfig,
   ScopeDefinition,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 /**
- * Next.js App Router route handlers for AgentGate endpoints.
+ * Next.js App Router route handlers for AgentDoor endpoints.
  *
- * Usage in `app/.well-known/agentgate.json/route.ts`:
+ * Usage in `app/.well-known/agentdoor.json/route.ts`:
  * ```ts
- * import { createRouteHandlers } from "@agentgate/next/route-handlers";
- * import config from "../../../agentgate.config";
+ * import { createRouteHandlers } from "@agentdoor/next/route-handlers";
+ * import config from "../../../agentdoor.config";
  *
  * const { GET, POST } = createRouteHandlers(config);
  * export { GET, POST };
@@ -17,7 +17,7 @@ import type {
  *
  * Or mount individual endpoints:
  *
- * `app/agentgate/register/route.ts`:
+ * `app/agentdoor/register/route.ts`:
  * ```ts
  * export { POST } from "./handlers";
  * ```
@@ -105,13 +105,13 @@ async function verifyEd25519(
 // Discovery document
 // ---------------------------------------------------------------------------
 
-function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
+function buildDiscoveryDocument(config: AgentDoorConfig): Record<string, unknown> {
   return {
-    agentgate_version: "1.0",
-    service_name: config.service?.name ?? "AgentGate Service",
+    agentdoor_version: "1.0",
+    service_name: config.service?.name ?? "AgentDoor Service",
     service_description: config.service?.description ?? "",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
       id: s.id,
       description: s.description,
@@ -153,20 +153,20 @@ type RouteHandler = (request: RouteRequest) => Promise<Response> | Response;
 // ---------------------------------------------------------------------------
 
 export interface RouteHandlers {
-  /** GET handler for `/.well-known/agentgate.json` */
+  /** GET handler for `/.well-known/agentdoor.json` */
   GET: RouteHandler;
-  /** POST handler for `/agentgate/register`, `/agentgate/register/verify`, and `/agentgate/auth` */
+  /** POST handler for `/agentdoor/register`, `/agentdoor/register/verify`, and `/agentdoor/auth` */
   POST: RouteHandler;
 }
 
 /**
- * Create App Router–compatible route handlers for all AgentGate endpoints.
+ * Create App Router–compatible route handlers for all AgentDoor endpoints.
  *
  * The returned `GET` handler serves the discovery document.
  * The returned `POST` handler dispatches to register, verify, or auth based
  * on the request URL pathname.
  */
-export function createRouteHandlers(config: AgentGateConfig): RouteHandlers {
+export function createRouteHandlers(config: AgentDoorConfig): RouteHandlers {
   const GET: RouteHandler = () => {
     const document = buildDiscoveryDocument(config);
     return new Response(JSON.stringify(document), {
@@ -182,15 +182,15 @@ export function createRouteHandlers(config: AgentGateConfig): RouteHandlers {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    if (pathname === "/agentgate/register") {
+    if (pathname === "/agentdoor/register") {
       return handleRegister(request, config);
     }
 
-    if (pathname === "/agentgate/register/verify") {
+    if (pathname === "/agentdoor/register/verify") {
       return handleRegisterVerify(request, config);
     }
 
-    if (pathname === "/agentgate/auth") {
+    if (pathname === "/agentdoor/auth") {
       return handleAuth(request);
     }
 
@@ -209,9 +209,9 @@ export function createRouteHandlers(config: AgentGateConfig): RouteHandlers {
 
 /**
  * Create a GET handler specifically for the discovery endpoint.
- * Use in `app/.well-known/agentgate.json/route.ts`.
+ * Use in `app/.well-known/agentdoor.json/route.ts`.
  */
-export function createDiscoveryHandler(config: AgentGateConfig): RouteHandler {
+export function createDiscoveryHandler(config: AgentDoorConfig): RouteHandler {
   return () => {
     const document = buildDiscoveryDocument(config);
     return new Response(JSON.stringify(document), {
@@ -226,27 +226,27 @@ export function createDiscoveryHandler(config: AgentGateConfig): RouteHandler {
 
 /**
  * Create a POST handler for agent registration.
- * Use in `app/agentgate/register/route.ts`.
+ * Use in `app/agentdoor/register/route.ts`.
  */
 export function createRegisterHandler(
-  config: AgentGateConfig,
+  config: AgentDoorConfig,
 ): RouteHandler {
   return (request: RouteRequest) => handleRegister(request, config);
 }
 
 /**
  * Create a POST handler for registration verification.
- * Use in `app/agentgate/register/verify/route.ts`.
+ * Use in `app/agentdoor/register/verify/route.ts`.
  */
 export function createVerifyHandler(
-  config: AgentGateConfig,
+  config: AgentDoorConfig,
 ): RouteHandler {
   return (request: RouteRequest) => handleRegisterVerify(request, config);
 }
 
 /**
  * Create a POST handler for returning agent authentication.
- * Use in `app/agentgate/auth/route.ts`.
+ * Use in `app/agentdoor/auth/route.ts`.
  */
 export function createAuthHandler(): RouteHandler {
   return (request: RouteRequest) => handleAuth(request);
@@ -258,7 +258,7 @@ export function createAuthHandler(): RouteHandler {
 
 async function handleRegister(
   request: RouteRequest,
-  config: AgentGateConfig,
+  config: AgentDoorConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -299,7 +299,7 @@ async function handleRegister(
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
+  const message = `agentdoor:register:${agentId}:${timestamp}:${nonce}`;
   const expiresAt = Date.now() + 5 * 60 * 1000;
 
   challenges.set(agentId, {
@@ -327,7 +327,7 @@ async function handleRegister(
 
 async function handleRegisterVerify(
   request: RouteRequest,
-  config: AgentGateConfig,
+  config: AgentDoorConfig,
 ): Promise<Response> {
   let body: Record<string, unknown>;
   try {
@@ -441,7 +441,7 @@ async function handleAuth(request: RouteRequest): Promise<Response> {
     return jsonResponse({ error: "Unknown agent_id" }, 404);
   }
 
-  const message = `agentgate:auth:${agentId}:${timestamp}`;
+  const message = `agentdoor:auth:${agentId}:${timestamp}`;
   const valid = await verifyEd25519(message, signature, agent.publicKey);
   if (!valid) {
     return jsonResponse({ error: "Invalid signature" }, 400);
@@ -472,7 +472,7 @@ function jsonResponse(body: unknown, status: number): Response {
  * middleware. Use in App Router server components or route handlers:
  *
  * ```ts
- * import { getAgentContext } from "@agentgate/next";
+ * import { getAgentContext } from "@agentdoor/next";
  * import { headers } from "next/headers";
  *
  * export async function GET() {
@@ -484,8 +484,8 @@ function jsonResponse(body: unknown, status: number): Response {
  * }
  * ```
  */
-export function getAgentContext(headers: Headers): import("@agentgate/core").AgentContext | null {
-  const raw = headers.get("x-agentgate-agent");
+export function getAgentContext(headers: Headers): import("@agentdoor/core").AgentContext | null {
+  const raw = headers.get("x-agentdoor-agent");
   if (!raw) return null;
   try {
     return JSON.parse(raw);

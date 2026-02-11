@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Webhook Events System
+ * @agentdoor/core - Webhook Events System
  *
  * Provides an event emitter for agent lifecycle events and
  * optional HTTP webhook delivery for external integrations.
@@ -143,7 +143,7 @@ export interface WebhookDeliveryResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Event emitter and HTTP webhook delivery system for AgentGate.
+ * Event emitter and HTTP webhook delivery system for AgentDoor.
  *
  * Supports:
  * - In-process event listeners (synchronous callbacks)
@@ -154,7 +154,7 @@ export interface WebhookDeliveryResult {
  * Usage:
  * ```ts
  * const emitter = new WebhookEmitter({
- *   endpoints: [{ url: "https://hooks.example.com/agentgate", secret: "whsec_..." }]
+ *   endpoints: [{ url: "https://hooks.example.com/agentdoor", secret: "whsec_..." }]
  * });
  *
  * emitter.on("agent.registered", (event) => {
@@ -288,7 +288,7 @@ export class WebhookEmitter {
         try {
           await Promise.resolve(listener(event));
         } catch (err) {
-          console.error(`[agentgate] Webhook listener error for ${event.type}:`, err);
+          console.error(`[agentdoor] Webhook listener error for ${event.type}:`, err);
         }
       }
     }
@@ -300,7 +300,7 @@ export class WebhookEmitter {
         try {
           await Promise.resolve(listener(event));
         } catch (err) {
-          console.error(`[agentgate] Webhook wildcard listener error:`, err);
+          console.error(`[agentdoor] Webhook wildcard listener error:`, err);
         }
       }
     }
@@ -318,17 +318,17 @@ export class WebhookEmitter {
       try {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
-          "User-Agent": "AgentGate-Webhooks/1.0",
-          "X-AgentGate-Event": event.type,
-          "X-AgentGate-Event-Id": event.id,
-          "X-AgentGate-Timestamp": event.timestamp,
+          "User-Agent": "AgentDoor-Webhooks/1.0",
+          "X-AgentDoor-Event": event.type,
+          "X-AgentDoor-Event-Id": event.id,
+          "X-AgentDoor-Timestamp": event.timestamp,
           ...endpoint.headers,
         };
 
         // Add HMAC signature if secret is configured
         if (endpoint.secret) {
           const signature = await this.computeHmac(payload, endpoint.secret);
-          headers["X-AgentGate-Signature"] = `sha256=${signature}`;
+          headers["X-AgentDoor-Signature"] = `sha256=${signature}`;
         }
 
         const controller = new AbortController();

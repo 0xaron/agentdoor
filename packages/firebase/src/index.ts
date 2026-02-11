@@ -1,5 +1,5 @@
 /**
- * @agentgate/firebase - Firebase Companion Plugin for AgentGate
+ * @agentdoor/firebase - Firebase Companion Plugin for AgentDoor
  *
  * Creates agent accounts as Firebase Auth users with custom claims
  * that identify them as agents and encode their scopes and wallet info.

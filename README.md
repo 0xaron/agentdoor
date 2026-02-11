@@ -1,9 +1,9 @@
-# AgentGate
+# AgentDoor
 
-[![CI](https://github.com/0xaron/agentgate/actions/workflows/ci.yml/badge.svg)](https://github.com/0xaron/agentgate/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@agentgate/core.svg)](https://www.npmjs.com/package/@agentgate/core)
-[![PyPI version](https://img.shields.io/pypi/v/agentgate.svg)](https://pypi.org/project/agentgate/)
-[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-brightgreen.svg)](https://github.com/0xaron/agentgate/actions/workflows/ci.yml)
+[![CI](https://github.com/0xaron/agentdoor/actions/workflows/ci.yml/badge.svg)](https://github.com/0xaron/agentdoor/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@agentdoor/core.svg)](https://www.npmjs.com/package/@agentdoor/core)
+[![PyPI version](https://img.shields.io/pypi/v/agentdoor.svg)](https://pypi.org/project/agentdoor/)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-brightgreen.svg)](https://github.com/0xaron/agentdoor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
@@ -29,16 +29,16 @@ The pre-auth funnel — registration → credential issuance → billing setup �
 ## How It Works
 
 ```
-Agent                              SaaS (with AgentGate middleware)
+Agent                              SaaS (with AgentDoor middleware)
   │                                         │
-  │── GET /.well-known/agentgate.json ────▶│  (1) Discovery
+  │── GET /.well-known/agentdoor.json ────▶│  (1) Discovery
   │◀── {scopes, pricing, endpoints} ───────│      ~50ms
   │                                         │
-  │── POST /agentgate/register ───────────▶│  (2) Register
+  │── POST /agentdoor/register ───────────▶│  (2) Register
   │   {public_key, scopes, x402_wallet}    │
   │◀── {agent_id, nonce} ─────────────────│      ~100ms
   │                                         │
-  │── POST /agentgate/register/verify ────▶│  (3) Challenge-Response
+  │── POST /agentdoor/register/verify ────▶│  (3) Challenge-Response
   │   {agent_id, signature(nonce)}         │
   │◀── {api_key, token, rate_limits} ─────│      ~200ms
   │                                         │
@@ -48,7 +48,7 @@ Agent                              SaaS (with AgentGate middleware)
   │                                         │
   │  ... JWT expires (default: 1 hour) ...  │
   │                                         │
-  │── POST /agentgate/auth ───────────────▶│  (5) Token Refresh
+  │── POST /agentdoor/auth ───────────────▶│  (5) Token Refresh
   │   {agent_id, timestamp, signature}     │      (automatic in SDK)
   │◀── {token, expires_at} ───────────────│      ~50ms
 ```
@@ -62,16 +62,16 @@ Agent                              SaaS (with AgentGate middleware)
 ### For SaaS Owners (3-Line Integration)
 
 ```bash
-npm install @agentgate/express
+npm install @agentdoor/express
 ```
 
 ```javascript
 const express = require("express");
-const agentgate = require("@agentgate/express");
+const agentdoor = require("@agentdoor/express");
 
 const app = express();
 
-app.use(agentgate({
+app.use(agentdoor({
   scopes: [
     { id: "data.read", description: "Read data", price: "$0.001/req" },
     { id: "data.write", description: "Write data", price: "$0.01/req" }
@@ -96,32 +96,32 @@ app.listen(3000);
 ```
 
 That's it. Your API is now agent-ready:
-- `/.well-known/agentgate.json` — auto-generated discovery endpoint
-- `/agentgate/register` + `/agentgate/register/verify` — headless agent registration
-- `/agentgate/auth` — token refresh via signed challenge (no browser, no password)
+- `/.well-known/agentdoor.json` — auto-generated discovery endpoint
+- `/agentdoor/register` + `/agentdoor/register/verify` — headless agent registration
+- `/agentdoor/auth` — token refresh via signed challenge (no browser, no password)
 - Auth middleware applied to all your routes
 
 ### Using the CLI
 
 ```bash
 # Auto-generate config from your OpenAPI spec
-npx agentgate init --from-openapi ./openapi.yaml
+npx agentdoor init --from-openapi ./openapi.yaml
 
 # Or interactive setup
-npx agentgate init
+npx agentdoor init
 ```
 
 ### For Agent Developers (< 500ms Onboarding)
 
 ```bash
-npm install @agentgate/sdk
+npm install @agentdoor/sdk
 ```
 
 ```typescript
-import { AgentGate } from "@agentgate/sdk";
+import { AgentDoor } from "@agentdoor/sdk";
 
-const agent = new AgentGate({
-  keyPath: "~/.agentgate/keys.json",   // auto-generates keypair if needed
+const agent = new AgentDoor({
+  keyPath: "~/.agentdoor/keys.json",   // auto-generates keypair if needed
   x402Wallet: "0x1234...abcd"          // optional: x402 wallet as identity
 });
 
@@ -142,16 +142,16 @@ const data = await session.get("/weather/forecast", {
 ### Express.js
 
 ```javascript
-const agentgate = require("@agentgate/express");
-app.use(agentgate({ scopes: [{ id: "data.read", description: "Read" }] }));
+const agentdoor = require("@agentdoor/express");
+app.use(agentdoor({ scopes: [{ id: "data.read", description: "Read" }] }));
 ```
 
 ### Next.js (App Router)
 
 ```typescript
-import { agentgate } from "@agentgate/next";
+import { agentdoor } from "@agentdoor/next";
 
-export default agentgate({
+export default agentdoor({
   scopes: [{ id: "data.read", description: "Read" }],
   pricing: { "data.read": "$0.001/req" }
 });
@@ -163,10 +163,10 @@ export const config = { matcher: ["/api/:path*"] };
 
 ```typescript
 import { Hono } from "hono";
-import { agentgate } from "@agentgate/hono";
+import { agentdoor } from "@agentdoor/hono";
 
 const app = new Hono();
-app.use("*", agentgate({
+app.use("*", agentdoor({
   scopes: [{ id: "data.read", description: "Read" }]
 }));
 ```
@@ -175,10 +175,10 @@ app.use("*", agentgate({
 
 ```typescript
 import Fastify from "fastify";
-import { agentgate } from "@agentgate/fastify";
+import { agentdoor } from "@agentdoor/fastify";
 
 const app = Fastify();
-app.register(agentgate, {
+app.register(agentdoor, {
   scopes: [{ id: "data.read", description: "Read" }]
 });
 ```
@@ -187,10 +187,10 @@ app.register(agentgate, {
 
 ```python
 from fastapi import Depends, FastAPI
-from agentgate_fastapi import AgentGate, AgentGateConfig, AgentContext
+from agentdoor_fastapi import AgentDoor, AgentDoorConfig, AgentContext
 
 app = FastAPI()
-gate = AgentGate(app, config=AgentGateConfig(
+gate = AgentDoor(app, config=AgentDoorConfig(
     service_name="My API",
     scopes=[{"name": "read", "description": "Read access"}],
 ))
@@ -204,10 +204,10 @@ async def protected(agent: AgentContext = Depends(gate.agent_required())):
 
 ## Agent Traffic Detection
 
-Don't know if you need AgentGate? Start with detect-only mode (free):
+Don't know if you need AgentDoor? Start with detect-only mode (free):
 
 ```javascript
-const { detect } = require("@agentgate/detect");
+const { detect } = require("@agentdoor/detect");
 
 app.use(detect({
   webhook: "https://hooks.yoursite.com/agent-traffic"
@@ -226,15 +226,15 @@ Upgrade path: Detect → Register → Bill → Dashboard.
 
 ## Discovery Protocol
 
-AgentGate uses `/.well-known/agentgate.json` for agent discovery (similar to `/.well-known/openid-configuration`):
+AgentDoor uses `/.well-known/agentdoor.json` for agent discovery (similar to `/.well-known/openid-configuration`):
 
 ```json
 {
-  "agentgate_version": "1.0",
+  "agentdoor_version": "1.0",
   "service_name": "Example API",
   "service_description": "Real-time weather data and forecasts",
-  "registration_endpoint": "/agentgate/register",
-  "auth_endpoint": "/agentgate/auth",
+  "registration_endpoint": "/agentdoor/register",
+  "auth_endpoint": "/agentdoor/auth",
   "scopes_available": [
     {
       "id": "weather.read",
@@ -255,11 +255,11 @@ AgentGate uses `/.well-known/agentgate.json` for agent discovery (similar to `/.
 
 ### Cross-Protocol Auto-Generation
 
-One AgentGate integration auto-generates companion protocol files:
+One AgentDoor integration auto-generates companion protocol files:
 
 | File | Protocol | Status |
 |---|---|---|
-| `/.well-known/agentgate.json` | AgentGate | Primary |
+| `/.well-known/agentdoor.json` | AgentDoor | Primary |
 | `/.well-known/agent-card.json` | A2A (Google) | Auto-generated |
 | `/.well-known/oauth-authorization-server` | OAuth 2.1 | Optional |
 
@@ -277,14 +277,14 @@ One AgentGate integration auto-generates companion protocol files:
 
 ### Token Refresh
 
-JWTs are short-lived (default: 1 hour). When a token expires, agents refresh it via `POST /agentgate/auth` by signing a fresh timestamp with their Ed25519 private key. This is a **signature-based refresh** — more secure than typical JWT refresh tokens because it requires proof of private key ownership on every renewal.
+JWTs are short-lived (default: 1 hour). When a token expires, agents refresh it via `POST /agentdoor/auth` by signing a fresh timestamp with their Ed25519 private key. This is a **signature-based refresh** — more secure than typical JWT refresh tokens because it requires proof of private key ownership on every renewal.
 
 ```
-POST /agentgate/auth
+POST /agentdoor/auth
 {
   "agent_id": "ag_xxx",
   "timestamp": "2026-02-08T12:30:00Z",              // current time
-  "signature": sign("agentgate:auth:ag_xxx:2026-02-08T12:30:00Z")  // Ed25519
+  "signature": sign("agentdoor:auth:ag_xxx:2026-02-08T12:30:00Z")  // Ed25519
 }
 → { "token": "eyJ...", "expires_at": "2026-02-08T13:30:00Z" }
 ```
@@ -298,7 +298,7 @@ const data = await session.get("/api/data");  // auto-refreshes if needed
 
 **Why signature-based refresh instead of a refresh token?**
 
-| | Typical Refresh Token | AgentGate `/agentgate/auth` |
+| | Typical Refresh Token | AgentDoor `/agentdoor/auth` |
 |---|---|---|
 | Stolen token risk | Refresh token = unlimited access | Stolen JWT alone can't refresh |
 | Proof of identity | None (just present the token) | Ed25519 signature every time |
@@ -309,7 +309,7 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 
 ### Why Not Just OAuth?
 
-| | OAuth 2.1 | AgentGate |
+| | OAuth 2.1 | AgentDoor |
 |---|---|---|
 | Human involvement | Consent screen + browser redirect | Zero. Fully headless. |
 | Round-trips | 5+ | 2 |
@@ -324,35 +324,35 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 
 | Package | Description | Status |
 |---|---|---|
-| `@agentgate/core` | Shared crypto, types, storage, rate limiting | Stable |
-| `@agentgate/sdk` | Agent-side TypeScript SDK | Stable |
-| `@agentgate/cli` | CLI tool (`npx agentgate init`) | Stable |
-| `@agentgate/detect` | Agent traffic detection middleware | Stable |
-| `agentgate` (Python) | Python Agent SDK | Stable |
+| `@agentdoor/core` | Shared crypto, types, storage, rate limiting | Stable |
+| `@agentdoor/sdk` | Agent-side TypeScript SDK | Stable |
+| `@agentdoor/cli` | CLI tool (`npx agentdoor init`) | Stable |
+| `@agentdoor/detect` | Agent traffic detection middleware | Stable |
+| `agentdoor` (Python) | Python Agent SDK | Stable |
 
 ### Framework Adapters
 
 | Package | Description | Status |
 |---|---|---|
-| `@agentgate/express` | Express.js middleware | Stable |
-| `@agentgate/next` | Next.js App Router adapter | Stable |
-| `@agentgate/hono` | Hono middleware (Workers/Deno/Bun) | Stable |
-| `@agentgate/fastify` | Fastify plugin with schema validation | Stable |
-| `agentgate-fastapi` (Python) | FastAPI middleware adapter | Stable |
-| `@agentgate/cloudflare` | Cloudflare Workers adapter with Durable Objects | Stable |
-| `@agentgate/vercel` | Vercel Edge middleware | Stable |
+| `@agentdoor/express` | Express.js middleware | Stable |
+| `@agentdoor/next` | Next.js App Router adapter | Stable |
+| `@agentdoor/hono` | Hono middleware (Workers/Deno/Bun) | Stable |
+| `@agentdoor/fastify` | Fastify plugin with schema validation | Stable |
+| `agentdoor-fastapi` (Python) | FastAPI middleware adapter | Stable |
+| `@agentdoor/cloudflare` | Cloudflare Workers adapter with Durable Objects | Stable |
+| `@agentdoor/vercel` | Vercel Edge middleware | Stable |
 
 <details>
 <summary><strong>Auth Provider Companions</strong> (6 packages)</summary>
 
 | Package | Description | Status |
 |---|---|---|
-| `@agentgate/auth0` | Auth0 companion -- register agents as M2M clients | Stable |
-| `@agentgate/clerk` | Clerk companion -- agent accounts visible in Clerk dashboard | Stable |
-| `@agentgate/firebase` | Firebase companion -- agent accounts as Firebase Auth users | Stable |
-| `@agentgate/stytch` | Stytch companion -- bridge agents with Stytch Connected Apps | Stable |
-| `@agentgate/supabase` | Supabase plugin -- store agent records with RLS support | Stable |
-| `@agentgate/next-auth` | NextAuth.js companion -- agent provider for NextAuth | Stable |
+| `@agentdoor/auth0` | Auth0 companion -- register agents as M2M clients | Stable |
+| `@agentdoor/clerk` | Clerk companion -- agent accounts visible in Clerk dashboard | Stable |
+| `@agentdoor/firebase` | Firebase companion -- agent accounts as Firebase Auth users | Stable |
+| `@agentdoor/stytch` | Stytch companion -- bridge agents with Stytch Connected Apps | Stable |
+| `@agentdoor/supabase` | Supabase plugin -- store agent records with RLS support | Stable |
+| `@agentdoor/next-auth` | NextAuth.js companion -- agent provider for NextAuth | Stable |
 
 </details>
 
@@ -361,10 +361,10 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 
 | Package | Description | Status |
 |---|---|---|
-| `@agentgate/stripe` | Stripe billing bridge -- reconcile x402 payments as Stripe invoices | Stable |
-| `@agentgate/bazaar` | x402 Bazaar -- auto-list services on the x402 marketplace | Stable |
-| `@agentgate/registry` | Agent Registry -- crawled directory of AgentGate-enabled services | Stable |
-| `@agentgate/dashboard` | Agent analytics dashboard (Next.js) | Beta |
+| `@agentdoor/stripe` | Stripe billing bridge -- reconcile x402 payments as Stripe invoices | Stable |
+| `@agentdoor/bazaar` | x402 Bazaar -- auto-list services on the x402 marketplace | Stable |
+| `@agentdoor/registry` | Agent Registry -- crawled directory of AgentDoor-enabled services | Stable |
+| `@agentdoor/dashboard` | Agent analytics dashboard (Next.js) | Beta |
 
 </details>
 
@@ -373,9 +373,9 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 
 | Template | Description |
 |---|---|
-| `template-railway` | Railway deployment template -- Express + AgentGate |
-| `template-cloudflare` | Cloudflare Workers template -- Hono + AgentGate |
-| `template-vercel` | Vercel template -- Next.js + AgentGate |
+| `template-railway` | Railway deployment template -- Express + AgentDoor |
+| `template-cloudflare` | Cloudflare Workers template -- Hono + AgentDoor |
+| `template-vercel` | Vercel template -- Next.js + AgentDoor |
 
 </details>
 
@@ -384,7 +384,7 @@ A stolen JWT is useless once it expires. An attacker would need the agent's Ed25
 ## Project Structure
 
 ```
-agentgate/
+agentdoor/
 ├── packages/
 │   ├── core/                 # Shared logic (crypto, types, storage)
 │   ├── express/              # Express.js middleware
@@ -394,8 +394,8 @@ agentgate/
 │   ├── sdk/                  # Agent-side TypeScript SDK
 │   ├── detect/               # Agent traffic detection
 │   ├── cli/                  # CLI tool
-│   ├── python-sdk/           # Python Agent SDK (agentgate)
-│   ├── fastapi-adapter/      # FastAPI middleware (agentgate-fastapi)
+│   ├── python-sdk/           # Python Agent SDK (agentdoor)
+│   ├── fastapi-adapter/      # FastAPI middleware (agentdoor-fastapi)
 │   ├── cloudflare/           # Cloudflare Workers adapter
 │   ├── vercel/               # Vercel Edge middleware
 │   ├── auth0/                # Auth0 companion plugin
@@ -456,9 +456,9 @@ pnpm dev
 
 ## Sitting Alongside Clerk
 
-AgentGate doesn't replace your existing auth. It sits alongside it:
+AgentDoor doesn't replace your existing auth. It sits alongside it:
 
-| Concern | Clerk (Humans) | AgentGate (Agents) |
+| Concern | Clerk (Humans) | AgentDoor (Agents) |
 |---|---|---|
 | Registration | Email, social OAuth, magic links | Keypair + signed challenge, headless API |
 | Authentication | Session cookies, JWTs | Signed request headers or short-lived token |
@@ -471,9 +471,9 @@ AgentGate doesn't replace your existing auth. It sits alongside it:
 ## Configuration Reference
 
 ```typescript
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 
-app.use(agentgate({
+app.use(agentdoor({
   // Required: Define available scopes
   scopes: [
     { id: "data.read", description: "Read data", price: "$0.001/req", rateLimit: "1000/hour" },
@@ -541,7 +541,7 @@ app.use(agentgate({
 ### Discovery
 
 ```
-GET /.well-known/agentgate.json
+GET /.well-known/agentdoor.json
 ```
 
 Returns the service discovery document. CDN-cacheable (`Cache-Control: public, max-age=3600`).
@@ -549,7 +549,7 @@ Returns the service discovery document. CDN-cacheable (`Cache-Control: public, m
 ### Registration
 
 ```
-POST /agentgate/register
+POST /agentdoor/register
 
 {
   "public_key": "base64-ed25519-public-key",
@@ -564,7 +564,7 @@ POST /agentgate/register
 ### Challenge Verification
 
 ```
-POST /agentgate/register/verify
+POST /agentdoor/register/verify
 
 {
   "agent_id": "ag_xxx",
@@ -577,7 +577,7 @@ POST /agentgate/register/verify
 ### Token Refresh (Returning Agent Auth)
 
 ```
-POST /agentgate/auth
+POST /agentdoor/auth
 
 {
   "agent_id": "ag_xxx",

@@ -1,6 +1,6 @@
 /**
  * OpenAPI spec parser. Reads an OpenAPI 3.x YAML/JSON spec and infers
- * AgentGate scopes from endpoint paths and HTTP methods.
+ * AgentDoor scopes from endpoint paths and HTTP methods.
  *
  * Suggests pricing based on operation complexity:
  *   - GET (read)       → $0.001/req
@@ -222,7 +222,7 @@ function parseYaml(input: string): unknown {
 // ---------------------------------------------------------------------------
 
 /**
- * Parse an OpenAPI spec (JSON or YAML string) and infer AgentGate scopes.
+ * Parse an OpenAPI spec (JSON or YAML string) and infer AgentDoor scopes.
  *
  * @param specContent - Raw OpenAPI spec content (JSON or YAML).
  * @returns Array of inferred scopes with suggested pricing.

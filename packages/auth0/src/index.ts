@@ -1,7 +1,7 @@
 /**
- * @agentgate/auth0 - Auth0 Companion Plugin for AgentGate
+ * @agentdoor/auth0 - Auth0 Companion Plugin for AgentDoor
  *
- * Bridges AgentGate with Auth0 by registering agents as M2M clients.
+ * Bridges AgentDoor with Auth0 by registering agents as M2M clients.
  * Agent accounts appear in the Auth0 dashboard with special metadata
  * to distinguish them from human users.
  */

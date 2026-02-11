@@ -1,10 +1,10 @@
 # Agent TypeScript SDK Example
 
-Demonstrates how to use the `@agentgate/sdk` to connect an AI agent to any AgentGate-enabled service. The SDK handles discovery, registration, challenge-response verification, credential caching, and authenticated requests.
+Demonstrates how to use the `@agentdoor/sdk` to connect an AI agent to any AgentDoor-enabled service. The SDK handles discovery, registration, challenge-response verification, credential caching, and authenticated requests.
 
 ## What This Example Shows
 
-- Initializing the AgentGate SDK with persistent keypair storage
+- Initializing the AgentDoor SDK with persistent keypair storage
 - Connecting to a service (discovery + register + verify in one call)
 - Making authenticated API requests via the session object
 - Credential caching across process restarts
@@ -14,7 +14,7 @@ Demonstrates how to use the `@agentgate/sdk` to connect an AI agent to any Agent
 
 - Node.js >= 18
 - pnpm >= 9
-- A running AgentGate-enabled service (e.g., the `express-weather-api` example)
+- A running AgentDoor-enabled service (e.g., the `express-weather-api` example)
 
 ## Setup
 
@@ -40,4 +40,4 @@ pnpm start
 
 ## Packages Used
 
-- [`@agentgate/sdk`](../../packages/sdk) - Agent-side TypeScript SDK
+- [`@agentdoor/sdk`](../../packages/sdk) - Agent-side TypeScript SDK

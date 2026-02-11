@@ -1,12 +1,12 @@
 /**
- * @agentgate/stytch - Stytch Companion
+ * @agentdoor/stytch - Stytch Companion
  *
- * Creates and manages Stytch user records for AgentGate agents.
- * Bridges AgentGate agent registrations with Stytch Connected Apps
+ * Creates and manages Stytch user records for AgentDoor agents.
+ * Bridges AgentDoor agent registrations with Stytch Connected Apps
  * so that agents appear as users in the Stytch dashboard.
  */
 
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,7 +34,7 @@ export interface StytchClientInterface {
 export interface StytchSyncResult {
   /** Stytch user ID for the synced agent */
   stytchUserId: string;
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Whether the sync succeeded */
   synced: boolean;
@@ -45,9 +45,9 @@ export interface StytchSyncResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Stytch companion plugin for AgentGate.
+ * Stytch companion plugin for AgentDoor.
  *
- * When agents register through AgentGate, this plugin automatically
+ * When agents register through AgentDoor, this plugin automatically
  * creates corresponding user records in Stytch. Agent users include
  * trusted metadata marking them as agents with their granted scopes.
  *
@@ -84,7 +84,7 @@ export class StytchCompanion {
   async onAgentRegistered(agent: Agent): Promise<StytchSyncResult> {
     try {
       const result = await this.client.createUser({
-        email: `${agent.id}@agents.agentgate.stytch.io`,
+        email: `${agent.id}@agents.agentdoor.stytch.io`,
         name: {
           first_name: agent.metadata.name ?? "Agent",
           last_name: agent.id,

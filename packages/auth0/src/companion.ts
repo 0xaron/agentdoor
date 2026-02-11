@@ -1,12 +1,12 @@
 /**
- * @agentgate/auth0 - Auth0 Companion
+ * @agentdoor/auth0 - Auth0 Companion
  *
- * Creates and manages Auth0 user records for AgentGate agents.
+ * Creates and manages Auth0 user records for AgentDoor agents.
  * Agents are registered as M2M clients with special metadata
  * to distinguish them from human users.
  */
 
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,7 +24,7 @@ export interface Auth0CompanionConfig {
   audience?: string;
   /** Auth0 connection name */
   connection?: string;
-  /** Key name for agent metadata in Auth0 user app_metadata. Default: "agentgate" */
+  /** Key name for agent metadata in Auth0 user app_metadata. Default: "agentdoor" */
   agentMetadataKey?: string;
 }
 
@@ -41,7 +41,7 @@ export interface Auth0ClientInterface {
 export interface Auth0SyncResult {
   /** Auth0 user ID for the synced agent */
   auth0UserId: string;
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Whether the sync succeeded */
   synced: boolean;
@@ -54,9 +54,9 @@ export interface Auth0SyncResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Auth0 companion plugin for AgentGate.
+ * Auth0 companion plugin for AgentDoor.
  *
- * When agents register through AgentGate, this plugin automatically
+ * When agents register through AgentDoor, this plugin automatically
  * creates corresponding user records in Auth0. Agent accounts include
  * metadata marking them as agents with their granted scopes and wallet info.
  *
@@ -91,7 +91,7 @@ export class Auth0Companion {
    */
   async onAgentRegistered(agent: Agent): Promise<Auth0SyncResult> {
     try {
-      const metadataKey = this.config.agentMetadataKey ?? "agentgate";
+      const metadataKey = this.config.agentMetadataKey ?? "agentdoor";
 
       const userData: Record<string, unknown> = {
         email: `${agent.id}@agents.${this.config.domain}`,
@@ -165,7 +165,7 @@ export class Auth0Companion {
 
     if (existingUserId) {
       try {
-        const metadataKey = this.config.agentMetadataKey ?? "agentgate";
+        const metadataKey = this.config.agentMetadataKey ?? "agentdoor";
 
         await this.client.updateUser(existingUserId, {
           app_metadata: {

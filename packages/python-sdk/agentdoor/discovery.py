@@ -1,7 +1,7 @@
-"""AgentGate service discovery.
+"""AgentDoor service discovery.
 
-Fetches and parses the /.well-known/agentgate.json discovery document
-from an AgentGate-enabled service.
+Fetches and parses the /.well-known/agentdoor.json discovery document
+from an AgentDoor-enabled service.
 """
 
 from __future__ import annotations
@@ -22,13 +22,13 @@ class ScopeDefinition:
 
 @dataclass
 class DiscoveryDocument:
-    """Parsed AgentGate discovery document.
+    """Parsed AgentDoor discovery document.
 
-    Represents the contents of /.well-known/agentgate.json, which
-    describes the service's AgentGate capabilities and endpoints.
+    Represents the contents of /.well-known/agentdoor.json, which
+    describes the service's AgentDoor capabilities and endpoints.
     """
 
-    agentgate_version: str
+    agentdoor_version: str
     service_name: str
     registration_endpoint: str
     verification_endpoint: str
@@ -42,7 +42,7 @@ def parse_discovery_document(data: dict[str, Any]) -> DiscoveryDocument:
     """Parse a raw JSON dict into a DiscoveryDocument.
 
     Args:
-        data: The parsed JSON body of /.well-known/agentgate.json.
+        data: The parsed JSON body of /.well-known/agentdoor.json.
 
     Returns:
         A populated DiscoveryDocument dataclass.
@@ -56,15 +56,15 @@ def parse_discovery_document(data: dict[str, Any]) -> DiscoveryDocument:
     ]
 
     return DiscoveryDocument(
-        agentgate_version=data["agentgate_version"],
+        agentdoor_version=data["agentdoor_version"],
         service_name=data["service_name"],
         registration_endpoint=data.get(
-            "registration_endpoint", "/agentgate/register"
+            "registration_endpoint", "/agentdoor/register"
         ),
         verification_endpoint=data.get(
-            "verification_endpoint", "/agentgate/register/verify"
+            "verification_endpoint", "/agentdoor/register/verify"
         ),
-        auth_endpoint=data.get("auth_endpoint", "/agentgate/auth"),
+        auth_endpoint=data.get("auth_endpoint", "/agentdoor/auth"),
         scopes=scopes,
         token_ttl_seconds=data.get("token_ttl_seconds", 3600),
         raw=data,
@@ -72,10 +72,10 @@ def parse_discovery_document(data: dict[str, Any]) -> DiscoveryDocument:
 
 
 async def discover(base_url: str, client: httpx.AsyncClient | None = None) -> DiscoveryDocument:
-    """Fetch and parse the AgentGate discovery document from a service.
+    """Fetch and parse the AgentDoor discovery document from a service.
 
     Args:
-        base_url: The base URL of the AgentGate-enabled service
+        base_url: The base URL of the AgentDoor-enabled service
             (e.g. ``https://api.example.com``).
         client: An optional httpx.AsyncClient to use for the request.
             If not provided, a new client is created.
@@ -87,7 +87,7 @@ async def discover(base_url: str, client: httpx.AsyncClient | None = None) -> Di
         httpx.HTTPStatusError: If the discovery endpoint returns a non-2xx status.
         KeyError: If the discovery document is missing required fields.
     """
-    url = f"{base_url.rstrip('/')}/.well-known/agentgate.json"
+    url = f"{base_url.rstrip('/')}/.well-known/agentdoor.json"
 
     if client is None:
         async with httpx.AsyncClient() as new_client:

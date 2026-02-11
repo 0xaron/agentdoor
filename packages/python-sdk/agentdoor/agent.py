@@ -1,8 +1,8 @@
-"""Main Agent class for connecting to AgentGate-enabled services.
+"""Main Agent class for connecting to AgentDoor-enabled services.
 
 Provides the high-level API that agent applications use to discover,
 register with, authenticate against, and make requests to services
-that implement the AgentGate protocol.
+that implement the AgentDoor protocol.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class AgentConfig:
         http_timeout: Timeout in seconds for HTTP requests.
     """
 
-    agent_name: str = "agentgate-python-sdk"
+    agent_name: str = "agentdoor-python-sdk"
     credential_store: CredentialStore = field(
         default_factory=InMemoryCredentialStore
     )
@@ -37,7 +37,7 @@ class AgentConfig:
 
 
 class Agent:
-    """AgentGate client for headless agent authentication.
+    """AgentDoor client for headless agent authentication.
 
     Usage::
 
@@ -88,9 +88,9 @@ class Agent:
     # ------------------------------------------------------------------
 
     async def connect(self, base_url: str) -> DiscoveryDocument:
-        """Discover an AgentGate-enabled service.
+        """Discover an AgentDoor-enabled service.
 
-        Fetches ``/.well-known/agentgate.json`` from *base_url* and
+        Fetches ``/.well-known/agentdoor.json`` from *base_url* and
         stores the resulting :class:`DiscoveryDocument`.
 
         Args:

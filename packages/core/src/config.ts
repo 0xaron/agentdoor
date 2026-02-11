@@ -1,7 +1,7 @@
 /**
- * @agentgate/core - Configuration Validation
+ * @agentdoor/core - Configuration Validation
  *
- * Zod schemas for validating AgentGateConfig.
+ * Zod schemas for validating AgentDoorConfig.
  * Provides strict runtime validation with helpful error messages.
  */
 
@@ -16,7 +16,7 @@ import {
   DEFAULT_SERVICE_NAME,
   DEFAULT_SERVICE_DESCRIPTION,
 } from "./constants.js";
-import type { AgentGateConfig } from "./types.js";
+import type { AgentDoorConfig } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Zod Schemas
@@ -148,8 +148,8 @@ export const SpendingCapsConfigSchema = z.object({
   warningThreshold: z.number().min(0).max(1).optional(),
 });
 
-/** Full schema for AgentGateConfig. */
-export const AgentGateConfigSchema = z.object({
+/** Full schema for AgentDoorConfig. */
+export const AgentDoorConfigSchema = z.object({
   scopes: z
     .array(ScopeDefinitionSchema)
     .min(1, "At least one scope must be defined"),
@@ -181,7 +181,7 @@ export const AgentGateConfigSchema = z.object({
 // Resolved Config (with all defaults applied)
 // ---------------------------------------------------------------------------
 
-/** AgentGateConfig with all defaults resolved. No optional fields. */
+/** AgentDoorConfig with all defaults resolved. No optional fields. */
 export interface ResolvedConfig {
   scopes: Array<{
     id: string;
@@ -250,11 +250,11 @@ export interface ResolvedConfig {
 // ---------------------------------------------------------------------------
 
 /**
- * Validate an AgentGateConfig object against the Zod schema.
+ * Validate an AgentDoorConfig object against the Zod schema.
  * Throws InvalidConfigError if validation fails.
  */
-export function validateConfig(config: unknown): AgentGateConfig {
-  const result = AgentGateConfigSchema.safeParse(config);
+export function validateConfig(config: unknown): AgentDoorConfig {
+  const result = AgentDoorConfigSchema.safeParse(config);
   if (!result.success) {
     const issues = result.error.issues.map(
       (issue) => `${issue.path.join(".")}: ${issue.message}`,
@@ -264,7 +264,7 @@ export function validateConfig(config: unknown): AgentGateConfig {
       { issues: result.error.issues },
     );
   }
-  return result.data as AgentGateConfig;
+  return result.data as AgentDoorConfig;
 }
 
 /**
@@ -285,10 +285,10 @@ function generateJwtSecret(): string {
 }
 
 /**
- * Validate and resolve an AgentGateConfig, applying all default values.
+ * Validate and resolve an AgentDoorConfig, applying all default values.
  * Returns a ResolvedConfig with no optional fields (except x402).
  */
-export function resolveConfig(config: AgentGateConfig): ResolvedConfig {
+export function resolveConfig(config: AgentDoorConfig): ResolvedConfig {
   // Validate first
   validateConfig(config);
 

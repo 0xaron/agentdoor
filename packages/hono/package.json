@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/hono",
+  "name": "@agentdoor/hono",
   "version": "0.1.0",
-  "description": "Hono middleware for AgentGate - works on Cloudflare Workers, Deno, Bun, and Node.js",
+  "description": "Hono middleware for AgentDoor - works on Cloudflare Workers, Deno, Bun, and Node.js",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -28,7 +28,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "peerDependencies": {
     "hono": ">=4"
@@ -45,11 +45,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/hono"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "hono",
     "middleware",
     "cloudflare-workers",

@@ -1,7 +1,7 @@
 /**
- * @agentgate/next-auth - NextAuth.js Companion Plugin for AgentGate
+ * @agentdoor/next-auth - NextAuth.js Companion Plugin for AgentDoor
  *
- * Adds an "agent" provider to NextAuth.js so that AgentGate agents
+ * Adds an "agent" provider to NextAuth.js so that AgentDoor agents
  * can authenticate through the standard NextAuth flow.
  */
 

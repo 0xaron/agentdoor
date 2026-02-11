@@ -1,6 +1,6 @@
 # Quick Start
 
-Make your API agent-ready in under 5 minutes. This guide walks you through installing AgentGate, initializing your configuration, adding the middleware, and testing with a real agent request.
+Make your API agent-ready in under 5 minutes. This guide walks you through installing AgentDoor, initializing your configuration, adding the middleware, and testing with a real agent request.
 
 ## Prerequisites
 
@@ -12,32 +12,32 @@ Make your API agent-ready in under 5 minutes. This guide walks you through insta
 
 ```bash
 # npm
-npm install @agentgate/express @agentgate/core
+npm install @agentdoor/express @agentdoor/core
 
 # pnpm
-pnpm add @agentgate/express @agentgate/core
+pnpm add @agentdoor/express @agentdoor/core
 
 # yarn
-yarn add @agentgate/express @agentgate/core
+yarn add @agentdoor/express @agentdoor/core
 ```
 
-For Next.js, use `@agentgate/next` instead of `@agentgate/express`. For Hono, use `@agentgate/hono`. For Fastify, use `@agentgate/fastify`. For Python FastAPI, see the [FastAPI example](../examples/python-fastapi/).
+For Next.js, use `@agentdoor/next` instead of `@agentdoor/express`. For Hono, use `@agentdoor/hono`. For Fastify, use `@agentdoor/fastify`. For Python FastAPI, see the [FastAPI example](../examples/python-fastapi/).
 
 ## 2. Initialize Configuration
 
 Run the interactive setup CLI:
 
 ```bash
-npx agentgate init
+npx agentdoor init
 ```
 
 This walks you through framework detection, scope definition, and optional x402 payment setup. If you have an OpenAPI spec, the CLI auto-generates scopes from your endpoints:
 
 ```bash
-npx agentgate init --from-openapi ./openapi.yaml
+npx agentdoor init --from-openapi ./openapi.yaml
 ```
 
-Both commands produce an `agentgate.config.ts` file in your project root.
+Both commands produce an `agentdoor.config.ts` file in your project root.
 
 You can also skip the CLI and configure inline (see step 3).
 
@@ -47,11 +47,11 @@ You can also skip the CLI and configure inline (see step 3).
 
 ```typescript
 import express from "express";
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 
 const app = express();
 
-app.use(agentgate({
+app.use(agentdoor({
   scopes: [
     { id: "data.read", description: "Read data" },
     { id: "data.write", description: "Write data" },
@@ -74,17 +74,17 @@ app.listen(3000, () => console.log("Server running on :3000"));
 
 That is it. Three things happen automatically:
 
-1. **Discovery endpoint** -- `GET /.well-known/agentgate.json` is served, describing your API's scopes, pricing, auth methods, and registration endpoint.
-2. **Registration endpoints** -- `POST /agentgate/register` and `POST /agentgate/register/verify` are mounted for agent self-service signup.
+1. **Discovery endpoint** -- `GET /.well-known/agentdoor.json` is served, describing your API's scopes, pricing, auth methods, and registration endpoint.
+2. **Registration endpoints** -- `POST /agentdoor/register` and `POST /agentdoor/register/verify` are mounted for agent self-service signup.
 3. **Auth middleware** -- every request is checked for agent credentials (`Authorization: Bearer agk_live_...` or a JWT). If valid, `req.agent` is populated.
 
 ### Next.js (App Router)
 
 ```typescript
 // middleware.ts
-import { agentgate } from "@agentgate/next";
+import { agentdoor } from "@agentdoor/next";
 
-export default agentgate({
+export default agentdoor({
   scopes: [
     { id: "data.read", description: "Read data" },
   ],
@@ -98,11 +98,11 @@ export const config = { matcher: ["/api/:path*"] };
 
 ```typescript
 import { Hono } from "hono";
-import { agentgate } from "@agentgate/hono";
+import { agentdoor } from "@agentdoor/hono";
 
 const app = new Hono();
 
-app.use("*", agentgate({
+app.use("*", agentdoor({
   scopes: [
     { id: "data.read", description: "Read data" },
   ],
@@ -117,11 +117,11 @@ export default app;
 
 ```typescript
 import Fastify from "fastify";
-import { agentgate } from "@agentgate/fastify";
+import { agentdoor } from "@agentdoor/fastify";
 
 const app = Fastify();
 
-app.register(agentgate, {
+app.register(agentdoor, {
   scopes: [
     { id: "data.read", description: "Read data" },
   ],
@@ -139,17 +139,17 @@ app.listen({ port: 3000 });
 ### 4a. Discover the API
 
 ```bash
-curl http://localhost:3000/.well-known/agentgate.json | jq
+curl http://localhost:3000/.well-known/agentdoor.json | jq
 ```
 
 Response:
 
 ```json
 {
-  "agentgate_version": "1.0",
+  "agentdoor_version": "1.0",
   "service_name": "My API",
-  "registration_endpoint": "/agentgate/register",
-  "auth_endpoint": "/agentgate/auth",
+  "registration_endpoint": "/agentdoor/register",
+  "auth_endpoint": "/agentdoor/auth",
   "scopes_available": [
     {
       "id": "data.read",
@@ -166,14 +166,14 @@ Response:
 }
 ```
 
-This is the discovery protocol. Any agent can fetch `/.well-known/agentgate.json` from your domain to learn how to register and what scopes are available -- similar to `/.well-known/openid-configuration` for OAuth.
+This is the discovery protocol. Any agent can fetch `/.well-known/agentdoor.json` from your domain to learn how to register and what scopes are available -- similar to `/.well-known/openid-configuration` for OAuth.
 
 ### 4b. Register an Agent
 
-Generate an Ed25519 keypair (or use `npx agentgate keygen`), then register:
+Generate an Ed25519 keypair (or use `npx agentdoor keygen`), then register:
 
 ```bash
-curl -X POST http://localhost:3000/agentgate/register \
+curl -X POST http://localhost:3000/agentdoor/register \
   -H "Content-Type: application/json" \
   -d '{
     "public_key": "BASE64_ED25519_PUBLIC_KEY",
@@ -192,7 +192,7 @@ Response:
   "agent_id": "ag_V1StGXR8_Z5jdHi6B",
   "challenge": {
     "nonce": "BASE64_RANDOM_NONCE",
-    "message": "agentgate:register:ag_V1StGXR8_Z5jdHi6B:1707400000:NONCE",
+    "message": "agentdoor:register:ag_V1StGXR8_Z5jdHi6B:1707400000:NONCE",
     "expires_at": "2026-02-08T12:05:00Z"
   }
 }
@@ -203,7 +203,7 @@ Response:
 Sign the `challenge.message` with your Ed25519 private key and verify:
 
 ```bash
-curl -X POST http://localhost:3000/agentgate/register/verify \
+curl -X POST http://localhost:3000/agentdoor/register/verify \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "ag_V1StGXR8_Z5jdHi6B",
@@ -235,13 +235,13 @@ The agent is now registered and authenticated. The entire flow -- discovery, reg
 
 ## 5. Use the Agent SDK (Recommended)
 
-Instead of manual curl calls, use `@agentgate/sdk` to handle the entire flow in one call:
+Instead of manual curl calls, use `@agentdoor/sdk` to handle the entire flow in one call:
 
 ```typescript
-import { AgentGate } from "@agentgate/sdk";
+import { AgentDoor } from "@agentdoor/sdk";
 
-const agent = new AgentGate({
-  keyPath: "~/.agentgate/keys.json",
+const agent = new AgentDoor({
+  keyPath: "~/.agentdoor/keys.json",
 });
 
 // Discover + register + auth in a single call
@@ -258,7 +258,7 @@ See the [Agent SDK documentation](./agent-sdk.md) for full details.
 
 ## Next Steps
 
-- [Configuration Reference](./configuration.md) -- all `AgentGateConfig` options
+- [Configuration Reference](./configuration.md) -- all `AgentDoorConfig` options
 - [API Reference](./api-reference.md) -- full endpoint documentation with schemas
 - [Agent SDK](./agent-sdk.md) -- TypeScript and Python agent-side usage
-- [FAQ](./faq.md) -- common questions about AgentGate
+- [FAQ](./faq.md) -- common questions about AgentDoor

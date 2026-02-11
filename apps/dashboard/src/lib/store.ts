@@ -1,15 +1,15 @@
 /**
  * Shared AgentStore Instance
  *
- * Provides a singleton MemoryStore instance backed by @agentgate/core.
+ * Provides a singleton MemoryStore instance backed by @agentdoor/core.
  * Seeds mock data on first access so the dashboard has meaningful content
  * even when no real agents have registered yet.
  *
  * In production, swap MemoryStore for SQLiteStore or PostgresStore.
  */
 
-import { MemoryStore } from "@agentgate/core";
-import type { Agent } from "@agentgate/core";
+import { MemoryStore } from "@agentdoor/core";
+import type { Agent } from "@agentdoor/core";
 import { agents as mockAgents } from "./mock-data";
 
 // ---------------------------------------------------------------------------

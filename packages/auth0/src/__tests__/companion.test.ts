@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Auth0Companion } from "../companion.js";
 import type { Auth0ClientInterface } from "../companion.js";
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 /** Creates a mock Auth0 client for testing. */
 function createMockAuth0Client(): Auth0ClientInterface {
@@ -115,7 +115,7 @@ describe("Auth0Companion", () => {
 
       const createCall = vi.mocked(mockClient.createUser).mock.calls[0][0];
       expect(createCall.app_metadata).toEqual({
-        agentgate: {
+        agentdoor: {
           is_agent: true,
           agent_id: "ag_test_1",
           scopes: ["data.read"],
@@ -130,8 +130,8 @@ describe("Auth0Companion", () => {
 
       const createCall = vi.mocked(mockClient.createUser).mock.calls[0][0];
       const metadata = createCall.app_metadata as Record<string, unknown>;
-      const agentgate = metadata.agentgate as Record<string, unknown>;
-      expect(agentgate.wallet).toBe("0xABC123");
+      const agentdoor = metadata.agentdoor as Record<string, unknown>;
+      expect(agentdoor.wallet).toBe("0xABC123");
     });
 
     it("creates email using agent ID and domain", async () => {
@@ -371,8 +371,8 @@ describe("Auth0Companion", () => {
 
       const updateCall = vi.mocked(mockClient.updateUser).mock.calls[0];
       const appMetadata = updateCall[1].app_metadata as Record<string, unknown>;
-      const agentgate = appMetadata.agentgate as Record<string, unknown>;
-      expect(agentgate.scopes).toEqual(["data.read", "data.write", "admin"]);
+      const agentdoor = appMetadata.agentdoor as Record<string, unknown>;
+      expect(agentdoor.scopes).toEqual(["data.read", "data.write", "admin"]);
     });
   });
 });

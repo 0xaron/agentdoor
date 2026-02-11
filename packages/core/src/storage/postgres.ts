@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - PostgreSQL Storage Implementation
+ * @agentdoor/core - PostgreSQL Storage Implementation
  *
  * Uses the `pg` library for PostgreSQL access.
  * Suitable for multi-process production deployments.
@@ -9,8 +9,8 @@
  *   npm install -D @types/pg
  *
  * Usage:
- *   import { PostgresStore } from "@agentgate/core/storage/postgres";
- *   const store = new PostgresStore("postgresql://user:pass@localhost/agentgate");
+ *   import { PostgresStore } from "@agentdoor/core/storage/postgres";
+ *   const store = new PostgresStore("postgresql://user:pass@localhost/agentdoor");
  *   await store.initialize(); // Creates tables if they don't exist
  */
 

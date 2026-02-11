@@ -1,5 +1,5 @@
 /**
- * Tests for `agentgate init` command.
+ * Tests for `agentdoor init` command.
  *
  * Covers: --from-openapi mode, framework auto-detection, scope inference,
  * file output, and error handling.
@@ -25,7 +25,7 @@ import {
 import { parseOpenApiSpec } from "../openapi-parser.js";
 
 function createTmpDir(): string {
-  return fs.mkdtempSync(join(os.tmpdir(), "agentgate-init-test-"));
+  return fs.mkdtempSync(join(os.tmpdir(), "agentdoor-init-test-"));
 }
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ describe("generateConfigFile (init output)", () => {
       scopes: [{ id: "data.read", description: "Read data" }],
     });
 
-    expect(content).toContain('@agentgate/express');
+    expect(content).toContain('@agentdoor/express');
     expect(content).toContain("serviceName");
     expect(content).toContain("Test API");
     expect(content).toContain("data.read");
@@ -55,7 +55,7 @@ describe("generateConfigFile (init output)", () => {
       scopes: [{ id: "s.read", description: "Read" }],
     });
 
-    expect(content).toContain("@agentgate/next");
+    expect(content).toContain("@agentdoor/next");
   });
 
   it("generates correct import for Hono", () => {
@@ -66,10 +66,10 @@ describe("generateConfigFile (init output)", () => {
       scopes: [{ id: "s.read", description: "Read" }],
     });
 
-    expect(content).toContain("@agentgate/hono");
+    expect(content).toContain("@agentdoor/hono");
   });
 
-  it("falls back to @agentgate/core for unknown frameworks", () => {
+  it("falls back to @agentdoor/core for unknown frameworks", () => {
     const content = generateConfigFile({
       framework: "unknown",
       serviceName: "Test",
@@ -77,7 +77,7 @@ describe("generateConfigFile (init output)", () => {
       scopes: [{ id: "s.read", description: "Read" }],
     });
 
-    expect(content).toContain("@agentgate/core");
+    expect(content).toContain("@agentdoor/core");
   });
 
   it("includes pricing block when pricing is provided", () => {
@@ -156,10 +156,10 @@ describe("generateDiscoveryJson (init output)", () => {
       scopes: [{ id: "weather.read", description: "Read weather" }],
     });
 
-    expect(doc.agentgate_version).toBe("1.0");
+    expect(doc.agentdoor_version).toBe("1.0");
     expect(doc.service_name).toBe("Weather API");
-    expect(doc.registration_endpoint).toBe("/agentgate/register");
-    expect(doc.auth_endpoint).toBe("/agentgate/auth");
+    expect(doc.registration_endpoint).toBe("/agentdoor/register");
+    expect(doc.auth_endpoint).toBe("/agentdoor/auth");
   });
 
   it("includes scopes in discovery document", () => {
@@ -266,8 +266,8 @@ describe("generateA2ACard (init output)", () => {
 
     const auth = card.authentication as Record<string, unknown>;
     expect(auth.schemes).toBeDefined();
-    const agentgate = auth.agentgate as Record<string, string>;
-    expect(agentgate.discovery).toBe("/.well-known/agentgate.json");
+    const agentdoor = auth.agentdoor as Record<string, string>;
+    expect(agentdoor.discovery).toBe("/.well-known/agentdoor.json");
   });
 });
 
@@ -352,7 +352,7 @@ describe("File output from init", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it("writes agentgate.config.ts to output dir", async () => {
+  it("writes agentdoor.config.ts to output dir", async () => {
     const content = generateConfigFile({
       framework: "express",
       serviceName: "Test",
@@ -360,7 +360,7 @@ describe("File output from init", () => {
       scopes: [{ id: "data.read", description: "Read" }],
     });
 
-    const configPath = join(tmpDir, "agentgate.config.ts");
+    const configPath = join(tmpDir, "agentdoor.config.ts");
     await writeFile(configPath, content, "utf-8");
 
     expect(existsSync(configPath)).toBe(true);
@@ -368,7 +368,7 @@ describe("File output from init", () => {
     expect(saved).toContain("data.read");
   });
 
-  it("writes .well-known/agentgate.json", async () => {
+  it("writes .well-known/agentdoor.json", async () => {
     const wellKnownDir = join(tmpDir, "public", ".well-known");
     await mkdir(wellKnownDir, { recursive: true });
 
@@ -378,12 +378,12 @@ describe("File output from init", () => {
       scopes: [{ id: "data.read", description: "Read" }],
     });
 
-    const filePath = join(wellKnownDir, "agentgate.json");
+    const filePath = join(wellKnownDir, "agentdoor.json");
     await writeFile(filePath, JSON.stringify(doc, null, 2), "utf-8");
 
     expect(existsSync(filePath)).toBe(true);
     const parsed = JSON.parse(await readFile(filePath, "utf-8"));
-    expect(parsed.agentgate_version).toBe("1.0");
+    expect(parsed.agentdoor_version).toBe("1.0");
   });
 
   it("writes .well-known/agent-card.json", async () => {

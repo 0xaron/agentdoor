@@ -14,14 +14,14 @@ const sampleData = [
  * GET /api/data
  *
  * Returns application data. Requires the "data.read" scope.
- * AgentGate middleware validates authentication and payment before
+ * AgentDoor middleware validates authentication and payment before
  * this handler is reached.
  */
 export async function GET(request: NextRequest) {
-  // The AgentGate middleware has already validated the agent's credentials
+  // The AgentDoor middleware has already validated the agent's credentials
   // and x402 payment. The agent context is available in the headers.
-  const agentId = request.headers.get("x-agentgate-agent-id");
-  const scopes = request.headers.get("x-agentgate-scopes");
+  const agentId = request.headers.get("x-agentdoor-agent-id");
+  const scopes = request.headers.get("x-agentdoor-scopes");
 
   return NextResponse.json({
     success: true,
@@ -39,12 +39,12 @@ export async function GET(request: NextRequest) {
  * POST /api/data
  *
  * Creates new data. Requires the "data.write" scope.
- * AgentGate middleware validates authentication and payment before
+ * AgentDoor middleware validates authentication and payment before
  * this handler is reached.
  */
 export async function POST(request: NextRequest) {
-  const agentId = request.headers.get("x-agentgate-agent-id");
-  const scopes = request.headers.get("x-agentgate-scopes");
+  const agentId = request.headers.get("x-agentdoor-agent-id");
+  const scopes = request.headers.get("x-agentdoor-scopes");
 
   // Verify the agent has write scope
   const grantedScopes = scopes ? scopes.split(",") : [];

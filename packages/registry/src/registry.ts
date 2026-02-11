@@ -1,11 +1,11 @@
 /**
  * Agent Registry
  *
- * In-memory searchable index of AgentGate-enabled services.
- * Backed by the AgentGateCrawler for discovery document fetching.
+ * In-memory searchable index of AgentDoor-enabled services.
+ * Backed by the AgentDoorCrawler for discovery document fetching.
  */
 
-import { AgentGateCrawler } from "./crawler.js";
+import { AgentDoorCrawler } from "./crawler.js";
 import type { CrawlerConfig } from "./crawler.js";
 
 // ---------------------------------------------------------------------------
@@ -100,11 +100,11 @@ function extractEntryFromDoc(
 
 export class AgentRegistry {
   private entries: Map<string, RegistryEntry>;
-  private crawler: AgentGateCrawler;
+  private crawler: AgentDoorCrawler;
 
   constructor(crawlerConfig?: CrawlerConfig) {
     this.entries = new Map();
-    this.crawler = new AgentGateCrawler(crawlerConfig);
+    this.crawler = new AgentDoorCrawler(crawlerConfig);
   }
 
   /**

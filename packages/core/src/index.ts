@@ -1,7 +1,7 @@
 /**
- * @agentgate/core
+ * @agentdoor/core
  *
- * Shared core library for AgentGate - the pre-auth layer for the agentic internet.
+ * Shared core library for AgentDoor - the pre-auth layer for the agentic internet.
  * Provides cryptographic operations, challenge-response auth, JWT tokens,
  * rate limiting, storage interfaces, discovery document generation, and
  * agent traffic detection.
@@ -15,7 +15,7 @@
 
 export type {
   // Configuration
-  AgentGateConfig,
+  AgentDoorConfig,
   ScopeDefinition,
   X402Config,
   RateLimitConfig,
@@ -52,7 +52,7 @@ export type {
 
 export {
   // Version
-  AGENTGATE_VERSION,
+  AGENTDOOR_VERSION,
   PACKAGE_VERSION,
   // Prefixes
   AGENT_ID_PREFIX,
@@ -107,7 +107,7 @@ export {
 // ---------------------------------------------------------------------------
 
 export {
-  AgentGateError,
+  AgentDoorError,
   InvalidSignatureError,
   ChallengeExpiredError,
   AgentNotFoundError,
@@ -127,7 +127,7 @@ export {
   validateConfig,
   resolveConfig,
   // Zod schemas for advanced usage
-  AgentGateConfigSchema,
+  AgentDoorConfigSchema,
   ScopeDefinitionSchema,
   RateLimitConfigSchema,
   X402ConfigSchema,
@@ -194,7 +194,7 @@ export {
   computeExpirationDate,
 } from "./tokens.js";
 
-export type { AgentGateJWTClaims, TokenVerifyResult } from "./tokens.js";
+export type { AgentDoorJWTClaims, TokenVerifyResult } from "./tokens.js";
 
 // ---------------------------------------------------------------------------
 // Rate Limiting

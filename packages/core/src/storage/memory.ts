@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - In-Memory Storage Implementation
+ * @agentdoor/core - In-Memory Storage Implementation
  *
  * Map-based implementation of AgentStore for development and testing.
  * Data is lost when the process exits. Not suitable for production.

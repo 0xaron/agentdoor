@@ -1,11 +1,11 @@
 # Configuration Reference
 
-AgentGate is configured through the `AgentGateConfig` object passed to your framework middleware. This document covers every configuration option with examples.
+AgentDoor is configured through the `AgentDoorConfig` object passed to your framework middleware. This document covers every configuration option with examples.
 
 ## Full Type Definition
 
 ```typescript
-interface AgentGateConfig {
+interface AgentDoorConfig {
   scopes: ScopeDefinition[];
   pricing?: Record<string, string>;
   rateLimit?: RateLimitConfig;
@@ -51,7 +51,7 @@ interface ScopeDefinition {
 ### Example
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [
     {
       id: "weather.read",
@@ -75,7 +75,7 @@ agentgate({
 });
 ```
 
-Scopes appear in the discovery document at `/.well-known/agentgate.json` under `scopes_available`. Agents request specific scopes during registration, and the server grants a subset based on configuration.
+Scopes appear in the discovery document at `/.well-known/agentdoor.json` under `scopes_available`. Agents request specific scopes during registration, and the server grants a subset based on configuration.
 
 Use dot-notation naming (e.g. `resource.action`) for consistency. Suggested patterns:
 - `resource.read` -- read access
@@ -88,7 +88,7 @@ Use dot-notation naming (e.g. `resource.action`) for consistency. Suggested patt
 **Optional.** Maps scope IDs to per-request prices. This is a convenience shorthand -- you can also specify `price` directly on each `ScopeDefinition`.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [
     { id: "data.read", description: "Read data" },
     { id: "data.write", description: "Write data" },
@@ -119,7 +119,7 @@ interface RateLimitConfig {
 ### Example
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [
     { id: "data.read", description: "Read data" },
     { id: "data.write", description: "Write data" },
@@ -154,7 +154,7 @@ interface X402Config {
 ### Example
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [
     { id: "data.read", description: "Read data", price: "$0.001/req" },
   ],
@@ -190,7 +190,7 @@ interface StorageConfig {
 **In-memory (default, development only):**
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   storage: { driver: "memory" },
 });
@@ -201,11 +201,11 @@ Data is lost on server restart. Use only for development and testing.
 **SQLite:**
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   storage: {
     driver: "sqlite",
-    url: "./data/agentgate.db",
+    url: "./data/agentdoor.db",
   },
 });
 ```
@@ -215,7 +215,7 @@ Good for single-server deployments. The database file is created automatically.
 **PostgreSQL:**
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   storage: {
     driver: "postgres",
@@ -229,7 +229,7 @@ Recommended for production. Works with standard PostgreSQL, Neon, Supabase, and 
 **Redis:**
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   storage: {
     driver: "redis",
@@ -245,7 +245,7 @@ Good for distributed setups. Works with Redis, Upstash, and any Redis-compatible
 You can implement the `AgentStore` interface to integrate with any database or service. Pass it using the `options` field:
 
 ```typescript
-import type { AgentStore } from "@agentgate/core/storage";
+import type { AgentStore } from "@agentdoor/core/storage";
 
 const myStore: AgentStore = {
   async createAgent(agent) { /* ... */ },
@@ -258,7 +258,7 @@ const myStore: AgentStore = {
   async deleteChallenge(agentId) { /* ... */ },
 };
 
-agentgate({
+agentdoor({
   scopes: [...],
   storage: { driver: "memory", options: { store: myStore } },
 });
@@ -269,7 +269,7 @@ agentgate({
 **Optional.** Configures the cryptographic algorithm used for agent keypairs and challenge-response verification.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   signing: { algorithm: "ed25519" },  // default
 });
@@ -285,10 +285,10 @@ agentgate({
 **Optional.** Configures JWT token issuance for authenticated agents. After a successful challenge-response, the server issues a JWT that agents can use as a Bearer token.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   jwt: {
-    secret: process.env.AGENTGATE_JWT_SECRET,  // HMAC secret or leave empty for auto-generated
+    secret: process.env.AGENTDOOR_JWT_SECRET,  // HMAC secret or leave empty for auto-generated
     expiresIn: "1h",                           // Token lifetime (default: "1h")
   },
 });
@@ -298,7 +298,7 @@ If `secret` is not provided, a random secret is generated at startup. This works
 
 The `expiresIn` value accepts any string parseable by the `jose` library: `"30m"`, `"1h"`, `"24h"`, `"7d"`, etc.
 
-JWTs issued by AgentGate contain the following claims:
+JWTs issued by AgentDoor contain the following claims:
 
 ```json
 {
@@ -312,10 +312,10 @@ JWTs issued by AgentGate contain the following claims:
 
 ## `companion`
 
-**Optional.** Enables auto-generation of companion protocol endpoints. One AgentGate integration can make your service discoverable across multiple agent protocols.
+**Optional.** Enables auto-generation of companion protocol endpoints. One AgentDoor integration can make your service discoverable across multiple agent protocols.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   companion: {
     a2aAgentCard: true,   // Serve /.well-known/agent-card.json (Google A2A)
@@ -327,15 +327,15 @@ agentgate({
 
 ### `companion.a2aAgentCard`
 
-When `true`, AgentGate auto-generates and serves a Google A2A-compatible agent card at `/.well-known/agent-card.json`. The card is derived from your AgentGate configuration -- scopes become capabilities, pricing and auth methods are mapped to the A2A schema.
+When `true`, AgentDoor auto-generates and serves a Google A2A-compatible agent card at `/.well-known/agent-card.json`. The card is derived from your AgentDoor configuration -- scopes become capabilities, pricing and auth methods are mapped to the A2A schema.
 
 ### `companion.mcpServer`
 
-When `true`, AgentGate serves an MCP-compatible endpoint at `/mcp`. This allows MCP-aware agents (Claude, ChatGPT tool-use) to discover and call your API through the MCP protocol. Scope definitions are mapped to MCP tool descriptions.
+When `true`, AgentDoor serves an MCP-compatible endpoint at `/mcp`. This allows MCP-aware agents (Claude, ChatGPT tool-use) to discover and call your API through the MCP protocol. Scope definitions are mapped to MCP tool descriptions.
 
 ### `companion.oauthCompat`
 
-When `true`, AgentGate exposes standard OAuth 2.1 endpoints (`/.well-known/oauth-authorization-server`, `/oauth/token`, etc.) for MCP clients that require OAuth-based authentication. This bridges AgentGate's headless challenge-response auth into the OAuth flow that MCP clients expect.
+When `true`, AgentDoor exposes standard OAuth 2.1 endpoints (`/.well-known/oauth-authorization-server`, `/oauth/token`, etc.) for MCP clients that require OAuth-based authentication. This bridges AgentDoor's headless challenge-response auth into the OAuth flow that MCP clients expect.
 
 ## Lifecycle Hooks
 
@@ -344,7 +344,7 @@ When `true`, AgentGate exposes standard OAuth 2.1 endpoints (`/.well-known/oauth
 **Optional.** Called after an agent successfully completes registration (challenge-response verified, credentials issued).
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   onAgentRegistered: async (agent) => {
     console.log(`New agent registered: ${agent.id}`);
@@ -386,7 +386,7 @@ interface Agent {
 **Optional.** Called each time an agent successfully authenticates (valid API key or JWT on a protected route).
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   onAgentAuthenticated: async (agent) => {
     console.log(`Agent ${agent.id} authenticated at ${new Date().toISOString()}`);
@@ -408,9 +408,9 @@ This hook fires on every authenticated request, so keep the implementation fast.
 A full production configuration combining all options:
 
 ```typescript
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 
-app.use(agentgate({
+app.use(agentdoor({
   scopes: [
     {
       id: "weather.read",
@@ -461,7 +461,7 @@ app.use(agentgate({
   signing: { algorithm: "ed25519" },
 
   jwt: {
-    secret: process.env.AGENTGATE_JWT_SECRET,
+    secret: process.env.AGENTDOOR_JWT_SECRET,
     expiresIn: "1h",
   },
 
@@ -494,13 +494,13 @@ app.use(agentgate({
 
 ## Configuration via File
 
-When using `npx agentgate init`, configuration is written to `agentgate.config.ts`:
+When using `npx agentdoor init`, configuration is written to `agentdoor.config.ts`:
 
 ```typescript
-// agentgate.config.ts
-import type { AgentGateConfig } from "@agentgate/core";
+// agentdoor.config.ts
+import type { AgentDoorConfig } from "@agentdoor/core";
 
-const config: AgentGateConfig = {
+const config: AgentDoorConfig = {
   scopes: [
     { id: "weather.read", description: "Read current weather data" },
     { id: "weather.forecast", description: "7-day weather forecasts" },
@@ -518,10 +518,10 @@ export default config;
 Then import it in your server:
 
 ```typescript
-import { agentgate } from "@agentgate/express";
-import config from "./agentgate.config";
+import { agentdoor } from "@agentdoor/express";
+import config from "./agentdoor.config";
 
-app.use(agentgate(config));
+app.use(agentdoor(config));
 ```
 
 ## `service`
@@ -529,25 +529,25 @@ app.use(agentgate(config));
 **Optional.** Metadata about your service, used in the discovery document and companion protocol endpoints.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   service: {
-    name: "Example API",                      // Default: "AgentGate Service"
-    description: "Real-time weather data",       // Default: "An AgentGate-enabled API service"
+    name: "Example API",                      // Default: "AgentDoor Service"
+    description: "Real-time weather data",       // Default: "An AgentDoor-enabled API service"
     docsUrl: "https://docs.example.com",       // Link to documentation
     supportEmail: "agents@example.com",        // Support contact
   },
 });
 ```
 
-These values appear in the `/.well-known/agentgate.json` discovery document.
+These values appear in the `/.well-known/agentdoor.json` discovery document.
 
 ## `registrationRateLimit`
 
 **Optional.** Separate rate limit for the registration endpoint itself. Defaults to 10 requests per hour.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   registrationRateLimit: {
     requests: 20,
@@ -563,7 +563,7 @@ This is independent of the per-agent `rateLimit`. It limits how many new registr
 **Optional.** How long a registration challenge nonce remains valid. Default: `300` (5 minutes).
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   challengeExpirySeconds: 600,  // 10 minutes
 });
@@ -574,7 +574,7 @@ agentgate({
 **Optional.** Controls the API key prefix. In `"live"` mode, keys are prefixed with `agk_live_`. In `"test"` mode, keys are prefixed with `agk_test_`. Default: `"live"`.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   mode: "test",  // Issue test keys: agk_test_...
 });
@@ -585,7 +585,7 @@ agentgate({
 **Optional.** Configures webhook delivery for agent lifecycle events.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   webhooks: {
     enabled: true,
@@ -609,7 +609,7 @@ Webhook payloads include the event type, agent data, and a timestamp. Payloads a
 **Optional.** Enables the agent reputation scoring system. Agents start with an initial score (default: 50) that increases or decreases based on behavior.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   reputation: {
     enabled: true,
@@ -634,7 +634,7 @@ agentgate({
 **Optional.** Configures spending caps for x402 payments.
 
 ```typescript
-agentgate({
+agentdoor({
   scopes: [...],
   spendingCaps: {
     enabled: true,
@@ -651,15 +651,15 @@ A `"hard"` cap rejects requests once reached. A `"soft"` cap emits a warning web
 
 ## Environment Variables
 
-AgentGate reads the following environment variables as fallbacks:
+AgentDoor reads the following environment variables as fallbacks:
 
 | Variable | Used For | Default |
 |---|---|---|
-| `AGENTGATE_JWT_SECRET` | JWT signing secret | Auto-generated at startup |
+| `AGENTDOOR_JWT_SECRET` | JWT signing secret | Auto-generated at startup |
 | `DATABASE_URL` | PostgreSQL connection string (when `storage.driver` is `"postgres"`) | None |
 | `REDIS_URL` | Redis connection string (when `storage.driver` is `"redis"`) | None |
 | `X402_WALLET_ADDRESS` | x402 payment address | None |
 | `WEBHOOK_SECRET` | Webhook signing secret | None |
-| `AGENTGATE_LOG_LEVEL` | Logging verbosity: `debug`, `info`, `warn`, `error` | `info` |
+| `AGENTDOOR_LOG_LEVEL` | Logging verbosity: `debug`, `info`, `warn`, `error` | `info` |
 
 Explicit config values always take precedence over environment variables.

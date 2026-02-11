@@ -87,11 +87,11 @@ describe("generateA2AAgentCard", () => {
     expect(card.authentication.schemes).toContain("x402-wallet");
   });
 
-  it("includes agentgate protocol by default", () => {
+  it("includes agentdoor protocol by default", () => {
     const config = makeConfig();
     const card = generateA2AAgentCard(config, "https://api.example.com");
 
-    expect(card.protocols).toContain("agentgate");
+    expect(card.protocols).toContain("agentdoor");
   });
 
   it("includes a2a protocol when a2aAgentCard companion is enabled", () => {
@@ -129,7 +129,7 @@ describe("generateA2AAgentCard", () => {
     const config = makeConfig();
     const card = generateA2AAgentCard(config, "https://api.example.com");
 
-    expect(card.authentication.credentials).toBe("/agentgate/register");
+    expect(card.authentication.credentials).toBe("/agentdoor/register");
   });
 
   it("adds provider info from service name", () => {
@@ -154,7 +154,7 @@ describe("generateA2AAgentCard", () => {
     });
     const card = generateA2AAgentCard(config, "https://api.example.com");
 
-    expect(card.protocols).toContain("agentgate");
+    expect(card.protocols).toContain("agentdoor");
     expect(card.protocols).not.toContain("x402");
     expect(card.protocols).not.toContain("a2a");
     expect(card.protocols).not.toContain("mcp");
@@ -171,7 +171,7 @@ describe("generateA2AAgentCard", () => {
     });
     const card = generateA2AAgentCard(config, "https://api.example.com");
 
-    expect(card.protocols).toContain("agentgate");
+    expect(card.protocols).toContain("agentdoor");
     expect(card.protocols).toContain("a2a");
     expect(card.protocols).toContain("mcp");
     expect(card.protocols).toContain("x402");

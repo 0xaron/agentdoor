@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { agentGate } from "@agentgate/hono";
+import { agentDoor } from "@agentdoor/hono";
 
 /**
  * Environment bindings for Cloudflare Workers.
@@ -14,10 +14,10 @@ const app = new Hono<{ Bindings: Bindings }>();
 // Enable CORS for all routes
 app.use("*", cors());
 
-// AgentGate middleware — handles agent discovery, authentication, and x402 payments
+// AgentDoor middleware — handles agent discovery, authentication, and x402 payments
 app.use(
   "/api/*",
-  agentGate({
+  agentDoor({
     scopes: [
       { id: "data.read", description: "Read worker data", price: "$0.001/req" },
       { id: "data.write", description: "Write worker data", price: "$0.01/req" },
@@ -25,7 +25,7 @@ app.use(
     ],
     service: {
       name: "Agent-Ready Worker",
-      description: "Cloudflare Worker with AgentGate authentication and x402 payments",
+      description: "Cloudflare Worker with AgentDoor authentication and x402 payments",
     },
     x402: {
       network: "base",
@@ -45,8 +45,8 @@ app.use(
 app.get("/", (c) => {
   return c.json({
     name: "Agent-Ready Worker",
-    description: "Cloudflare Worker powered by AgentGate + x402",
-    discovery: "/.well-known/agentgate",
+    description: "Cloudflare Worker powered by AgentDoor + x402",
+    discovery: "/.well-known/agentdoor",
     endpoints: {
       "GET /api/data": "Read data (scope: data.read, $0.001/req)",
       "POST /api/data": "Write data (scope: data.write, $0.01/req)",
@@ -69,8 +69,8 @@ const sampleData = [
  * GET /api/data — Read data (requires data.read scope)
  */
 app.get("/api/data", (c) => {
-  const agentId = c.req.header("x-agentgate-agent-id") || "anonymous";
-  const scopes = c.req.header("x-agentgate-scopes") || "";
+  const agentId = c.req.header("x-agentdoor-agent-id") || "anonymous";
+  const scopes = c.req.header("x-agentdoor-scopes") || "";
 
   return c.json({
     success: true,
@@ -88,8 +88,8 @@ app.get("/api/data", (c) => {
  * POST /api/data — Create data (requires data.write scope)
  */
 app.post("/api/data", async (c) => {
-  const agentId = c.req.header("x-agentgate-agent-id") || "anonymous";
-  const scopes = c.req.header("x-agentgate-scopes") || "";
+  const agentId = c.req.header("x-agentdoor-agent-id") || "anonymous";
+  const scopes = c.req.header("x-agentdoor-scopes") || "";
 
   const grantedScopes = scopes ? scopes.split(",") : [];
   if (!grantedScopes.includes("data.write")) {
@@ -128,8 +128,8 @@ app.post("/api/data", async (c) => {
  * POST /api/compute — Run a computation (requires compute scope)
  */
 app.post("/api/compute", async (c) => {
-  const agentId = c.req.header("x-agentgate-agent-id") || "anonymous";
-  const scopes = c.req.header("x-agentgate-scopes") || "";
+  const agentId = c.req.header("x-agentdoor-agent-id") || "anonymous";
+  const scopes = c.req.header("x-agentdoor-scopes") || "";
 
   const grantedScopes = scopes ? scopes.split(",") : [];
   if (!grantedScopes.includes("compute")) {

@@ -1,12 +1,12 @@
 /**
- * @agentgate/firebase - Firebase Companion
+ * @agentdoor/firebase - Firebase Companion
  *
- * Creates and manages Firebase Auth user records for AgentGate agents.
+ * Creates and manages Firebase Auth user records for AgentDoor agents.
  * Each agent gets a Firebase user with custom claims that encode
  * their agent identity, scopes, and wallet information.
  */
 
-import type { Agent } from "@agentgate/core";
+import type { Agent } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,7 +18,7 @@ export interface FirebaseCompanionConfig {
   projectId: string;
   /** Path to the service account key JSON (optional if using ADC) */
   serviceAccountKey?: string;
-  /** Prefix for custom claims keys. Default: "agentgate_" */
+  /** Prefix for custom claims keys. Default: "agentdoor_" */
   customClaimsPrefix?: string;
 }
 
@@ -35,7 +35,7 @@ export interface FirebaseAdminInterface {
 export interface FirebaseSyncResult {
   /** Firebase user UID for the synced agent */
   firebaseUid: string;
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Whether the sync succeeded */
   synced: boolean;
@@ -48,9 +48,9 @@ export interface FirebaseSyncResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Firebase companion plugin for AgentGate.
+ * Firebase companion plugin for AgentDoor.
  *
- * When agents register through AgentGate, this plugin automatically
+ * When agents register through AgentDoor, this plugin automatically
  * creates corresponding Firebase Auth user records with custom claims.
  * Custom claims include: `{ is_agent: true, agent_id, scopes, wallet }`.
  *
@@ -79,7 +79,7 @@ export class FirebaseCompanion {
    * Build the custom claims object for an agent.
    */
   private buildCustomClaims(agent: Agent): Record<string, unknown> {
-    const prefix = this.config.customClaimsPrefix ?? "agentgate_";
+    const prefix = this.config.customClaimsPrefix ?? "agentdoor_";
 
     return {
       [`${prefix}is_agent`]: true,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { MemoryStore, ReputationManager } from "@agentgate/core";
+import { MemoryStore, ReputationManager } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Mock next/server -- must be declared before any imports that trigger it.
@@ -39,7 +39,7 @@ vi.mock("next/server", () => ({
 // Imports under test
 // ---------------------------------------------------------------------------
 
-import { createAgentGateMiddleware, buildDiscoveryDocument } from "../middleware.js";
+import { createAgentDoorMiddleware, buildDiscoveryDocument } from "../middleware.js";
 import {
   createRouteHandlers,
   createDiscoveryHandler,
@@ -125,7 +125,7 @@ async function registerAndVerifyAgent(
     const pk = publicKey ?? uniquePublicKey();
 
     // Step 1 -- register
-    const registerReq = createMockRequest("POST", "/agentgate/register", {
+    const registerReq = createMockRequest("POST", "/agentdoor/register", {
       body: {
         public_key: pk,
         scopes_requested: scopes ?? ["data.read"],
@@ -136,7 +136,7 @@ async function registerAndVerifyAgent(
     const registerBody = await registerRes.json();
 
     // Step 2 -- verify
-    const verifyReq = createMockRequest("POST", "/agentgate/register/verify", {
+    const verifyReq = createMockRequest("POST", "/agentdoor/register/verify", {
       body: {
         agent_id: registerBody.agent_id,
         signature: btoa("fake-signature"),
@@ -153,35 +153,35 @@ async function registerAndVerifyAgent(
 }
 
 // ===========================================================================
-//  MIDDLEWARE  (createAgentGateMiddleware)
+//  MIDDLEWARE  (createAgentDoorMiddleware)
 // ===========================================================================
 
-describe("createAgentGateMiddleware", () => {
+describe("createAgentDoorMiddleware", () => {
   // ----- Discovery ---------------------------------------------------------
 
-  describe("discovery endpoint (GET /.well-known/agentgate.json)", () => {
+  describe("discovery endpoint (GET /.well-known/agentdoor.json)", () => {
     it("returns 200 with discovery document", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
-      const req = createMockRequest("GET", "/.well-known/agentgate.json");
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
+      const req = createMockRequest("GET", "/.well-known/agentdoor.json");
       const res = await mw(req);
 
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.agentgate_version).toBe("1.0");
+      expect(body.agentdoor_version).toBe("1.0");
       expect(body.service_name).toBe("Test Service");
       expect(body.service_description).toBe("A test service");
-      expect(body.registration_endpoint).toBe("/agentgate/register");
-      expect(body.auth_endpoint).toBe("/agentgate/auth");
+      expect(body.registration_endpoint).toBe("/agentdoor/register");
+      expect(body.auth_endpoint).toBe("/agentdoor/auth");
       expect(body.auth_methods).toContain("ed25519-challenge");
       expect(body.auth_methods).toContain("x402-wallet");
       expect(body.auth_methods).toContain("jwt");
     });
 
     it("includes available scopes", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -201,18 +201,18 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("sets Cache-Control header", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
 
       expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
     });
 
     it("includes x402 payment section when configured", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG_WITH_X402);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG_WITH_X402);
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -225,9 +225,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("omits payment section when x402 is not configured", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -235,23 +235,23 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("uses default service name when not provided", async () => {
-      const mw = createAgentGateMiddleware({ scopes: [] });
+      const mw = createAgentDoorMiddleware({ scopes: [] });
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
-      expect(body.service_name).toBe("AgentGate Service");
+      expect(body.service_name).toBe("AgentDoor Service");
       expect(body.service_description).toBe("");
     });
 
     it("includes rate limit info from config", async () => {
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         rateLimit: { requests: 500, window: "1h" },
       });
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -260,9 +260,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("uses default rate limit when not configured", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("GET", "/.well-known/agentgate.json"),
+        createMockRequest("GET", "/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -272,10 +272,10 @@ describe("createAgentGateMiddleware", () => {
 
   // ----- Registration ------------------------------------------------------
 
-  describe("registration endpoint (POST /agentgate/register)", () => {
+  describe("registration endpoint (POST /agentdoor/register)", () => {
     it("returns 201 with challenge for valid registration", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
-      const req = createMockRequest("POST", "/agentgate/register", {
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
+      const req = createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: uniquePublicKey(),
           scopes_requested: ["data.read"],
@@ -290,7 +290,7 @@ describe("createAgentGateMiddleware", () => {
       expect(body.agent_id).toMatch(/^ag_/);
       expect(body.challenge).toBeDefined();
       expect(body.challenge.nonce).toBeDefined();
-      expect(body.challenge.message).toContain("agentgate:register:");
+      expect(body.challenge.message).toContain("agentdoor:register:");
       expect(body.challenge.expires_at).toBeDefined();
       // expires_at should be a valid ISO timestamp
       expect(new Date(body.challenge.expires_at).getTime()).toBeGreaterThan(
@@ -299,9 +299,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when public_key is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { scopes_requested: ["data.read"] },
         }),
       );
@@ -312,9 +312,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when public_key is not a string", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: 12345, scopes_requested: ["data.read"] },
         }),
       );
@@ -325,9 +325,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when scopes_requested is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: uniquePublicKey() },
         }),
       );
@@ -338,9 +338,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when scopes_requested is an empty array", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: uniquePublicKey(), scopes_requested: [] },
         }),
       );
@@ -351,9 +351,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when requested scopes are not in the available set", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: {
             public_key: uniquePublicKey(),
             scopes_requested: ["data.read", "nonexistent.scope"],
@@ -368,7 +368,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 409 for duplicate public key", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const pk = uniquePublicKey();
 
       // Complete the full flow so the key is stored in registeredAgents.
@@ -376,7 +376,7 @@ describe("createAgentGateMiddleware", () => {
 
       // Attempt to register with the same key.
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: pk, scopes_requested: ["data.read"] },
         }),
       );
@@ -388,9 +388,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("accepts optional metadata and x402_wallet", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: {
             public_key: uniquePublicKey(),
             scopes_requested: ["data.read"],
@@ -406,8 +406,8 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 for invalid JSON body", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
-      const req = createMockRequest("POST", "/agentgate/register");
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
+      const req = createMockRequest("POST", "/agentdoor/register");
       req.json = async () => {
         throw new Error("Invalid JSON");
       };
@@ -421,11 +421,11 @@ describe("createAgentGateMiddleware", () => {
 
   // ----- Register Verify ---------------------------------------------------
 
-  describe("register verify endpoint (POST /agentgate/register/verify)", () => {
+  describe("register verify endpoint (POST /agentdoor/register/verify)", () => {
     it("returns 400 when agent_id is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: { signature: "some-sig" },
         }),
       );
@@ -437,9 +437,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when signature is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: { agent_id: "ag_test123" },
         }),
       );
@@ -451,9 +451,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 404 for unknown agent_id", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: { agent_id: "ag_nonexistent", signature: btoa("sig") },
         }),
       );
@@ -464,12 +464,12 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 200 with api_key on successful verification", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
       // Register first.
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: {
             public_key: pk,
             scopes_requested: ["data.read", "data.write"],
@@ -487,7 +487,7 @@ describe("createAgentGateMiddleware", () => {
         .mockResolvedValue(true);
 
       const verifyRes = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: { agent_id: agentId, signature: btoa("test-signature") },
         }),
       );
@@ -509,7 +509,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("includes x402 in verify response when configured", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG_WITH_X402);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG_WITH_X402);
 
       const importKeySpy = vi
         .spyOn(crypto.subtle, "importKey")
@@ -520,14 +520,14 @@ describe("createAgentGateMiddleware", () => {
 
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: pk, scopes_requested: ["data.read"] },
         }),
       );
       const registerBody = await registerRes.json();
 
       const verifyRes = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: {
             agent_id: registerBody.agent_id,
             signature: btoa("sig"),
@@ -546,7 +546,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("does not include x402 when not configured", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
       const importKeySpy = vi
         .spyOn(crypto.subtle, "importKey")
@@ -557,14 +557,14 @@ describe("createAgentGateMiddleware", () => {
 
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: pk, scopes_requested: ["data.read"] },
         }),
       );
       const registerBody = await registerRes.json();
 
       const verifyRes = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: {
             agent_id: registerBody.agent_id,
             signature: btoa("sig"),
@@ -581,7 +581,7 @@ describe("createAgentGateMiddleware", () => {
 
     it("calls onAgentRegistered callback on successful verification", async () => {
       const onRegistered = vi.fn();
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         onAgentRegistered: onRegistered,
       });
@@ -595,7 +595,7 @@ describe("createAgentGateMiddleware", () => {
 
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: {
             public_key: pk,
             scopes_requested: ["data.read"],
@@ -606,7 +606,7 @@ describe("createAgentGateMiddleware", () => {
       const registerBody = await registerRes.json();
 
       await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: {
             agent_id: registerBody.agent_id,
             signature: btoa("sig"),
@@ -634,7 +634,7 @@ describe("createAgentGateMiddleware", () => {
       const onRegistered = vi
         .fn()
         .mockRejectedValue(new Error("callback boom"));
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         onAgentRegistered: onRegistered,
       });
@@ -648,14 +648,14 @@ describe("createAgentGateMiddleware", () => {
 
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: pk, scopes_requested: ["data.read"] },
         }),
       );
       const registerBody = await registerRes.json();
 
       const verifyRes = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: {
             agent_id: registerBody.agent_id,
             signature: btoa("sig"),
@@ -673,8 +673,8 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 for invalid JSON body", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
-      const req = createMockRequest("POST", "/agentgate/register/verify");
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
+      const req = createMockRequest("POST", "/agentdoor/register/verify");
       req.json = async () => {
         throw new Error("bad json");
       };
@@ -686,12 +686,12 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when Ed25519 verification naturally fails", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
       // Register to create a pending challenge.
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: pk, scopes_requested: ["data.read"] },
         }),
       );
@@ -700,7 +700,7 @@ describe("createAgentGateMiddleware", () => {
       // Attempt verify without mocking crypto -- Ed25519 not available in
       // the test runtime so verifyEd25519 returns false.
       const verifyRes = await mw(
-        createMockRequest("POST", "/agentgate/register/verify", {
+        createMockRequest("POST", "/agentdoor/register/verify", {
           body: {
             agent_id: registerBody.agent_id,
             signature: btoa("invalid"),
@@ -714,11 +714,11 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 410 for expired challenge", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
       const pk = uniquePublicKey();
       const registerRes = await mw(
-        createMockRequest("POST", "/agentgate/register", {
+        createMockRequest("POST", "/agentdoor/register", {
           body: { public_key: pk, scopes_requested: ["data.read"] },
         }),
       );
@@ -730,7 +730,7 @@ describe("createAgentGateMiddleware", () => {
 
       try {
         const verifyRes = await mw(
-          createMockRequest("POST", "/agentgate/register/verify", {
+          createMockRequest("POST", "/agentdoor/register/verify", {
             body: {
               agent_id: registerBody.agent_id,
               signature: btoa("sig"),
@@ -749,11 +749,11 @@ describe("createAgentGateMiddleware", () => {
 
   // ----- Auth endpoint -----------------------------------------------------
 
-  describe("auth endpoint (POST /agentgate/auth)", () => {
+  describe("auth endpoint (POST /agentdoor/auth)", () => {
     it("returns 400 when required fields are missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/auth", {
+        createMockRequest("POST", "/agentdoor/auth", {
           body: { agent_id: "ag_test" },
         }),
       );
@@ -766,9 +766,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when agent_id is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/auth", {
+        createMockRequest("POST", "/agentdoor/auth", {
           body: { signature: "sig", timestamp: "2024-01-01T00:00:00Z" },
         }),
       );
@@ -777,9 +777,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when signature is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/auth", {
+        createMockRequest("POST", "/agentdoor/auth", {
           body: {
             agent_id: "ag_test",
             timestamp: "2024-01-01T00:00:00Z",
@@ -791,9 +791,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 when timestamp is missing", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/auth", {
+        createMockRequest("POST", "/agentdoor/auth", {
           body: { agent_id: "ag_test", signature: "sig" },
         }),
       );
@@ -802,9 +802,9 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 404 for unknown agent_id", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(
-        createMockRequest("POST", "/agentgate/auth", {
+        createMockRequest("POST", "/agentdoor/auth", {
           body: {
             agent_id: "ag_does_not_exist",
             signature: "sig",
@@ -819,8 +819,8 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns 400 for invalid JSON body", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
-      const req = createMockRequest("POST", "/agentgate/auth");
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
+      const req = createMockRequest("POST", "/agentdoor/auth");
       req.json = async () => {
         throw new Error("parse error");
       };
@@ -832,7 +832,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("returns token for registered agent with valid signature", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
       // Register + verify an agent so it exists in the store.
       const { agentId } = await registerAndVerifyAgent(mw);
@@ -846,7 +846,7 @@ describe("createAgentGateMiddleware", () => {
         .mockResolvedValue(true);
 
       const res = await mw(
-        createMockRequest("POST", "/agentgate/auth", {
+        createMockRequest("POST", "/agentdoor/auth", {
           body: {
             agent_id: agentId,
             signature: btoa("auth-sig"),
@@ -874,7 +874,7 @@ describe("createAgentGateMiddleware", () => {
 
   describe("auth guard (protected routes)", () => {
     it("returns 401 when no Authorization header and passthrough=false", async () => {
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         passthrough: false,
       });
@@ -885,19 +885,19 @@ describe("createAgentGateMiddleware", () => {
       expect(body.error).toContain("Authorization header required");
     });
 
-    it("passes through with x-agentgate-authenticated=false when passthrough=true and no auth header", async () => {
-      const mw = createAgentGateMiddleware({
+    it("passes through with x-agentdoor-authenticated=false when passthrough=true and no auth header", async () => {
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         passthrough: true,
       });
       const res = await mw(createMockRequest("GET", "/api/data"));
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-agentgate-authenticated")).toBe("false");
+      expect(res.headers.get("x-agentdoor-authenticated")).toBe("false");
     });
 
     it("returns 401 for invalid bearer token and passthrough=false", async () => {
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         passthrough: false,
       });
@@ -912,8 +912,8 @@ describe("createAgentGateMiddleware", () => {
       expect(body.error).toContain("Invalid or expired token");
     });
 
-    it("passes through with x-agentgate-authenticated=false for invalid token and passthrough=true", async () => {
-      const mw = createAgentGateMiddleware({
+    it("passes through with x-agentdoor-authenticated=false for invalid token and passthrough=true", async () => {
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         passthrough: true,
       });
@@ -924,11 +924,11 @@ describe("createAgentGateMiddleware", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-agentgate-authenticated")).toBe("false");
+      expect(res.headers.get("x-agentdoor-authenticated")).toBe("false");
     });
 
     it("sets agent context headers for valid API key", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
       // Register an agent to get a valid API key.
       const { agentId, apiKey } = await registerAndVerifyAgent(mw);
@@ -941,10 +941,10 @@ describe("createAgentGateMiddleware", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
-      expect(res.headers.get("x-agentgate-agent-id")).toBe(agentId);
+      expect(res.headers.get("x-agentdoor-authenticated")).toBe("true");
+      expect(res.headers.get("x-agentdoor-agent-id")).toBe(agentId);
 
-      const rawCtx = res.headers.get("x-agentgate-agent");
+      const rawCtx = res.headers.get("x-agentdoor-agent");
       expect(rawCtx).toBeDefined();
 
       const ctx = JSON.parse(rawCtx!);
@@ -956,7 +956,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("matches api key without Bearer prefix", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const { apiKey } = await registerAndVerifyAgent(mw);
 
       // The middleware does: token = authHeader.replace(/^Bearer\s+/i, "")
@@ -968,11 +968,11 @@ describe("createAgentGateMiddleware", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
+      expect(res.headers.get("x-agentdoor-authenticated")).toBe("true");
     });
 
     it("defaults to /api/ as protected path prefix", async () => {
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         passthrough: false,
       });
@@ -987,7 +987,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("supports custom protectedPaths", async () => {
-      const mw = createAgentGateMiddleware({
+      const mw = createAgentDoorMiddleware({
         ...TEST_CONFIG,
         protectedPaths: ["/secure/", "/private/"],
         passthrough: false,
@@ -1007,7 +1007,7 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("defaults passthrough to false", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(createMockRequest("GET", "/api/data"));
 
       // Default passthrough is false, so unauthenticated request gets 401.
@@ -1019,7 +1019,7 @@ describe("createAgentGateMiddleware", () => {
 
   describe("non-protected routes", () => {
     it("passes through for non-protected paths", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(createMockRequest("GET", "/about"));
 
       expect(res.status).toBe(200);
@@ -1027,21 +1027,21 @@ describe("createAgentGateMiddleware", () => {
     });
 
     it("passes through for root path", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(createMockRequest("GET", "/"));
 
       expect(res.status).toBe(200);
     });
 
     it("passes through for static file paths", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(createMockRequest("GET", "/static/style.css"));
 
       expect(res.status).toBe(200);
     });
 
-    it("does not intercept POST to non-agentgate paths", async () => {
-      const mw = createAgentGateMiddleware(TEST_CONFIG);
+    it("does not intercept POST to non-agentdoor paths", async () => {
+      const mw = createAgentDoorMiddleware(TEST_CONFIG);
       const res = await mw(createMockRequest("POST", "/contact"));
 
       expect(res.status).toBe(200);
@@ -1055,11 +1055,11 @@ describe("createAgentGateMiddleware", () => {
     it("generates a correct discovery structure", () => {
       const doc = buildDiscoveryDocument(TEST_CONFIG);
 
-      expect(doc.agentgate_version).toBe("1.0");
+      expect(doc.agentdoor_version).toBe("1.0");
       expect(doc.service_name).toBe("Test Service");
       expect(doc.service_description).toBe("A test service");
-      expect(doc.registration_endpoint).toBe("/agentgate/register");
-      expect(doc.auth_endpoint).toBe("/agentgate/auth");
+      expect(doc.registration_endpoint).toBe("/agentdoor/register");
+      expect(doc.auth_endpoint).toBe("/agentdoor/auth");
       expect(doc.auth_methods).toEqual([
         "ed25519-challenge",
         "x402-wallet",
@@ -1105,14 +1105,14 @@ describe("route-handlers", () => {
     it("GET returns the discovery document", async () => {
       const { GET } = createRouteHandlers(TEST_CONFIG);
       const req = new Request(
-        "http://localhost:3000/.well-known/agentgate.json",
+        "http://localhost:3000/.well-known/agentdoor.json",
       );
       const res = await GET(req);
 
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.agentgate_version).toBe("1.0");
+      expect(body.agentdoor_version).toBe("1.0");
       expect(body.service_name).toBe("Test Service");
       expect(body.scopes_available).toHaveLength(2);
     });
@@ -1120,16 +1120,16 @@ describe("route-handlers", () => {
     it("GET sets proper Content-Type and Cache-Control headers", async () => {
       const { GET } = createRouteHandlers(TEST_CONFIG);
       const res = await GET(
-        new Request("http://localhost:3000/.well-known/agentgate.json"),
+        new Request("http://localhost:3000/.well-known/agentdoor.json"),
       );
 
       expect(res.headers.get("Content-Type")).toBe("application/json");
       expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
     });
 
-    it("POST to /agentgate/register returns challenge", async () => {
+    it("POST to /agentdoor/register returns challenge", async () => {
       const { POST } = createRouteHandlers(TEST_CONFIG);
-      const req = new Request("http://localhost:3000/agentgate/register", {
+      const req = new Request("http://localhost:3000/agentdoor/register", {
         method: "POST",
         body: JSON.stringify({
           public_key: uniquePublicKey(),
@@ -1145,16 +1145,16 @@ describe("route-handlers", () => {
       expect(body.agent_id).toMatch(/^ag_/);
       expect(body.challenge).toBeDefined();
       expect(body.challenge.nonce).toBeDefined();
-      expect(body.challenge.message).toContain("agentgate:register:");
+      expect(body.challenge.message).toContain("agentdoor:register:");
     });
 
-    it("POST to /agentgate/register/verify completes verification", async () => {
+    it("POST to /agentdoor/register/verify completes verification", async () => {
       const { POST } = createRouteHandlers(TEST_CONFIG);
 
       // Register.
       const pk = uniquePublicKey();
       const registerRes = await POST(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: pk,
@@ -1174,7 +1174,7 @@ describe("route-handlers", () => {
         .mockResolvedValue(true);
 
       const verifyRes = await POST(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1194,7 +1194,7 @@ describe("route-handlers", () => {
       verifySpy.mockRestore();
     });
 
-    it("POST to /agentgate/auth returns token for registered agent", async () => {
+    it("POST to /agentdoor/auth returns token for registered agent", async () => {
       const { POST } = createRouteHandlers(TEST_CONFIG);
 
       const importKeySpy = vi
@@ -1207,7 +1207,7 @@ describe("route-handlers", () => {
       // Register + verify.
       const pk = uniquePublicKey();
       const registerRes = await POST(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: pk,
@@ -1219,7 +1219,7 @@ describe("route-handlers", () => {
       const registerBody = await registerRes.json();
 
       await POST(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1231,7 +1231,7 @@ describe("route-handlers", () => {
 
       // Authenticate.
       const authRes = await POST(
-        new Request("http://localhost:3000/agentgate/auth", {
+        new Request("http://localhost:3000/agentdoor/auth", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1254,7 +1254,7 @@ describe("route-handlers", () => {
     it("POST to unknown path returns 404", async () => {
       const { POST } = createRouteHandlers(TEST_CONFIG);
       const res = await POST(
-        new Request("http://localhost:3000/agentgate/unknown", {
+        new Request("http://localhost:3000/agentdoor/unknown", {
           method: "POST",
           body: JSON.stringify({}),
           headers: { "Content-Type": "application/json" },
@@ -1273,13 +1273,13 @@ describe("route-handlers", () => {
     it("returns discovery document with 200", async () => {
       const handler = createDiscoveryHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/.well-known/agentgate.json"),
+        new Request("http://localhost:3000/.well-known/agentdoor.json"),
       );
 
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.agentgate_version).toBe("1.0");
+      expect(body.agentdoor_version).toBe("1.0");
       expect(body.service_name).toBe("Test Service");
       expect(body.service_description).toBe("A test service");
     });
@@ -1287,7 +1287,7 @@ describe("route-handlers", () => {
     it("includes scopes and auth methods", async () => {
       const handler = createDiscoveryHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/.well-known/agentgate.json"),
+        new Request("http://localhost:3000/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -1300,7 +1300,7 @@ describe("route-handlers", () => {
     it("includes x402 payment info when configured", async () => {
       const handler = createDiscoveryHandler(TEST_CONFIG_WITH_X402);
       const res = await handler(
-        new Request("http://localhost:3000/.well-known/agentgate.json"),
+        new Request("http://localhost:3000/.well-known/agentdoor.json"),
       );
       const body = await res.json();
 
@@ -1315,7 +1315,7 @@ describe("route-handlers", () => {
     it("handles valid registration request", async () => {
       const handler = createRegisterHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: uniquePublicKey(),
@@ -1334,7 +1334,7 @@ describe("route-handlers", () => {
     it("returns 400 for missing public_key", async () => {
       const handler = createRegisterHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({ scopes_requested: ["data.read"] }),
           headers: { "Content-Type": "application/json" },
@@ -1349,7 +1349,7 @@ describe("route-handlers", () => {
     it("returns 400 for invalid scopes", async () => {
       const handler = createRegisterHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: uniquePublicKey(),
@@ -1368,7 +1368,7 @@ describe("route-handlers", () => {
     it("returns 400 for empty scopes array", async () => {
       const handler = createRegisterHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: uniquePublicKey(),
@@ -1388,7 +1388,7 @@ describe("route-handlers", () => {
     it("returns 400 when required fields are missing", async () => {
       const handler = createVerifyHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({ agent_id: "ag_test" }),
           headers: { "Content-Type": "application/json" },
@@ -1404,7 +1404,7 @@ describe("route-handlers", () => {
     it("returns 404 for unknown agent_id", async () => {
       const handler = createVerifyHandler(TEST_CONFIG);
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: "ag_unknown_verify",
@@ -1423,7 +1423,7 @@ describe("route-handlers", () => {
 
       // Register through the register handler.
       const registerRes = await registerHandler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: uniquePublicKey(),
@@ -1444,7 +1444,7 @@ describe("route-handlers", () => {
 
       // Verify through the verify handler (shared module-level challenges map).
       const verifyRes = await verifyHandler(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1472,7 +1472,7 @@ describe("route-handlers", () => {
       const verifyHandler = createVerifyHandler(TEST_CONFIG_WITH_X402);
 
       const registerRes = await registerHandler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: uniquePublicKey(),
@@ -1491,7 +1491,7 @@ describe("route-handlers", () => {
         .mockResolvedValue(true);
 
       const verifyRes = await verifyHandler(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1520,7 +1520,7 @@ describe("route-handlers", () => {
 
       const pk = uniquePublicKey();
       const registerRes = await registerHandler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: pk,
@@ -1540,7 +1540,7 @@ describe("route-handlers", () => {
         .mockResolvedValue(true);
 
       await verifyHandler(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1571,7 +1571,7 @@ describe("route-handlers", () => {
     it("returns 400 for missing fields", async () => {
       const handler = createAuthHandler();
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/auth", {
+        new Request("http://localhost:3000/agentdoor/auth", {
           method: "POST",
           body: JSON.stringify({ agent_id: "ag_test" }),
           headers: { "Content-Type": "application/json" },
@@ -1588,7 +1588,7 @@ describe("route-handlers", () => {
     it("returns 404 for unknown agent_id", async () => {
       const handler = createAuthHandler();
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/auth", {
+        new Request("http://localhost:3000/agentdoor/auth", {
           method: "POST",
           body: JSON.stringify({
             agent_id: "ag_unknown_auth_handler",
@@ -1608,7 +1608,7 @@ describe("route-handlers", () => {
       const handler = createAuthHandler();
       // Create a Request with non-JSON body.
       const res = await handler(
-        new Request("http://localhost:3000/agentgate/auth", {
+        new Request("http://localhost:3000/agentdoor/auth", {
           method: "POST",
           body: "not json at all",
           headers: { "Content-Type": "text/plain" },
@@ -1636,7 +1636,7 @@ describe("route-handlers", () => {
 
       const pk = uniquePublicKey();
       const registerRes = await registerHandler(
-        new Request("http://localhost:3000/agentgate/register", {
+        new Request("http://localhost:3000/agentdoor/register", {
           method: "POST",
           body: JSON.stringify({
             public_key: pk,
@@ -1648,7 +1648,7 @@ describe("route-handlers", () => {
       const registerBody = await registerRes.json();
 
       await verifyHandler(
-        new Request("http://localhost:3000/agentgate/register/verify", {
+        new Request("http://localhost:3000/agentdoor/register/verify", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1660,7 +1660,7 @@ describe("route-handlers", () => {
 
       // Now authenticate.
       const authRes = await authHandler(
-        new Request("http://localhost:3000/agentgate/auth", {
+        new Request("http://localhost:3000/agentdoor/auth", {
           method: "POST",
           body: JSON.stringify({
             agent_id: registerBody.agent_id,
@@ -1684,7 +1684,7 @@ describe("route-handlers", () => {
   // ----- getAgentContext ---------------------------------------------------
 
   describe("getAgentContext", () => {
-    it("parses agent context from x-agentgate-agent header", () => {
+    it("parses agent context from x-agentdoor-agent header", () => {
       const context = {
         id: "ag_test123",
         publicKey: "base64-key",
@@ -1693,7 +1693,7 @@ describe("route-handlers", () => {
         metadata: { framework: "test" },
       };
       const headers = new Headers({
-        "x-agentgate-agent": JSON.stringify(context),
+        "x-agentdoor-agent": JSON.stringify(context),
       });
 
       const result = getAgentContext(headers);
@@ -1710,7 +1710,7 @@ describe("route-handlers", () => {
 
     it("returns null for invalid JSON in header", () => {
       const headers = new Headers({
-        "x-agentgate-agent": "not-valid-json{{{",
+        "x-agentdoor-agent": "not-valid-json{{{",
       });
       const result = getAgentContext(headers);
 
@@ -1719,7 +1719,7 @@ describe("route-handlers", () => {
 
     it("returns null for empty header value", () => {
       const headers = new Headers({
-        "x-agentgate-agent": "",
+        "x-agentdoor-agent": "",
       });
       const result = getAgentContext(headers);
 
@@ -1737,7 +1737,7 @@ describe("route-handlers", () => {
         metadata: { framework: "langchain", version: "0.1.0" },
       };
       const headers = new Headers({
-        "x-agentgate-agent": JSON.stringify(context),
+        "x-agentdoor-agent": JSON.stringify(context),
       });
 
       const result = getAgentContext(headers);
@@ -1761,11 +1761,11 @@ describe("route-handlers", () => {
 describe("challenge persistence with custom store", () => {
   it("persists challenge to the provided store on registration", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
     const registerRes = await mw(
-      createMockRequest("POST", "/agentgate/register", {
+      createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: pk,
           scopes_requested: ["data.read"],
@@ -1787,11 +1787,11 @@ describe("challenge persistence with custom store", () => {
 
   it("stores pendingRegistration data in the challenge", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
     const registerRes = await mw(
-      createMockRequest("POST", "/agentgate/register", {
+      createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: pk,
           scopes_requested: ["data.read", "data.write"],
@@ -1811,7 +1811,7 @@ describe("challenge persistence with custom store", () => {
 
   it("deletes challenge from store after successful verification", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     const { agentId } = await registerAndVerifyAgent(mw);
 
@@ -1822,7 +1822,7 @@ describe("challenge persistence with custom store", () => {
 
   it("persists agent to the store after successful verification", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
     const { agentId } = await registerAndVerifyAgent(mw, pk);
@@ -1838,7 +1838,7 @@ describe("challenge persistence with custom store", () => {
 
   it("can look up agent by public key in the store after verification", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
     const { agentId } = await registerAndVerifyAgent(mw, pk);
@@ -1850,12 +1850,12 @@ describe("challenge persistence with custom store", () => {
 
   it("challenge has a valid expiration time (approximately 5 minutes)", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
     const now = Date.now();
     const registerRes = await mw(
-      createMockRequest("POST", "/agentgate/register", {
+      createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: pk,
           scopes_requested: ["data.read"],
@@ -1875,13 +1875,13 @@ describe("challenge persistence with custom store", () => {
 
   it("separate middleware instances with the same store share state", async () => {
     const store = new MemoryStore();
-    const mw1 = createAgentGateMiddleware({ ...TEST_CONFIG, store });
-    const mw2 = createAgentGateMiddleware({ ...TEST_CONFIG, store });
+    const mw1 = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
+    const mw2 = createAgentDoorMiddleware({ ...TEST_CONFIG, store });
 
     // Register through mw1
     const pk = uniquePublicKey();
     const registerRes = await mw1(
-      createMockRequest("POST", "/agentgate/register", {
+      createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: pk,
           scopes_requested: ["data.read"],
@@ -1899,7 +1899,7 @@ describe("challenge persistence with custom store", () => {
       .mockResolvedValue(true);
 
     const verifyRes = await mw2(
-      createMockRequest("POST", "/agentgate/register/verify", {
+      createMockRequest("POST", "/agentdoor/register/verify", {
         body: {
           agent_id: registerBody.agent_id,
           signature: btoa("test-sig"),
@@ -1934,7 +1934,7 @@ describe("webhook emission", () => {
   });
 
   it("fires agent.registered webhook after successful verification", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -1968,7 +1968,7 @@ describe("webhook emission", () => {
   });
 
   it("fires agent.authenticated webhook after successful auth", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -1991,7 +1991,7 @@ describe("webhook emission", () => {
       .mockResolvedValue(true);
 
     const authRes = await mw(
-      createMockRequest("POST", "/agentgate/auth", {
+      createMockRequest("POST", "/agentdoor/auth", {
         body: {
           agent_id: agentId,
           signature: btoa("auth-sig"),
@@ -2025,7 +2025,7 @@ describe("webhook emission", () => {
   });
 
   it("does not fire webhooks when no endpoints are configured", async () => {
-    const mw = createAgentGateMiddleware(TEST_CONFIG);
+    const mw = createAgentDoorMiddleware(TEST_CONFIG);
 
     await registerAndVerifyAgent(mw);
 
@@ -2039,7 +2039,7 @@ describe("webhook emission", () => {
   });
 
   it("respects endpoint event filtering", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -2070,7 +2070,7 @@ describe("webhook emission", () => {
   it("silently handles webhook delivery failures", async () => {
     fetchSpy.mockRejectedValue(new Error("Network error"));
 
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -2087,7 +2087,7 @@ describe("webhook emission", () => {
   });
 
   it("sends correct headers with webhook payload", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -2107,8 +2107,8 @@ describe("webhook emission", () => {
 
     const headers = webhookCalls[0][1]?.headers as Record<string, string>;
     expect(headers["Content-Type"]).toBe("application/json");
-    expect(headers["User-Agent"]).toBe("AgentGate-Webhooks/1.0");
-    expect(headers["X-AgentGate-Event"]).toBeDefined();
+    expect(headers["User-Agent"]).toBe("AgentDoor-Webhooks/1.0");
+    expect(headers["X-AgentDoor-Event"]).toBeDefined();
   });
 });
 
@@ -2119,7 +2119,7 @@ describe("webhook emission", () => {
 describe("reputation gating with ReputationManager", () => {
   it("blocks agent with reputation below block gate threshold", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       store,
       reputation: {
@@ -2149,7 +2149,7 @@ describe("reputation gating with ReputationManager", () => {
 
   it("allows agent with reputation above block gate threshold", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       store,
       reputation: {
@@ -2167,12 +2167,12 @@ describe("reputation gating with ReputationManager", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
+    expect(res.headers.get("x-agentdoor-authenticated")).toBe("true");
   });
 
   it("allows agent through with warn action but adds warning header", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       store,
       reputation: {
@@ -2192,14 +2192,14 @@ describe("reputation gating with ReputationManager", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
-    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("score=40");
-    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("required=60");
+    expect(res.headers.get("x-agentdoor-authenticated")).toBe("true");
+    expect(res.headers.get("x-agentdoor-reputation-warning")).toContain("score=40");
+    expect(res.headers.get("x-agentdoor-reputation-warning")).toContain("required=60");
   });
 
   it("does not block when no reputation gates are configured", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       store,
     });
@@ -2216,12 +2216,12 @@ describe("reputation gating with ReputationManager", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("x-agentgate-authenticated")).toBe("true");
+    expect(res.headers.get("x-agentdoor-authenticated")).toBe("true");
   });
 
   it("updates reputation on successful authenticated request", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       store,
     });
@@ -2247,7 +2247,7 @@ describe("reputation gating with ReputationManager", () => {
 
   it("updates reputation on blocked request (block gate)", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       ...TEST_CONFIG,
       store,
       reputation: {

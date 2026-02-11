@@ -1,5 +1,5 @@
 /**
- * Integration / E2E tests for the AgentGate Next.js middleware.
+ * Integration / E2E tests for the AgentDoor Next.js middleware.
  *
  * Exercises the complete agent lifecycle through the Next.js edge middleware:
  *   Discovery -> Register -> Verify -> Auth Guard -> Authenticated Request
@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { MemoryStore } from "@agentgate/core";
+import { MemoryStore } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Mock next/server — must be declared before the middleware import
@@ -43,7 +43,7 @@ vi.mock("next/server", () => ({
   },
 }));
 
-import { createAgentGateMiddleware } from "@agentgate/next";
+import { createAgentDoorMiddleware } from "@agentdoor/next";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,7 +91,7 @@ async function fullRegistration(
     const pk = uniquePublicKey();
 
     // Step 1 — register
-    const registerReq = createMockRequest("POST", "/agentgate/register", {
+    const registerReq = createMockRequest("POST", "/agentdoor/register", {
       body: {
         public_key: pk,
         scopes_requested: scopes,
@@ -103,7 +103,7 @@ async function fullRegistration(
     const registerBody = await registerRes.json();
 
     // Step 2 — verify
-    const verifyReq = createMockRequest("POST", "/agentgate/register/verify", {
+    const verifyReq = createMockRequest("POST", "/agentdoor/register/verify", {
       body: {
         agent_id: registerBody.agent_id,
         signature: btoa("fake-signature"),
@@ -129,27 +129,27 @@ async function fullRegistration(
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
+describe("AgentDoor E2E: Next.js Full Agent Lifecycle", () => {
   it("completes the full lifecycle: discovery -> register -> verify -> auth guard -> re-auth", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       store,
       service: { name: "Next.js E2E Test API", description: "E2E test service" },
     });
 
     // 1. Discovery
-    const discovery = await mw(createMockRequest("GET", "/.well-known/agentgate.json"));
+    const discovery = await mw(createMockRequest("GET", "/.well-known/agentdoor.json"));
     expect(discovery.status).toBe(200);
     const discoveryBody = await discovery.json();
-    expect(discoveryBody.agentgate_version).toBe("1.0");
+    expect(discoveryBody.agentdoor_version).toBe("1.0");
     expect(discoveryBody.service_name).toBe("Next.js E2E Test API");
     expect(discoveryBody.scopes_available).toHaveLength(3);
 
     // 2. Register
     const pk = uniquePublicKey();
     const regRes = await mw(
-      createMockRequest("POST", "/agentgate/register", {
+      createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: pk,
           scopes_requested: ["data.read", "data.write"],
@@ -160,14 +160,14 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
     expect(regRes.status).toBe(201);
     const regBody = await regRes.json();
     expect(regBody.agent_id).toMatch(/^ag_/);
-    expect(regBody.challenge.message).toContain("agentgate:register:");
+    expect(regBody.challenge.message).toContain("agentdoor:register:");
 
     // 3. Verify (mock crypto.subtle)
     const importKeySpy = vi.spyOn(crypto.subtle, "importKey").mockResolvedValue({} as CryptoKey);
     const verifySpy = vi.spyOn(crypto.subtle, "verify").mockResolvedValue(true);
 
     const verifyRes = await mw(
-      createMockRequest("POST", "/agentgate/register/verify", {
+      createMockRequest("POST", "/agentdoor/register/verify", {
         body: { agent_id: regBody.agent_id, signature: btoa("test-signature") },
       }),
     );
@@ -184,12 +184,12 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
       }),
     );
     expect(apiRes.status).toBe(200);
-    expect(apiRes.headers.get("x-agentgate-authenticated")).toBe("true");
-    expect(apiRes.headers.get("x-agentgate-agent-id")).toBe(regBody.agent_id);
+    expect(apiRes.headers.get("x-agentdoor-authenticated")).toBe("true");
+    expect(apiRes.headers.get("x-agentdoor-agent-id")).toBe(regBody.agent_id);
 
     // 5. Re-auth with signature
     const authRes = await mw(
-      createMockRequest("POST", "/agentgate/auth", {
+      createMockRequest("POST", "/agentdoor/auth", {
         body: {
           agent_id: regBody.agent_id,
           signature: btoa("auth-sig"),
@@ -213,7 +213,7 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
   });
 
   it("rejects unauthenticated requests on protected paths (passthrough=false)", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       service: { name: "Test" },
       passthrough: false,
@@ -224,7 +224,7 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
   });
 
   it("allows unauthenticated requests with passthrough=true", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       service: { name: "Test" },
       passthrough: true,
@@ -232,12 +232,12 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
 
     const res = await mw(createMockRequest("GET", "/api/data"));
     expect(res.status).toBe(200);
-    expect(res.headers.get("x-agentgate-authenticated")).toBe("false");
+    expect(res.headers.get("x-agentdoor-authenticated")).toBe("false");
   });
 
   it("multiple agents can coexist independently", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       store,
       service: { name: "Test" },
@@ -265,30 +265,30 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
 
     expect(res1.status).toBe(200);
     expect(res2.status).toBe(200);
-    expect(res1.headers.get("x-agentgate-agent-id")).toBe(agent1.agentId);
-    expect(res2.headers.get("x-agentgate-agent-id")).toBe(agent2.agentId);
+    expect(res1.headers.get("x-agentdoor-agent-id")).toBe(agent1.agentId);
+    expect(res2.headers.get("x-agentdoor-agent-id")).toBe(agent2.agentId);
   });
 
   it("health endpoint reports healthy status", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       service: { name: "Test" },
     });
 
     // Non-protected path passes through
-    const res = await mw(createMockRequest("GET", "/agentgate/health"));
+    const res = await mw(createMockRequest("GET", "/agentdoor/health"));
     // The Next.js middleware passes through non-matching routes
     expect(res.status).toBe(200);
   });
 
   it("invalid scope requests are rejected at registration", async () => {
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       service: { name: "Test" },
     });
 
     const res = await mw(
-      createMockRequest("POST", "/agentgate/register", {
+      createMockRequest("POST", "/agentdoor/register", {
         body: {
           public_key: uniquePublicKey(),
           scopes_requested: ["nonexistent.scope"],
@@ -300,7 +300,7 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
 
   it("agent metadata is preserved through registration", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       store,
       service: { name: "Test" },
@@ -315,7 +315,7 @@ describe("AgentGate E2E: Next.js Full Agent Lifecycle", () => {
 
   it("challenges are cleaned up after verification", async () => {
     const store = new MemoryStore();
-    const mw = createAgentGateMiddleware({
+    const mw = createAgentDoorMiddleware({
       scopes: TEST_SCOPES,
       store,
       service: { name: "Test" },

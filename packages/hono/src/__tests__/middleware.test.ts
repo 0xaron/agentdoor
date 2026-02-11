@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 import {
-  agentgate,
-  createAgentGateMiddleware,
+  agentdoor,
+  createAgentDoorMiddleware,
   createAuthGuardMiddleware,
   buildDiscoveryDocument,
 } from "../index.js";
-import type { AgentGateVariables, AgentGateHonoConfig } from "../index.js";
-import { MemoryStore, ReputationManager } from "@agentgate/core";
+import type { AgentDoorVariables, AgentDoorHonoConfig } from "../index.js";
+import { MemoryStore, ReputationManager } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Shared test configuration
 // ---------------------------------------------------------------------------
 
-const TEST_CONFIG: AgentGateHonoConfig = {
+const TEST_CONFIG: AgentDoorHonoConfig = {
   scopes: [
     { id: "data.read", description: "Read data" },
     { id: "data.write", description: "Write data" },
@@ -32,12 +32,12 @@ function uniquePublicKey(): string {
 }
 
 /**
- * Helper to create a fresh Hono app with agentgate mounted and
+ * Helper to create a fresh Hono app with agentdoor mounted and
  * a test route at /api/test.
  */
-function createTestApp(config: AgentGateHonoConfig = TEST_CONFIG) {
-  const app = new Hono<{ Variables: AgentGateVariables }>();
-  agentgate(app, config);
+function createTestApp(config: AgentDoorHonoConfig = TEST_CONFIG) {
+  const app = new Hono<{ Variables: AgentDoorVariables }>();
+  agentdoor(app, config);
   app.get("/api/test", (c) =>
     c.json({ isAgent: c.get("isAgent"), agent: c.get("agent") }),
   );
@@ -52,9 +52,9 @@ function createTestApp(config: AgentGateHonoConfig = TEST_CONFIG) {
 // ==========================================================================
 
 describe("buildDiscoveryDocument", () => {
-  it("returns a document with the correct agentgate_version", () => {
+  it("returns a document with the correct agentdoor_version", () => {
     const doc = buildDiscoveryDocument(TEST_CONFIG);
-    expect(doc.agentgate_version).toBe("1.0");
+    expect(doc.agentdoor_version).toBe("1.0");
   });
 
   it("includes service_name and service_description from config", () => {
@@ -67,14 +67,14 @@ describe("buildDiscoveryDocument", () => {
     const doc = buildDiscoveryDocument({
       scopes: [{ id: "s", description: "S" }],
     });
-    expect(doc.service_name).toBe("AgentGate Service");
+    expect(doc.service_name).toBe("AgentDoor Service");
     expect(doc.service_description).toBe("");
   });
 
   it("includes registration_endpoint and auth_endpoint", () => {
     const doc = buildDiscoveryDocument(TEST_CONFIG);
-    expect(doc.registration_endpoint).toBe("/agentgate/register");
-    expect(doc.auth_endpoint).toBe("/agentgate/auth");
+    expect(doc.registration_endpoint).toBe("/agentdoor/register");
+    expect(doc.auth_endpoint).toBe("/agentdoor/auth");
   });
 
   it("maps scopes to scopes_available with id and description", () => {
@@ -183,17 +183,17 @@ describe("buildDiscoveryDocument", () => {
 });
 
 // ==========================================================================
-// 2. Discovery endpoint (GET /.well-known/agentgate.json)
+// 2. Discovery endpoint (GET /.well-known/agentdoor.json)
 // ==========================================================================
 
-describe("GET /.well-known/agentgate.json", () => {
+describe("GET /.well-known/agentdoor.json", () => {
   it("returns 200 with a valid discovery document", async () => {
     const app = createTestApp();
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.agentgate_version).toBe("1.0");
+    expect(body.agentdoor_version).toBe("1.0");
     expect(body.service_name).toBe("Test Service");
     expect(body.scopes_available).toHaveLength(2);
     expect(body.auth_methods).toContain("ed25519-challenge");
@@ -201,27 +201,27 @@ describe("GET /.well-known/agentgate.json", () => {
 
   it("returns Cache-Control header", async () => {
     const app = createTestApp();
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
 
     expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
   });
 
   it("returns JSON content type", async () => {
     const app = createTestApp();
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
 
     expect(res.headers.get("content-type")).toContain("application/json");
   });
 });
 
 // ==========================================================================
-// 3. Registration POST /agentgate/register — success
+// 3. Registration POST /agentdoor/register — success
 // ==========================================================================
 
-describe("POST /agentgate/register — success", () => {
+describe("POST /agentdoor/register — success", () => {
   it("returns 201 with agent_id and challenge for valid registration", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -244,7 +244,7 @@ describe("POST /agentgate/register — success", () => {
 
   it("challenge message contains the agent_id", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -255,12 +255,12 @@ describe("POST /agentgate/register — success", () => {
 
     const body = await res.json();
     expect(body.challenge.message).toContain(body.agent_id);
-    expect(body.challenge.message).toMatch(/^agentgate:register:/);
+    expect(body.challenge.message).toMatch(/^agentdoor:register:/);
   });
 
   it("accepts multiple valid scopes", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -274,7 +274,7 @@ describe("POST /agentgate/register — success", () => {
 
   it("accepts optional x402_wallet field", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -292,10 +292,10 @@ describe("POST /agentgate/register — success", () => {
 // 4. Registration validation errors
 // ==========================================================================
 
-describe("POST /agentgate/register — validation errors", () => {
+describe("POST /agentdoor/register — validation errors", () => {
   it("returns 400 when public_key is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -310,7 +310,7 @@ describe("POST /agentgate/register — validation errors", () => {
 
   it("returns 400 when public_key is not a string", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -326,7 +326,7 @@ describe("POST /agentgate/register — validation errors", () => {
 
   it("returns 400 when scopes_requested is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -341,7 +341,7 @@ describe("POST /agentgate/register — validation errors", () => {
 
   it("returns 400 when scopes_requested is empty array", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -357,7 +357,7 @@ describe("POST /agentgate/register — validation errors", () => {
 
   it("returns 400 when scopes_requested contains invalid scope IDs", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -374,7 +374,7 @@ describe("POST /agentgate/register — validation errors", () => {
 
   it("returns 400 when scopes_requested mixes valid and invalid scopes", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -390,7 +390,7 @@ describe("POST /agentgate/register — validation errors", () => {
 
   it("returns 400 for invalid JSON body", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "not-json",
@@ -406,7 +406,7 @@ describe("POST /agentgate/register — validation errors", () => {
 // 5. Duplicate public key
 // ==========================================================================
 
-describe("POST /agentgate/register — duplicate public key", () => {
+describe("POST /agentdoor/register — duplicate public key", () => {
   // The duplicate check in handleRegister only inspects registeredAgents
   // (fully verified agents), not pendingChallenges. Because Ed25519
   // verification requires valid cryptographic signatures which are not
@@ -423,7 +423,7 @@ describe("POST /agentgate/register — duplicate public key", () => {
     const app = createTestApp();
     const publicKey = uniquePublicKey();
 
-    const res1 = await app.request("/agentgate/register", {
+    const res1 = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -435,7 +435,7 @@ describe("POST /agentgate/register — duplicate public key", () => {
 
     // Second registration with same key also succeeds since the first
     // has not been verified yet.
-    const res2 = await app.request("/agentgate/register", {
+    const res2 = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -455,7 +455,7 @@ describe("POST /agentgate/register — duplicate public key", () => {
     const app = createTestApp();
     const publicKey = uniquePublicKey();
 
-    const res1 = await app.request("/agentgate/register", {
+    const res1 = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -463,7 +463,7 @@ describe("POST /agentgate/register — duplicate public key", () => {
         scopes_requested: ["data.read"],
       }),
     });
-    const res2 = await app.request("/agentgate/register", {
+    const res2 = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -482,13 +482,13 @@ describe("POST /agentgate/register — duplicate public key", () => {
 });
 
 // ==========================================================================
-// 6. Register verify POST /agentgate/register/verify — error cases
+// 6. Register verify POST /agentdoor/register/verify — error cases
 // ==========================================================================
 
-describe("POST /agentgate/register/verify — error cases", () => {
+describe("POST /agentdoor/register/verify — error cases", () => {
   it("returns 400 when agent_id is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -504,7 +504,7 @@ describe("POST /agentgate/register/verify — error cases", () => {
 
   it("returns 400 when signature is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -520,7 +520,7 @@ describe("POST /agentgate/register/verify — error cases", () => {
 
   it("returns 400 when both agent_id and signature are missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -533,7 +533,7 @@ describe("POST /agentgate/register/verify — error cases", () => {
 
   it("returns 404 for an unknown agent_id", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -549,7 +549,7 @@ describe("POST /agentgate/register/verify — error cases", () => {
 
   it("returns 400 for invalid JSON body", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "not-valid-json",
@@ -564,7 +564,7 @@ describe("POST /agentgate/register/verify — error cases", () => {
     const app = createTestApp();
 
     // Register an agent to make sure the endpoint works.
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -575,7 +575,7 @@ describe("POST /agentgate/register/verify — error cases", () => {
     expect(regRes.status).toBe(201);
 
     // Verify with a different, non-existent agent_id.
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -589,13 +589,13 @@ describe("POST /agentgate/register/verify — error cases", () => {
 });
 
 // ==========================================================================
-// 7. Auth POST /agentgate/auth — error cases
+// 7. Auth POST /agentdoor/auth — error cases
 // ==========================================================================
 
-describe("POST /agentgate/auth — error cases", () => {
+describe("POST /agentdoor/auth — error cases", () => {
   it("returns 400 when agent_id is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -611,7 +611,7 @@ describe("POST /agentgate/auth — error cases", () => {
 
   it("returns 400 when signature is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -627,7 +627,7 @@ describe("POST /agentgate/auth — error cases", () => {
 
   it("returns 400 when timestamp is missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -643,7 +643,7 @@ describe("POST /agentgate/auth — error cases", () => {
 
   it("returns 400 when all fields are missing", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -656,7 +656,7 @@ describe("POST /agentgate/auth — error cases", () => {
 
   it("returns 404 for an unknown agent_id", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -673,7 +673,7 @@ describe("POST /agentgate/auth — error cases", () => {
 
   it("returns 400 for invalid JSON body", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{bad json",
@@ -711,8 +711,8 @@ describe("Auth guard — no passthrough (default)", () => {
   });
 
   it("returns 401 for nested /api/ paths without auth", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, TEST_CONFIG);
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, TEST_CONFIG);
     app.get("/api/nested/deep/route", (c) =>
       c.json({ ok: true }),
     );
@@ -728,8 +728,8 @@ describe("Auth guard — no passthrough (default)", () => {
 
 describe("Auth guard — passthrough=true", () => {
   it("passes through without auth and sets isAgent=false", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, passthrough: true });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, passthrough: true });
     app.get("/api/test", (c) =>
       c.json({ isAgent: c.get("isAgent"), agent: c.get("agent") }),
     );
@@ -743,8 +743,8 @@ describe("Auth guard — passthrough=true", () => {
   });
 
   it("passes through with invalid Bearer token when passthrough=true", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, passthrough: true });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, passthrough: true });
     app.get("/api/test", (c) =>
       c.json({ isAgent: c.get("isAgent"), agent: c.get("agent") }),
     );
@@ -776,8 +776,8 @@ describe("Auth guard — non-protected paths", () => {
   });
 
   it("allows access to root path without auth", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, TEST_CONFIG);
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, TEST_CONFIG);
     app.get("/", (c) =>
       c.json({ isAgent: c.get("isAgent") }),
     );
@@ -789,8 +789,8 @@ describe("Auth guard — non-protected paths", () => {
   });
 
   it("uses custom protectedPaths configuration", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       protectedPaths: ["/secure"],
     });
@@ -814,26 +814,26 @@ describe("Auth guard — non-protected paths", () => {
 });
 
 // ==========================================================================
-// 11. createAgentGateMiddleware — standalone mode
+// 11. createAgentDoorMiddleware — standalone mode
 // ==========================================================================
 
-describe("createAgentGateMiddleware — standalone mode", () => {
+describe("createAgentDoorMiddleware — standalone mode", () => {
   it("serves the discovery document", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    app.use("*", createAgentGateMiddleware(TEST_CONFIG));
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    app.use("*", createAgentDoorMiddleware(TEST_CONFIG));
 
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.agentgate_version).toBe("1.0");
+    expect(body.agentdoor_version).toBe("1.0");
     expect(body.service_name).toBe("Test Service");
   });
 
   it("handles registration endpoint", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    app.use("*", createAgentGateMiddleware(TEST_CONFIG));
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    app.use("*", createAgentDoorMiddleware(TEST_CONFIG));
 
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -849,10 +849,10 @@ describe("createAgentGateMiddleware — standalone mode", () => {
   });
 
   it("handles register/verify endpoint", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    app.use("*", createAgentGateMiddleware(TEST_CONFIG));
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    app.use("*", createAgentDoorMiddleware(TEST_CONFIG));
 
-    const res = await app.request("/agentgate/register/verify", {
+    const res = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -862,10 +862,10 @@ describe("createAgentGateMiddleware — standalone mode", () => {
   });
 
   it("handles auth endpoint", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    app.use("*", createAgentGateMiddleware(TEST_CONFIG));
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    app.use("*", createAgentDoorMiddleware(TEST_CONFIG));
 
-    const res = await app.request("/agentgate/auth", {
+    const res = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -875,8 +875,8 @@ describe("createAgentGateMiddleware — standalone mode", () => {
   });
 
   it("blocks protected paths without auth (default)", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    app.use("*", createAgentGateMiddleware(TEST_CONFIG));
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    app.use("*", createAgentDoorMiddleware(TEST_CONFIG));
     app.get("/api/data", (c) =>
       c.json({ isAgent: c.get("isAgent") }),
     );
@@ -886,8 +886,8 @@ describe("createAgentGateMiddleware — standalone mode", () => {
   });
 
   it("allows non-protected paths and sets isAgent=false", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    app.use("*", createAgentGateMiddleware(TEST_CONFIG));
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    app.use("*", createAgentDoorMiddleware(TEST_CONFIG));
     app.get("/public/data", (c) =>
       c.json({ isAgent: c.get("isAgent"), agent: c.get("agent") }),
     );
@@ -900,10 +900,10 @@ describe("createAgentGateMiddleware — standalone mode", () => {
   });
 
   it("passthrough mode allows unauthenticated requests to protected paths", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
     app.use(
       "*",
-      createAgentGateMiddleware({ ...TEST_CONFIG, passthrough: true }),
+      createAgentDoorMiddleware({ ...TEST_CONFIG, passthrough: true }),
     );
     app.get("/api/data", (c) =>
       c.json({ isAgent: c.get("isAgent"), agent: c.get("agent") }),
@@ -923,28 +923,28 @@ describe("createAgentGateMiddleware — standalone mode", () => {
 
 describe("basePath configuration", () => {
   it("mounts discovery endpoint under basePath", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, basePath: "/v1" });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, basePath: "/v1" });
 
-    const res = await app.request("/v1/.well-known/agentgate.json");
+    const res = await app.request("/v1/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.agentgate_version).toBe("1.0");
+    expect(body.agentdoor_version).toBe("1.0");
   });
 
   it("old path without basePath returns 404", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, basePath: "/v1" });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, basePath: "/v1" });
 
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
     expect(res.status).toBe(404);
   });
 
   it("mounts register endpoint under basePath", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, basePath: "/v1" });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, basePath: "/v1" });
 
-    const res = await app.request("/v1/agentgate/register", {
+    const res = await app.request("/v1/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -957,10 +957,10 @@ describe("basePath configuration", () => {
   });
 
   it("mounts register/verify endpoint under basePath", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, basePath: "/v1" });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, basePath: "/v1" });
 
-    const res = await app.request("/v1/agentgate/register/verify", {
+    const res = await app.request("/v1/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -976,10 +976,10 @@ describe("basePath configuration", () => {
   });
 
   it("mounts auth endpoint under basePath", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, basePath: "/v1" });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, basePath: "/v1" });
 
-    const res = await app.request("/v1/agentgate/auth", {
+    const res = await app.request("/v1/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -995,17 +995,17 @@ describe("basePath configuration", () => {
     expect(body.error).toContain("Unknown agent_id");
   });
 
-  it("basePath works with createAgentGateMiddleware", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
+  it("basePath works with createAgentDoorMiddleware", async () => {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
     app.use(
       "*",
-      createAgentGateMiddleware({ ...TEST_CONFIG, basePath: "/v2" }),
+      createAgentDoorMiddleware({ ...TEST_CONFIG, basePath: "/v2" }),
     );
 
-    const res = await app.request("/v2/.well-known/agentgate.json");
+    const res = await app.request("/v2/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.agentgate_version).toBe("1.0");
+    expect(body.agentdoor_version).toBe("1.0");
   });
 });
 
@@ -1014,7 +1014,7 @@ describe("basePath configuration", () => {
 // ==========================================================================
 
 describe("x402 configuration in discovery", () => {
-  const X402_CONFIG: AgentGateHonoConfig = {
+  const X402_CONFIG: AgentDoorHonoConfig = {
     ...TEST_CONFIG,
     x402: {
       network: "base",
@@ -1026,7 +1026,7 @@ describe("x402 configuration in discovery", () => {
 
   it("includes payment block in discovery document when x402 is set", async () => {
     const app = createTestApp(X402_CONFIG);
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -1040,7 +1040,7 @@ describe("x402 configuration in discovery", () => {
 
   it("does not include payment block when x402 is not set", async () => {
     const app = createTestApp(TEST_CONFIG);
-    const res = await app.request("/.well-known/agentgate.json");
+    const res = await app.request("/.well-known/agentdoor.json");
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -1059,18 +1059,18 @@ describe("onAgentRegistered callback", () => {
     // when verification fails (the signature is invalid), confirming it is
     // only invoked on success.
     let callbackCalled = false;
-    const config: AgentGateHonoConfig = {
+    const config: AgentDoorHonoConfig = {
       ...TEST_CONFIG,
       onAgentRegistered: async (_agent) => {
         callbackCalled = true;
       },
     };
 
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, config);
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, config);
 
     // Register to get a challenge.
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1082,7 +1082,7 @@ describe("onAgentRegistered callback", () => {
     const regBody = await regRes.json();
 
     // Attempt verify with a fake signature — Ed25519 verification will fail.
-    const verifyRes = await app.request("/agentgate/register/verify", {
+    const verifyRes = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1107,7 +1107,7 @@ describe("onAgentRegistered callback", () => {
 
 describe("createAuthGuardMiddleware — standalone usage", () => {
   it("can be used independently to guard specific routes", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
     app.use("*", createAuthGuardMiddleware(TEST_CONFIG));
     app.get("/api/protected", (c) =>
       c.json({ ok: true }),
@@ -1126,7 +1126,7 @@ describe("createAuthGuardMiddleware — standalone usage", () => {
   });
 
   it("sets isAgent=false on non-protected paths", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
     app.use("*", createAuthGuardMiddleware(TEST_CONFIG));
     app.get("/home", (c) =>
       c.json({ isAgent: c.get("isAgent"), agent: c.get("agent") }),
@@ -1140,7 +1140,7 @@ describe("createAuthGuardMiddleware — standalone usage", () => {
   });
 
   it("respects passthrough=true on protected paths", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
     app.use("*", createAuthGuardMiddleware({ ...TEST_CONFIG, passthrough: true }));
     app.get("/api/data", (c) =>
       c.json({ isAgent: c.get("isAgent") }),
@@ -1159,7 +1159,7 @@ describe("Registration and verify flow — cross-request state", () => {
     const pk = uniquePublicKey();
 
     // Step 1: Register.
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1173,13 +1173,13 @@ describe("Registration and verify flow — cross-request state", () => {
     const regBody = await regRes.json();
     const agentId = regBody.agent_id;
     expect(agentId).toMatch(/^ag_/);
-    expect(regBody.challenge.message).toContain("agentgate:register:");
+    expect(regBody.challenge.message).toContain("agentdoor:register:");
     expect(regBody.challenge.nonce.length).toBeGreaterThan(0);
 
     // Step 2: Verify with the correct agent_id but invalid signature.
     // This confirms the pending challenge was stored and the endpoint
     // correctly retrieves it by agent_id.
-    const verifyRes = await app.request("/agentgate/register/verify", {
+    const verifyRes = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1202,7 +1202,7 @@ describe("Auth endpoint — agent lookup after registration", () => {
     const pk = uniquePublicKey();
 
     // Register the agent (creates a pending challenge).
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1215,7 +1215,7 @@ describe("Auth endpoint — agent lookup after registration", () => {
 
     // The agent is not yet fully registered (pending challenge),
     // so auth should return 404.
-    const authRes = await app.request("/agentgate/auth", {
+    const authRes = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1232,34 +1232,34 @@ describe("Auth endpoint — agent lookup after registration", () => {
 });
 
 describe("HTTP method handling", () => {
-  it("returns 404 for GET requests to /agentgate/register", async () => {
+  it("returns 404 for GET requests to /agentdoor/register", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register");
+    const res = await app.request("/agentdoor/register");
     expect(res.status).toBe(404);
   });
 
-  it("returns 404 for GET requests to /agentgate/auth", async () => {
+  it("returns 404 for GET requests to /agentdoor/auth", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/auth");
+    const res = await app.request("/agentdoor/auth");
     expect(res.status).toBe(404);
   });
 
-  it("returns 404 for GET requests to /agentgate/register/verify", async () => {
+  it("returns 404 for GET requests to /agentdoor/register/verify", async () => {
     const app = createTestApp();
-    const res = await app.request("/agentgate/register/verify");
+    const res = await app.request("/agentdoor/register/verify");
     expect(res.status).toBe(404);
   });
 });
 
 describe("Empty scopes configuration", () => {
   it("returns 400 for any scope request when no scopes are configured", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: [],
       service: { name: "Empty" },
     });
 
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1297,11 +1297,11 @@ describe("Discovery document — scopes with no price or rateLimit", () => {
 describe("challenge persistence with custom store", () => {
   it("persists challenge to the provided store on registration", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, store });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1324,11 +1324,11 @@ describe("challenge persistence with custom store", () => {
 
   it("stores pendingRegistration data in the challenge", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, store });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1349,12 +1349,12 @@ describe("challenge persistence with custom store", () => {
 
   it("challenge has a valid expiration time (approximately 5 minutes)", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, store });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
     const now = Date.now();
-    const res = await app.request("/agentgate/register", {
+    const res = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1375,13 +1375,13 @@ describe("challenge persistence with custom store", () => {
 
   it("challenge is retrievable across requests to the same store", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, store });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, store });
 
     const pk = uniquePublicKey();
 
     // Register (creates challenge)
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1398,7 +1398,7 @@ describe("challenge persistence with custom store", () => {
 
     // Try verify with invalid sig — the fact that we get 400 (Invalid signature)
     // instead of 404 (Unknown agent_id) proves the challenge was found in the store
-    const verifyRes = await app.request("/agentgate/register/verify", {
+    const verifyRes = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1414,14 +1414,14 @@ describe("challenge persistence with custom store", () => {
 
   it("multiple registrations use the same store", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, { ...TEST_CONFIG, store });
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, { ...TEST_CONFIG, store });
 
     // Register two agents
     const pk1 = uniquePublicKey();
     const pk2 = uniquePublicKey();
 
-    const res1 = await app.request("/agentgate/register", {
+    const res1 = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1429,7 +1429,7 @@ describe("challenge persistence with custom store", () => {
         scopes_requested: ["data.read"],
       }),
     });
-    const res2 = await app.request("/agentgate/register", {
+    const res2 = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1483,14 +1483,14 @@ describe("webhook emission", () => {
    * and verify with a real signature. Returns the agentId for follow-up tests.
    */
   async function registerAndVerifyWithRealCrypto(
-    app: Hono<{ Variables: AgentGateVariables }>,
+    app: Hono<{ Variables: AgentDoorVariables }>,
   ): Promise<{ agentId: string; publicKeyB64: string; privateKey: CryptoKey }> {
     const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
     const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
     const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
 
     // Register
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1512,7 +1512,7 @@ describe("webhook emission", () => {
     const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
 
     // Verify
-    const verifyRes = await app.request("/agentgate/register/verify", {
+    const verifyRes = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1526,8 +1526,8 @@ describe("webhook emission", () => {
   }
 
   it("fires agent.registered webhook after successful verify", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -1563,8 +1563,8 @@ describe("webhook emission", () => {
   });
 
   it("fires agent.authenticated webhook after successful auth", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -1588,7 +1588,7 @@ describe("webhook emission", () => {
 
     // Sign the auth message
     const timestamp = new Date().toISOString();
-    const authMessage = `agentgate:auth:${agentId}:${timestamp}`;
+    const authMessage = `agentdoor:auth:${agentId}:${timestamp}`;
     const authSigBytes = await crypto.subtle.sign(
       "Ed25519",
       privateKey,
@@ -1597,7 +1597,7 @@ describe("webhook emission", () => {
     const authSignatureB64 = btoa(String.fromCharCode(...new Uint8Array(authSigBytes)));
 
     // Authenticate
-    const authRes = await app.request("/agentgate/auth", {
+    const authRes = await app.request("/agentdoor/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1631,8 +1631,8 @@ describe("webhook emission", () => {
   });
 
   it("does not fire webhooks when no endpoints are configured", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, TEST_CONFIG);
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, TEST_CONFIG);
 
     await registerAndVerifyWithRealCrypto(app);
 
@@ -1648,8 +1648,8 @@ describe("webhook emission", () => {
   });
 
   it("respects endpoint event filtering", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -1681,8 +1681,8 @@ describe("webhook emission", () => {
   });
 
   it("sends correct headers with webhook payload", async () => {
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       webhooks: {
         endpoints: [
@@ -1705,8 +1705,8 @@ describe("webhook emission", () => {
 
     const headers = webhookCalls[0][1]?.headers as Record<string, string>;
     expect(headers["Content-Type"]).toBe("application/json");
-    expect(headers["User-Agent"]).toBe("AgentGate-Webhooks/1.0");
-    expect(headers["X-AgentGate-Event"]).toBeDefined();
+    expect(headers["User-Agent"]).toBe("AgentDoor-Webhooks/1.0");
+    expect(headers["X-AgentDoor-Event"]).toBeDefined();
   });
 });
 
@@ -1720,14 +1720,14 @@ describe("reputation gating with ReputationManager", () => {
    * returning the agentId and apiKey for follow-up auth guard tests.
    */
   async function registerAndVerifyAgent(
-    app: Hono<{ Variables: AgentGateVariables }>,
+    app: Hono<{ Variables: AgentDoorVariables }>,
   ): Promise<{ agentId: string; apiKey: string }> {
     const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
     const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
     const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
 
     // Register
-    const regRes = await app.request("/agentgate/register", {
+    const regRes = await app.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1749,7 +1749,7 @@ describe("reputation gating with ReputationManager", () => {
     const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
 
     // Verify
-    const verifyRes = await app.request("/agentgate/register/verify", {
+    const verifyRes = await app.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1765,8 +1765,8 @@ describe("reputation gating with ReputationManager", () => {
 
   it("blocks agent with reputation below block gate threshold", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       store,
       reputation: {
@@ -1793,8 +1793,8 @@ describe("reputation gating with ReputationManager", () => {
 
   it("allows agent with reputation above block gate threshold", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       store,
       reputation: {
@@ -1819,8 +1819,8 @@ describe("reputation gating with ReputationManager", () => {
 
   it("allows agent through with warn action but adds warning header", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       store,
       reputation: {
@@ -1841,14 +1841,14 @@ describe("reputation gating with ReputationManager", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("score=40");
-    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("required=60");
+    expect(res.headers.get("x-agentdoor-reputation-warning")).toContain("score=40");
+    expect(res.headers.get("x-agentdoor-reputation-warning")).toContain("required=60");
   });
 
   it("does not block when no reputation gates are configured", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       store,
     });
@@ -1872,8 +1872,8 @@ describe("reputation gating with ReputationManager", () => {
 
   it("updates reputation on successful authenticated request", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       store,
     });
@@ -1897,8 +1897,8 @@ describe("reputation gating with ReputationManager", () => {
 
   it("updates reputation on blocked request (block gate)", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       ...TEST_CONFIG,
       store,
       reputation: {

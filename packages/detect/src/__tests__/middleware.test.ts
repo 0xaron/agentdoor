@@ -63,7 +63,7 @@ function createMockHonoContext(
 describe("detect (Express middleware)", () => {
   // --- Header setting -------------------------------------------------------
 
-  it("sets x-agentgate-is-agent header on response", () => {
+  it("sets x-agentdoor-is-agent header on response", () => {
     const middleware = detect();
     const req = createMockExpressReq({
       headers: { "user-agent": "python-requests/2.31.0" },
@@ -73,13 +73,13 @@ describe("detect (Express middleware)", () => {
 
     middleware(req, res, next);
 
-    expect(res._headers["x-agentgate-is-agent"]).toBeDefined();
+    expect(res._headers["x-agentdoor-is-agent"]).toBeDefined();
     expect(["true", "false"]).toContain(
-      res._headers["x-agentgate-is-agent"],
+      res._headers["x-agentdoor-is-agent"],
     );
   });
 
-  it("sets x-agentgate-confidence header on response", () => {
+  it("sets x-agentdoor-confidence header on response", () => {
     const middleware = detect();
     const req = createMockExpressReq({
       headers: { "user-agent": "python-requests/2.31.0" },
@@ -89,13 +89,13 @@ describe("detect (Express middleware)", () => {
 
     middleware(req, res, next);
 
-    expect(res._headers["x-agentgate-confidence"]).toBeDefined();
-    const confidence = parseFloat(res._headers["x-agentgate-confidence"]);
+    expect(res._headers["x-agentdoor-confidence"]).toBeDefined();
+    const confidence = parseFloat(res._headers["x-agentdoor-confidence"]);
     expect(confidence).toBeGreaterThanOrEqual(0);
     expect(confidence).toBeLessThanOrEqual(1);
   });
 
-  it("sets x-agentgate-framework when framework is detected", () => {
+  it("sets x-agentdoor-framework when framework is detected", () => {
     const middleware = detect();
     const req = createMockExpressReq({
       headers: { "user-agent": "langchain/1.0" },
@@ -105,10 +105,10 @@ describe("detect (Express middleware)", () => {
 
     middleware(req, res, next);
 
-    expect(res._headers["x-agentgate-framework"]).toBe("LangChain");
+    expect(res._headers["x-agentdoor-framework"]).toBe("LangChain");
   });
 
-  it("does not set x-agentgate-framework for browser requests", () => {
+  it("does not set x-agentdoor-framework for browser requests", () => {
     const middleware = detect();
     const req = createMockExpressReq({
       headers: {
@@ -132,7 +132,7 @@ describe("detect (Express middleware)", () => {
 
     middleware(req, res, next);
 
-    expect(res._headers["x-agentgate-framework"]).toBeUndefined();
+    expect(res._headers["x-agentdoor-framework"]).toBeUndefined();
   });
 
   it("marks agent request as is-agent: true", () => {
@@ -151,7 +151,7 @@ describe("detect (Express middleware)", () => {
 
     middleware(req, res, next);
 
-    expect(res._headers["x-agentgate-is-agent"]).toBe("true");
+    expect(res._headers["x-agentdoor-is-agent"]).toBe("true");
   });
 
   // --- Calls next() ---------------------------------------------------------
@@ -208,7 +208,7 @@ describe("detect (Express middleware)", () => {
 
       expect(next).toHaveBeenCalled();
       // No detection headers should be set for excluded paths
-      expect(res._headers["x-agentgate-is-agent"]).toBeUndefined();
+      expect(res._headers["x-agentdoor-is-agent"]).toBeUndefined();
     }
   });
 
@@ -224,7 +224,7 @@ describe("detect (Express middleware)", () => {
     middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(res._headers["x-agentgate-is-agent"]).toBeUndefined();
+    expect(res._headers["x-agentdoor-is-agent"]).toBeUndefined();
   });
 
   it("overrides default excludePaths when custom ones are provided", () => {
@@ -240,7 +240,7 @@ describe("detect (Express middleware)", () => {
     middleware(req, res, next);
 
     // /health is NOT excluded with custom config, so headers should be set
-    expect(res._headers["x-agentgate-is-agent"]).toBeDefined();
+    expect(res._headers["x-agentdoor-is-agent"]).toBeDefined();
   });
 
   // --- Path inclusions ------------------------------------------------------
@@ -257,7 +257,7 @@ describe("detect (Express middleware)", () => {
     const apiNext = vi.fn();
 
     middleware(apiReq, apiRes, apiNext);
-    expect(apiRes._headers["x-agentgate-is-agent"]).toBeDefined();
+    expect(apiRes._headers["x-agentdoor-is-agent"]).toBeDefined();
     expect(apiNext).toHaveBeenCalled();
 
     // Non-matching path should skip detection
@@ -269,7 +269,7 @@ describe("detect (Express middleware)", () => {
     const webNext = vi.fn();
 
     middleware(webReq, webRes, webNext);
-    expect(webRes._headers["x-agentgate-is-agent"]).toBeUndefined();
+    expect(webRes._headers["x-agentdoor-is-agent"]).toBeUndefined();
     expect(webNext).toHaveBeenCalled();
   });
 
@@ -287,7 +287,7 @@ describe("detect (Express middleware)", () => {
     const dataRes = createMockExpressRes();
     const dataNext = vi.fn();
     middleware(dataReq, dataRes, dataNext);
-    expect(dataRes._headers["x-agentgate-is-agent"]).toBeDefined();
+    expect(dataRes._headers["x-agentdoor-is-agent"]).toBeDefined();
 
     // /api/health should be excluded (exclusion takes priority)
     const healthReq = createMockExpressReq({
@@ -297,7 +297,7 @@ describe("detect (Express middleware)", () => {
     const healthRes = createMockExpressRes();
     const healthNext = vi.fn();
     middleware(healthReq, healthRes, healthNext);
-    expect(healthRes._headers["x-agentgate-is-agent"]).toBeUndefined();
+    expect(healthRes._headers["x-agentdoor-is-agent"]).toBeUndefined();
   });
 
   // --- onClassified callback ------------------------------------------------
@@ -486,7 +486,7 @@ describe("detect (Express middleware)", () => {
     middleware(req, res as any, next);
 
     expect(res.set).toHaveBeenCalled();
-    expect(headers["x-agentgate-is-agent"]).toBeDefined();
+    expect(headers["x-agentdoor-is-agent"]).toBeDefined();
   });
 
   // --- Classifier config passthrough ----------------------------------------
@@ -503,7 +503,7 @@ describe("detect (Express middleware)", () => {
     middleware(req, res, next);
 
     // With 0.99 threshold, python-requests should not be classified as agent
-    expect(res._headers["x-agentgate-is-agent"]).toBe("false");
+    expect(res._headers["x-agentdoor-is-agent"]).toBe("false");
   });
 
   it("passes weights config to classifier", () => {
@@ -662,7 +662,7 @@ describe("createDetector", () => {
 // =========================================================================
 
 describe("detectMiddleware (Hono)", () => {
-  it("sets x-agentgate-is-agent header on Hono context", async () => {
+  it("sets x-agentdoor-is-agent header on Hono context", async () => {
     const middleware = detectMiddleware({ excludePaths: [] });
     const c = createMockHonoContext("https://example.com/api/test", {
       "User-Agent": "python-requests/2.31.0",
@@ -672,18 +672,18 @@ describe("detectMiddleware (Hono)", () => {
     await middleware(c, next);
 
     expect(c.header).toHaveBeenCalledWith(
-      "x-agentgate-is-agent",
+      "x-agentdoor-is-agent",
       expect.any(String),
     );
     // Find the call that sets is-agent
     const isAgentCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-is-agent",
+      (call: string[]) => call[0] === "x-agentdoor-is-agent",
     );
     expect(isAgentCall).toBeDefined();
     expect(["true", "false"]).toContain(isAgentCall![1]);
   });
 
-  it("sets x-agentgate-confidence header on Hono context", async () => {
+  it("sets x-agentdoor-confidence header on Hono context", async () => {
     const middleware = detectMiddleware({ excludePaths: [] });
     const c = createMockHonoContext("https://example.com/api/test", {
       "User-Agent": "python-requests/2.31.0",
@@ -693,7 +693,7 @@ describe("detectMiddleware (Hono)", () => {
     await middleware(c, next);
 
     const confidenceCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-confidence",
+      (call: string[]) => call[0] === "x-agentdoor-confidence",
     );
     expect(confidenceCall).toBeDefined();
     const confidence = parseFloat(confidenceCall![1]);
@@ -701,7 +701,7 @@ describe("detectMiddleware (Hono)", () => {
     expect(confidence).toBeLessThanOrEqual(1);
   });
 
-  it("sets x-agentgate-framework header when framework detected", async () => {
+  it("sets x-agentdoor-framework header when framework detected", async () => {
     const middleware = detectMiddleware({ excludePaths: [] });
     const c = createMockHonoContext("https://example.com/api/test", {
       "User-Agent": "langchain/1.0",
@@ -711,7 +711,7 @@ describe("detectMiddleware (Hono)", () => {
     await middleware(c, next);
 
     const frameworkCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-framework",
+      (call: string[]) => call[0] === "x-agentdoor-framework",
     );
     expect(frameworkCall).toBeDefined();
     expect(frameworkCall![1]).toBe("LangChain");
@@ -844,7 +844,7 @@ describe("detectMiddleware (Hono)", () => {
     await middleware(c, next);
 
     const isAgentCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-is-agent",
+      (call: string[]) => call[0] === "x-agentdoor-is-agent",
     );
     expect(isAgentCall![1]).toBe("false");
   });
@@ -859,17 +859,17 @@ describe("detectMiddleware (Hono)", () => {
     await middleware(c, next);
 
     const isAgentCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-is-agent",
+      (call: string[]) => call[0] === "x-agentdoor-is-agent",
     );
     expect(isAgentCall![1]).toBe("true");
 
     const confidenceCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-confidence",
+      (call: string[]) => call[0] === "x-agentdoor-confidence",
     );
     expect(confidenceCall![1]).toBe("1");
 
     const frameworkCall = c.header.mock.calls.find(
-      (call: string[]) => call[0] === "x-agentgate-framework",
+      (call: string[]) => call[0] === "x-agentdoor-framework",
     );
     expect(frameworkCall![1]).toBe("CustomAgent/1.0");
   });

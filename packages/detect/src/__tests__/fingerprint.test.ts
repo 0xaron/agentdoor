@@ -154,11 +154,11 @@ describe("classifyRequest", () => {
     expect(result.framework).toBe("LangChain");
   });
 
-  it("reports agentId as framework for X-AgentGate-Agent-Id", () => {
+  it("reports agentId as framework for X-AgentDoor-Agent-Id", () => {
     const result = classifyRequest(
       req({
         headers: {
-          "x-agentgate-agent-id": "agent-123",
+          "x-agentdoor-agent-id": "agent-123",
         },
       }),
     );

@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Challenge-Response Logic
+ * @agentdoor/core - Challenge-Response Logic
  *
  * Nonce generation, challenge message construction, signature verification,
  * and expiry checking for the registration and authentication flows.
@@ -21,7 +21,7 @@ import type { ChallengeData } from "./types.js";
 
 /**
  * Build a registration challenge message.
- * Format: "agentgate:register:{agent_id}:{timestamp}:{nonce}"
+ * Format: "agentdoor:register:{agent_id}:{timestamp}:{nonce}"
  *
  * @param agentId - The assigned agent ID
  * @param timestamp - Unix timestamp in seconds
@@ -38,7 +38,7 @@ export function buildRegistrationChallenge(
 
 /**
  * Build an authentication challenge message (for returning agents).
- * Format: "agentgate:auth:{agent_id}:{timestamp}"
+ * Format: "agentdoor:auth:{agent_id}:{timestamp}"
  *
  * @param agentId - The agent's ID
  * @param timestamp - ISO 8601 timestamp string
@@ -120,7 +120,7 @@ export function verifyChallenge(
 /**
  * Verify an auth request from a returning agent.
  *
- * The agent signs "agentgate:auth:{agent_id}:{timestamp}" and we verify
+ * The agent signs "agentdoor:auth:{agent_id}:{timestamp}" and we verify
  * the signature and check the timestamp is recent (within tolerance).
  *
  * @param agentId - The agent's ID

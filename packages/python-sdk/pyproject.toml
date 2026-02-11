@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentgate"
+name = "agentdoor"
 version = "0.1.0"
-description = "Python Agent SDK for AgentGate - headless agent authentication"
+description = "Python Agent SDK for AgentDoor - headless agent authentication"
 requires-python = ">=3.9"
 license = "MIT"
 dependencies = [
@@ -20,7 +20,7 @@ dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "respx>=0.20", "pytest-cov>=4.0"]
 asyncio_mode = "strict"
 
 [tool.coverage.run]
-source = ["agentgate"]
+source = ["agentdoor"]
 
 [tool.coverage.report]
 fail_under = 80

@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/auth0",
+  "name": "@agentdoor/auth0",
   "version": "0.1.0",
-  "description": "Auth0 companion plugin for AgentGate - register agents as M2M clients in Auth0",
+  "description": "Auth0 companion plugin for AgentDoor - register agents as M2M clients in Auth0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/auth0"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "auth0",
     "auth",
     "agent",

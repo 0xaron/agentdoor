@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Sample SaaS data endpoint.
-// AgentGate middleware has already run by the time this handler executes.
+// AgentDoor middleware has already run by the time this handler executes.
 // req.isAgent tells you whether the caller is a registered agent.
 
 const sampleData = [
@@ -11,9 +11,9 @@ const sampleData = [
 ];
 
 export async function GET(req: NextRequest) {
-  // AgentGate sets these headers after middleware validation
-  const isAgent = req.headers.get("x-agentgate-is-agent") === "true";
-  const agentId = req.headers.get("x-agentgate-agent-id");
+  // AgentDoor sets these headers after middleware validation
+  const isAgent = req.headers.get("x-agentdoor-is-agent") === "true";
+  const agentId = req.headers.get("x-agentdoor-agent-id");
 
   // Both agents and humans hit the same endpoint.
   // You can customize responses based on the caller type if needed.
@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const isAgent = req.headers.get("x-agentgate-is-agent") === "true";
-  const agentId = req.headers.get("x-agentgate-agent-id");
+  const isAgent = req.headers.get("x-agentdoor-is-agent") === "true";
+  const agentId = req.headers.get("x-agentdoor-agent-id");
 
   const body = await req.json();
 

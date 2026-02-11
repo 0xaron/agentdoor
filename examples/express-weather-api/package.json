@@ -2,7 +2,7 @@
   "name": "example-express-weather-api",
   "version": "0.1.0",
   "private": true,
-  "description": "Example Express.js weather API with AgentGate middleware - demonstrates the 3-line integration pattern",
+  "description": "Example Express.js weather API with AgentDoor middleware - demonstrates the 3-line integration pattern",
   "type": "module",
   "scripts": {
     "dev": "tsx watch index.ts",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "express": "^4.21.0",
-    "@agentgate/express": "workspace:*"
+    "@agentdoor/express": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

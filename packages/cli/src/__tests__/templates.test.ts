@@ -49,14 +49,14 @@ describe("generateConfigFile", () => {
       scopes: basicScopes,
     });
 
-    expect(content).toContain('@agentgate/express');
-    expect(content).toContain("AgentGateConfig");
+    expect(content).toContain('@agentdoor/express');
+    expect(content).toContain("AgentDoorConfig");
     expect(content).toContain('serviceName: "My API"');
     expect(content).toContain('serviceDescription: "A test service"');
     expect(content).toContain("export default config");
   });
 
-  it("imports @agentgate/next for nextjs framework", () => {
+  it("imports @agentdoor/next for nextjs framework", () => {
     const content = generateConfigFile({
       framework: "nextjs",
       serviceName: "Next App",
@@ -64,11 +64,11 @@ describe("generateConfigFile", () => {
       scopes: basicScopes,
     });
 
-    expect(content).toContain('@agentgate/next');
-    expect(content).not.toContain("@agentgate/express");
+    expect(content).toContain('@agentdoor/next');
+    expect(content).not.toContain("@agentdoor/express");
   });
 
-  it("imports @agentgate/hono for hono framework", () => {
+  it("imports @agentdoor/hono for hono framework", () => {
     const content = generateConfigFile({
       framework: "hono",
       serviceName: "Hono App",
@@ -76,12 +76,12 @@ describe("generateConfigFile", () => {
       scopes: basicScopes,
     });
 
-    expect(content).toContain('@agentgate/hono');
-    expect(content).not.toContain("@agentgate/express");
-    expect(content).not.toContain("@agentgate/next");
+    expect(content).toContain('@agentdoor/hono');
+    expect(content).not.toContain("@agentdoor/express");
+    expect(content).not.toContain("@agentdoor/next");
   });
 
-  it("falls back to @agentgate/core for unknown framework", () => {
+  it("falls back to @agentdoor/core for unknown framework", () => {
     const content = generateConfigFile({
       framework: "fastify",
       serviceName: "Fastify App",
@@ -89,7 +89,7 @@ describe("generateConfigFile", () => {
       scopes: basicScopes,
     });
 
-    expect(content).toContain('@agentgate/core');
+    expect(content).toContain('@agentdoor/core');
   });
 
   it("includes all scope IDs and descriptions", () => {
@@ -212,11 +212,11 @@ describe("generateDiscoveryJson", () => {
       scopes: basicScopes,
     });
 
-    expect(doc.agentgate_version).toBe("1.0");
+    expect(doc.agentdoor_version).toBe("1.0");
     expect(doc.service_name).toBe("My API");
     expect(doc.service_description).toBe("A test service");
-    expect(doc.registration_endpoint).toBe("/agentgate/register");
-    expect(doc.auth_endpoint).toBe("/agentgate/auth");
+    expect(doc.registration_endpoint).toBe("/agentdoor/register");
+    expect(doc.auth_endpoint).toBe("/agentdoor/auth");
   });
 
   it("includes scopes_available with correct structure", () => {
@@ -393,7 +393,7 @@ describe("generateA2ACard", () => {
     expect(skills[1].description).toBe("Write data");
   });
 
-  it("includes authentication section with agentgate schemes", () => {
+  it("includes authentication section with agentdoor schemes", () => {
     const card = generateA2ACard({
       serviceName: "Test",
       serviceDescription: "Test",
@@ -401,11 +401,11 @@ describe("generateA2ACard", () => {
     });
 
     const auth = card.authentication as Record<string, unknown>;
-    expect(auth.schemes).toEqual(["agentgate-ed25519", "bearer"]);
+    expect(auth.schemes).toEqual(["agentdoor-ed25519", "bearer"]);
 
-    const agentgate = auth.agentgate as Record<string, string>;
-    expect(agentgate.discovery).toBe("/.well-known/agentgate.json");
-    expect(agentgate.registration).toBe("/agentgate/register");
+    const agentdoor = auth.agentdoor as Record<string, string>;
+    expect(agentdoor.discovery).toBe("/.well-known/agentdoor.json");
+    expect(agentdoor.registration).toBe("/agentdoor/register");
   });
 
   it("includes default input and output modes", () => {

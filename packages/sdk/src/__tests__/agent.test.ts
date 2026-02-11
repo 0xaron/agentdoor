@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AgentGate, AgentGateError } from "../agent.js";
-import type { AgentGateDiscoveryDocument } from "../discovery.js";
+import { AgentDoor, AgentDoorError } from "../agent.js";
+import type { AgentDoorDiscoveryDocument } from "../discovery.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -10,11 +10,11 @@ import * as path from "node:path";
 // ---------------------------------------------------------------------------
 
 /** Minimal discovery document. */
-const mockDiscovery: AgentGateDiscoveryDocument = {
-  agentgate_version: "1.0",
+const mockDiscovery: AgentDoorDiscoveryDocument = {
+  agentdoor_version: "1.0",
   service_name: "Test Service",
-  registration_endpoint: "/agentgate/register",
-  auth_endpoint: "/agentgate/auth",
+  registration_endpoint: "/agentdoor/register",
+  auth_endpoint: "/agentdoor/auth",
   scopes_available: [
     { id: "data.read", description: "Read data" },
     { id: "data.write", description: "Write data" },
@@ -23,7 +23,7 @@ const mockDiscovery: AgentGateDiscoveryDocument = {
 
 /** Create a temporary directory for test keys/credentials. */
 function createTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "agentgate-test-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "agentdoor-test-"));
 }
 
 /** Clean up temp directory. */
@@ -35,7 +35,7 @@ function cleanupTmpDir(dir: string): void {
  * Build a mock fetch that returns different responses for different URL patterns.
  */
 function createMockFetch(options: {
-  discoveryDoc?: AgentGateDiscoveryDocument;
+  discoveryDoc?: AgentDoorDiscoveryDocument;
   registerResponse?: Record<string, unknown>;
   verifyResponse?: Record<string, unknown>;
   authResponse?: Record<string, unknown>;
@@ -48,7 +48,7 @@ function createMockFetch(options: {
       agent_id: "ag_testAgent123",
       challenge: {
         nonce: "testnonce123",
-        message: "agentgate:register:ag_testAgent123:2024-01-01T00:00:00Z:testnonce123",
+        message: "agentdoor:register:ag_testAgent123:2024-01-01T00:00:00Z:testnonce123",
         expires_at: new Date(Date.now() + 300_000).toISOString(),
       },
     },
@@ -85,28 +85,28 @@ function createMockFetch(options: {
     }
 
     // Route based on URL
-    if (urlStr.includes(".well-known/agentgate.json")) {
+    if (urlStr.includes(".well-known/agentdoor.json")) {
       return new Response(JSON.stringify(discoveryDoc), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    if (urlStr.includes("/agentgate/register/verify")) {
+    if (urlStr.includes("/agentdoor/register/verify")) {
       return new Response(JSON.stringify(verifyResponse), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    if (urlStr.includes("/agentgate/register")) {
+    if (urlStr.includes("/agentdoor/register")) {
       return new Response(JSON.stringify(registerResponse), {
         status: 201,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    if (urlStr.includes("/agentgate/auth")) {
+    if (urlStr.includes("/agentdoor/auth")) {
       return new Response(JSON.stringify(authResponse), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -123,7 +123,7 @@ function createMockFetch(options: {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("AgentGate", () => {
+describe("AgentDoor", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -136,15 +136,15 @@ describe("AgentGate", () => {
 
   describe("constructor", () => {
     it("creates an instance with default options", () => {
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
       });
-      expect(agent).toBeInstanceOf(AgentGate);
+      expect(agent).toBeInstanceOf(AgentDoor);
     });
 
     it("exposes the public key", () => {
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
       });
@@ -156,14 +156,14 @@ describe("AgentGate", () => {
       const keyPath = path.join(tmpDir, "newkeys.json");
       expect(fs.existsSync(keyPath)).toBe(false);
 
-      new AgentGate({ keyPath });
+      new AgentDoor({ keyPath });
       expect(fs.existsSync(keyPath)).toBe(true);
     });
 
     it("reuses existing keypair from disk", () => {
       const keyPath = path.join(tmpDir, "keys.json");
-      const agent1 = new AgentGate({ keyPath, ephemeral: true });
-      const agent2 = new AgentGate({ keyPath, ephemeral: true });
+      const agent1 = new AgentDoor({ keyPath, ephemeral: true });
+      const agent2 = new AgentDoor({ keyPath, ephemeral: true });
       expect(agent1.publicKey).toBe(agent2.publicKey);
     });
   });
@@ -171,7 +171,7 @@ describe("AgentGate", () => {
   describe("connect - full discovery → register → verify → session flow", () => {
     it("completes the full registration flow", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -182,7 +182,7 @@ describe("AgentGate", () => {
       expect(session).toBeDefined();
       // Should have made 3 calls: discovery, register, verify
       const discoveryCall = calls.find((c) =>
-        c.url.includes("agentgate.json"),
+        c.url.includes("agentdoor.json"),
       );
       const registerCall = calls.find(
         (c) => c.url.includes("/register") && !c.url.includes("/verify"),
@@ -196,7 +196,7 @@ describe("AgentGate", () => {
 
     it("normalizes URL without scheme to https", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -209,7 +209,7 @@ describe("AgentGate", () => {
 
     it("strips trailing slashes from URL", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -225,7 +225,7 @@ describe("AgentGate", () => {
     it("caches credentials after registration in non-ephemeral mode", async () => {
       const { fetchFn } = createMockFetch({});
       const credPath = path.join(tmpDir, "creds.json");
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         credentialsPath: credPath,
         fetchFn,
@@ -239,7 +239,7 @@ describe("AgentGate", () => {
     it("does not cache credentials in ephemeral mode", async () => {
       const { fetchFn } = createMockFetch({});
       const credPath = path.join(tmpDir, "creds.json");
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         credentialsPath: credPath,
         ephemeral: true,
@@ -253,7 +253,7 @@ describe("AgentGate", () => {
 
     it("second connect() uses cached credentials (skips registration)", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         credentialsPath: path.join(tmpDir, "creds.json"),
         fetchFn,
@@ -277,20 +277,20 @@ describe("AgentGate", () => {
         failStatus: 409,
         failUrl: "/register",
       });
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
       });
 
       await expect(agent.connect("https://api.example.com")).rejects.toThrow(
-        AgentGateError,
+        AgentDoorError,
       );
 
       try {
         await agent.connect("https://api.example.com");
       } catch (e) {
-        expect((e as AgentGateError).code).toBe("ALREADY_REGISTERED");
+        expect((e as AgentDoorError).code).toBe("ALREADY_REGISTERED");
       }
     });
 
@@ -299,7 +299,7 @@ describe("AgentGate", () => {
         failStatus: 429,
         failUrl: "/register",
       });
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -308,8 +308,8 @@ describe("AgentGate", () => {
       try {
         await agent.connect("https://api.example.com");
       } catch (e) {
-        expect(e).toBeInstanceOf(AgentGateError);
-        expect((e as AgentGateError).code).toBe("RATE_LIMITED");
+        expect(e).toBeInstanceOf(AgentDoorError);
+        expect((e as AgentDoorError).code).toBe("RATE_LIMITED");
       }
     });
 
@@ -318,7 +318,7 @@ describe("AgentGate", () => {
         failStatus: 410,
         failUrl: "/verify",
       });
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -327,8 +327,8 @@ describe("AgentGate", () => {
       try {
         await agent.connect("https://api.example.com");
       } catch (e) {
-        expect(e).toBeInstanceOf(AgentGateError);
-        expect((e as AgentGateError).code).toBe("CHALLENGE_EXPIRED");
+        expect(e).toBeInstanceOf(AgentDoorError);
+        expect((e as AgentDoorError).code).toBe("CHALLENGE_EXPIRED");
       }
     });
 
@@ -336,7 +336,7 @@ describe("AgentGate", () => {
       const { fetchFn } = createMockFetch({
         registerResponse: { some: "invalid response" },
       });
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -351,7 +351,7 @@ describe("AgentGate", () => {
       const { fetchFn } = createMockFetch({
         verifyResponse: { agent_id: "ag_test" }, // missing api_key
       });
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -367,7 +367,7 @@ describe("AgentGate", () => {
     it("does not persist credentials when ephemeral is true", async () => {
       const { fetchFn } = createMockFetch({});
       const credPath = path.join(tmpDir, "ephemeral-creds.json");
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         credentialsPath: credPath,
         ephemeral: true,
@@ -383,7 +383,7 @@ describe("AgentGate", () => {
   describe("x402 wallet identity registration", () => {
     it("includes wallet address in registration body", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -405,7 +405,7 @@ describe("AgentGate", () => {
 
     it("accepts a string wallet address shorthand", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -425,7 +425,7 @@ describe("AgentGate", () => {
   describe("scope filtering", () => {
     it("requests only specified scopes when scopesRequested is set", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -443,7 +443,7 @@ describe("AgentGate", () => {
 
     it("throws when no matching scopes found", async () => {
       const { fetchFn } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -457,7 +457,7 @@ describe("AgentGate", () => {
 
     it("requests all available scopes when scopesRequested is not set", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -476,7 +476,7 @@ describe("AgentGate", () => {
   describe("metadata", () => {
     it("sends default SDK metadata", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -488,12 +488,12 @@ describe("AgentGate", () => {
         (c) => c.url.includes("/register") && !c.url.includes("/verify"),
       );
       const body = JSON.parse(registerCall?.init?.body as string);
-      expect(body.metadata.sdk).toBe("agentgate-sdk");
+      expect(body.metadata.sdk).toBe("agentdoor-sdk");
     });
 
     it("merges custom metadata with defaults", async () => {
       const { fetchFn, calls } = createMockFetch({});
-      const agent = new AgentGate({
+      const agent = new AgentDoor({
         keyPath: path.join(tmpDir, "keys.json"),
         ephemeral: true,
         fetchFn,
@@ -507,7 +507,7 @@ describe("AgentGate", () => {
       );
       const body = JSON.parse(registerCall?.init?.body as string);
       expect(body.metadata.agent_name).toBe("my-agent");
-      expect(body.metadata.sdk).toBe("agentgate-sdk");
+      expect(body.metadata.sdk).toBe("agentdoor-sdk");
     });
   });
 });

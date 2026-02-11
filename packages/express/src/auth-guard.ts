@@ -1,22 +1,22 @@
 import type { Request, Response, NextFunction } from "express";
-import type { AgentStore, AgentContext } from "@agentgate/core";
+import type { AgentStore, AgentContext } from "@agentdoor/core";
 import {
   verifyToken,
   hashApiKey,
   API_KEY_PREFIX,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 /**
- * Paths managed by AgentGate itself. The auth guard should not
+ * Paths managed by AgentDoor itself. The auth guard should not
  * intercept these routes since they have their own authentication
  * logic (or are public by design).
  */
-const AGENTGATE_PATHS = new Set([
-  "/.well-known/agentgate.json",
-  "/agentgate/register",
-  "/agentgate/register/verify",
-  "/agentgate/auth",
-  "/agentgate/health",
+const AGENTDOOR_PATHS = new Set([
+  "/.well-known/agentdoor.json",
+  "/agentdoor/register",
+  "/agentdoor/register/verify",
+  "/agentdoor/auth",
+  "/agentdoor/health",
 ]);
 
 /**
@@ -50,8 +50,8 @@ export function createAuthGuard(
     req.isAgent = false;
     req.agent = undefined;
 
-    // Skip AgentGate's own routes
-    if (AGENTGATE_PATHS.has(req.path)) {
+    // Skip AgentDoor's own routes
+    if (AGENTDOOR_PATHS.has(req.path)) {
       next();
       return;
     }
@@ -90,7 +90,7 @@ export function createAuthGuard(
       // Auth failures are logged but don't block the request.
       // The SaaS application decides what to do with unauthenticated
       // requests. This is the "sits alongside Clerk" philosophy.
-      console.warn("[agentgate] Auth guard: token validation failed:", err instanceof Error ? err.message : err);
+      console.warn("[agentdoor] Auth guard: token validation failed:", err instanceof Error ? err.message : err);
     }
 
     next();

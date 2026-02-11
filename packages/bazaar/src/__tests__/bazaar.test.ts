@@ -69,11 +69,11 @@ function createMockClient(): BazaarClientInterface & {
 
 function makeDiscoveryDoc(overrides?: Record<string, unknown>) {
   return {
-    agentgate_version: "0.1.0",
+    agentdoor_version: "0.1.0",
     service_name: "Test Service",
-    service_description: "A test AgentGate service for Bazaar",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    service_description: "A test AgentDoor service for Bazaar",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: [
       { id: "data.read", description: "Read data", price: "$0.001/req" },
       { id: "data.write", description: "Write data" },
@@ -126,7 +126,7 @@ describe("BazaarIntegration", () => {
       expect(listing.serviceUrl).toBe("https://example.com");
       expect(listing.serviceName).toBe("Test Service");
       expect(listing.description).toBe(
-        "A test AgentGate service for Bazaar",
+        "A test AgentDoor service for Bazaar",
       );
       expect(listing.scopes).toHaveLength(2);
       expect(listing.paymentAddress).toBe("0x1234567890abcdef");

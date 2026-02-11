@@ -1,7 +1,7 @@
 /**
- * AgentGate Crawler
+ * AgentDoor Crawler
  *
- * Fetches and validates /.well-known/agentgate.json discovery documents
+ * Fetches and validates /.well-known/agentdoor.json discovery documents
  * from target URLs. Supports batch crawling with concurrency control.
  */
 
@@ -37,17 +37,17 @@ export interface CrawlerConfig {
 // Defaults
 // ---------------------------------------------------------------------------
 
-const DEFAULT_USER_AGENT = "AgentGateCrawler/0.1.0";
+const DEFAULT_USER_AGENT = "AgentDoorCrawler/0.1.0";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_CONCURRENCY = 5;
 const DEFAULT_RETRY_COUNT = 2;
-const DISCOVERY_PATH = "/.well-known/agentgate.json";
+const DISCOVERY_PATH = "/.well-known/agentdoor.json";
 
 // ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
 
-export class AgentGateCrawler {
+export class AgentDoorCrawler {
   private readonly userAgent: string;
   private readonly timeoutMs: number;
   private readonly maxConcurrency: number;
@@ -61,9 +61,9 @@ export class AgentGateCrawler {
   }
 
   /**
-   * Crawl a single URL to fetch its AgentGate discovery document.
+   * Crawl a single URL to fetch its AgentDoor discovery document.
    *
-   * Fetches `{url}/.well-known/agentgate.json`, validates the response,
+   * Fetches `{url}/.well-known/agentdoor.json`, validates the response,
    * and returns a CrawlTarget with the result status.
    */
   async crawl(url: string): Promise<CrawlTarget> {
@@ -144,7 +144,7 @@ export class AgentGateCrawler {
   }
 
   /**
-   * Validate that a parsed JSON body looks like a valid AgentGate
+   * Validate that a parsed JSON body looks like a valid AgentDoor
    * discovery document by checking for required top-level fields.
    */
   private isValidDiscoveryDoc(doc: unknown): boolean {
@@ -155,7 +155,7 @@ export class AgentGateCrawler {
     const d = doc as Record<string, unknown>;
 
     return (
-      typeof d.agentgate_version === "string" &&
+      typeof d.agentdoor_version === "string" &&
       typeof d.service_name === "string" &&
       typeof d.registration_endpoint === "string" &&
       typeof d.auth_endpoint === "string" &&

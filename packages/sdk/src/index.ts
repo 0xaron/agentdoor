@@ -1,19 +1,19 @@
 /**
- * @agentgate/sdk -- Agent-side SDK for connecting to AgentGate-enabled services.
+ * @agentdoor/sdk -- Agent-side SDK for connecting to AgentDoor-enabled services.
  *
  * Usage:
- *   import { AgentGate } from "@agentgate/sdk";
+ *   import { AgentDoor } from "@agentdoor/sdk";
  *
- *   const agent = new AgentGate({ keyPath: "~/.agentgate/keys.json" });
+ *   const agent = new AgentDoor({ keyPath: "~/.agentdoor/keys.json" });
  *   const session = await agent.connect("https://api.example.com");
  *   const data = await session.get("/weather/forecast", { params: { city: "sf" } });
  *
- * @module @agentgate/sdk
+ * @module @agentdoor/sdk
  */
 
 // -- Main entry point --
-export { AgentGate, AgentGateError } from "./agent.js";
-export type { AgentGateOptions, AgentGateErrorCode } from "./agent.js";
+export { AgentDoor, AgentDoorError } from "./agent.js";
+export type { AgentDoorOptions, AgentDoorErrorCode } from "./agent.js";
 
 // -- Session --
 export { Session, SessionError } from "./session.js";
@@ -39,7 +39,7 @@ export type { Keypair, StoredKeypair } from "./keystore.js";
 // -- Discovery --
 export { discover, clearDiscoveryCache, discoveryCacheSize, DiscoveryError } from "./discovery.js";
 export type {
-  AgentGateDiscoveryDocument,
+  AgentDoorDiscoveryDocument,
   DiscoveryScope,
   DiscoveryPayment,
   DiscoveryRateLimits,

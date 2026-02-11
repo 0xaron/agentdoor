@@ -65,7 +65,7 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../../packages/core
       next:
@@ -96,7 +96,7 @@ importers:
 
   examples/agent-langchain:
     dependencies:
-      '@agentgate/sdk':
+      '@agentdoor/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@langchain/core':
@@ -121,7 +121,7 @@ importers:
 
   examples/agent-typescript:
     dependencies:
-      '@agentgate/sdk':
+      '@agentdoor/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
     devDependencies:
@@ -137,7 +137,7 @@ importers:
 
   examples/express-weather-api:
     dependencies:
-      '@agentgate/express':
+      '@agentdoor/express':
         specifier: workspace:*
         version: link:../../packages/express
       express:
@@ -159,7 +159,7 @@ importers:
 
   examples/hono-cloudflare:
     dependencies:
-      '@agentgate/hono':
+      '@agentdoor/hono':
         specifier: workspace:*
         version: link:../../packages/hono
       hono:
@@ -178,7 +178,7 @@ importers:
 
   examples/nextjs-saas:
     dependencies:
-      '@agentgate/next':
+      '@agentdoor/next':
         specifier: workspace:*
         version: link:../../packages/next
       next:
@@ -203,7 +203,7 @@ importers:
 
   packages/auth0:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -219,7 +219,7 @@ importers:
 
   packages/bazaar:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -235,7 +235,7 @@ importers:
 
   packages/clerk:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -251,7 +251,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
       chalk:
@@ -279,7 +279,7 @@ importers:
 
   packages/cloudflare:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -339,7 +339,7 @@ importers:
 
   packages/detect:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -355,7 +355,7 @@ importers:
 
   packages/express:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -379,7 +379,7 @@ importers:
 
   packages/fastify:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -398,7 +398,7 @@ importers:
 
   packages/firebase:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -414,7 +414,7 @@ importers:
 
   packages/hono:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -433,7 +433,7 @@ importers:
 
   packages/next:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -452,7 +452,7 @@ importers:
 
   packages/next-auth:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -470,7 +470,7 @@ importers:
 
   packages/registry:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -508,7 +508,7 @@ importers:
 
   packages/stripe:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
       stripe:
@@ -527,7 +527,7 @@ importers:
 
   packages/stytch:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -543,7 +543,7 @@ importers:
 
   packages/supabase:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -565,7 +565,7 @@ importers:
 
   packages/vercel:
     dependencies:
-      '@agentgate/core':
+      '@agentdoor/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

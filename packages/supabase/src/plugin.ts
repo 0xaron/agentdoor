@@ -1,8 +1,8 @@
 /**
- * @agentgate/supabase - Supabase Plugin
+ * @agentdoor/supabase - Supabase Plugin
  *
- * Syncs AgentGate agents to Supabase. Creates records in a dedicated
- * agentgate_agents table with RLS policies that agents can use to
+ * Syncs AgentDoor agents to Supabase. Creates records in a dedicated
+ * agentdoor_agents table with RLS policies that agents can use to
  * access resources through Supabase.
  */
 
@@ -16,7 +16,7 @@ export interface SupabasePluginConfig {
   supabaseUrl: string;
   /** Supabase service role key (for admin operations) */
   supabaseServiceKey: string;
-  /** Table name for agent records. Default: "agentgate_agents" */
+  /** Table name for agent records. Default: "agentdoor_agents" */
   tableName?: string;
   /** Whether to auto-create records for new agents. Default: true */
   autoSync?: boolean;
@@ -24,7 +24,7 @@ export interface SupabasePluginConfig {
 
 /** Agent record stored in Supabase. */
 export interface SupabaseAgentRecord {
-  /** AgentGate agent ID (primary key) */
+  /** AgentDoor agent ID (primary key) */
   id: string;
   /** Agent's public key */
   public_key: string;
@@ -99,7 +99,7 @@ export interface SupabaseError {
 // ---------------------------------------------------------------------------
 
 /**
- * Supabase plugin for AgentGate.
+ * Supabase plugin for AgentDoor.
  *
  * Stores agent data in a Supabase table with RLS support, allowing
  * agents to be treated as first-class entities in Supabase applications.
@@ -130,7 +130,7 @@ export class SupabasePlugin {
   constructor(config: SupabasePluginConfig) {
     this.config = {
       ...config,
-      tableName: config.tableName ?? "agentgate_agents",
+      tableName: config.tableName ?? "agentdoor_agents",
       autoSync: config.autoSync ?? true,
     };
   }

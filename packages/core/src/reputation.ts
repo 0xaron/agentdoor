@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Reputation System
+ * @agentdoor/core - Reputation System
  *
  * Per-agent reputation scoring based on behavioral signals:
  * - Payment success rate

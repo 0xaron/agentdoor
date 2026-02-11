@@ -13,12 +13,12 @@
 import { describe, it, expect } from "vitest";
 import express from "express";
 import * as http from "node:http";
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 import {
   MemoryStore,
   generateKeypair,
   signChallenge,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // HTTP request helper
@@ -94,7 +94,7 @@ function createApp(withX402 = true) {
   const store = new MemoryStore();
   const app = express();
   app.use(
-    agentgate({
+    agentdoor({
       scopes: TEST_SCOPES,
       store,
       service: { name: "x402 Payment Test API", description: "E2E payment test" },
@@ -111,11 +111,11 @@ function createApp(withX402 = true) {
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: x402 Payment Flow", () => {
+describe("AgentDoor E2E: x402 Payment Flow", () => {
   it("discovery document includes payment section when x402 is configured", async () => {
     const { app } = createApp(true);
 
-    const res = await request(app, "GET", "/.well-known/agentgate.json");
+    const res = await request(app, "GET", "/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
     expect(res.body.payment).toBeDefined();
     expect(res.body.payment.protocol).toBe("x402");
@@ -128,7 +128,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
   it("discovery document omits payment section when x402 is not configured", async () => {
     const { app } = createApp(false);
 
-    const res = await request(app, "GET", "/.well-known/agentgate.json");
+    const res = await request(app, "GET", "/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
     expect(res.body.payment).toBeUndefined();
   });
@@ -137,7 +137,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
     const { app } = createApp(true);
     const keypair = generateKeypair();
 
-    const res = await request(app, "POST", "/agentgate/register", {
+    const res = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
       x402_wallet: "0xAgentWallet1234567890abcdef1234567890ab",
@@ -154,7 +154,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
     const keypair = generateKeypair();
 
     // Register
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
       x402_wallet: "0xAgentWallet1234567890abcdef1234567890ab",
@@ -165,7 +165,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
     // Verify
     const { agent_id, challenge } = regRes.body;
     const signature = signChallenge(challenge.message, keypair.secretKey);
-    const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+    const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature,
     });
@@ -181,14 +181,14 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
     const { app } = createApp(false);
     const keypair = generateKeypair();
 
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
     });
 
     const { agent_id, challenge } = regRes.body;
     const signature = signChallenge(challenge.message, keypair.secretKey);
-    const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+    const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature,
     });
@@ -203,7 +203,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
     const walletAddress = "0xAgentWallet1234567890abcdef1234567890ab";
 
     // Register with wallet
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
       x402_wallet: walletAddress,
@@ -212,7 +212,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
 
     // Verify
     const signature = signChallenge(challenge.message, keypair.secretKey);
-    await request(app, "POST", "/agentgate/register/verify", {
+    await request(app, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature,
     });
@@ -226,7 +226,7 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
   it("scopes with pricing are shown in discovery", async () => {
     const { app } = createApp(true);
 
-    const res = await request(app, "GET", "/.well-known/agentgate.json");
+    const res = await request(app, "GET", "/.well-known/agentdoor.json");
     expect(res.status).toBe(200);
 
     const scopes = res.body.scopes_available;
@@ -242,14 +242,14 @@ describe("AgentGate E2E: x402 Payment Flow", () => {
     const keypair = generateKeypair();
 
     // Register with wallet
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
       x402_wallet: "0xAgentWallet1234567890abcdef1234567890ab",
     });
     const { agent_id, challenge } = regRes.body;
     const signature = signChallenge(challenge.message, keypair.secretKey);
-    const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+    const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature,
     });

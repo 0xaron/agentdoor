@@ -1,10 +1,10 @@
-import { AgentGate } from "@agentgate/sdk";
+import { AgentDoor } from "@agentdoor/sdk";
 
 /**
- * AgentGate SDK example — connect to any AgentGate-enabled service.
+ * AgentDoor SDK example — connect to any AgentDoor-enabled service.
  *
  * The SDK handles the full agent lifecycle:
- *   1. Discovery  — fetches /.well-known/agentgate.json
+ *   1. Discovery  — fetches /.well-known/agentdoor.json
  *   2. Register   — sends public key, receives challenge nonce
  *   3. Verify     — signs the challenge, receives API key + JWT
  *   4. Request    — makes authenticated (and optionally paid) API calls
@@ -16,7 +16,7 @@ async function main() {
   // If no keyPath is provided, an ephemeral keypair is generated.
   // For persistent agents, point keyPath to a file — the SDK will
   // auto-generate keys on first run and reuse them on subsequent runs.
-  const agent = new AgentGate({
+  const agent = new AgentDoor({
     keyPath: "./agent-keys.json",
     // Optional: use your x402 wallet as your agent identity.
     // This lets you authenticate AND pay with the same wallet.

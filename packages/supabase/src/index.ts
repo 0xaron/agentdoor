@@ -1,5 +1,5 @@
 /**
- * @agentgate/supabase - Supabase Plugin for AgentGate
+ * @agentdoor/supabase - Supabase Plugin for AgentDoor
  *
  * Stores agent records in Supabase with Row Level Security (RLS) support.
  * Agents get entries in the Supabase auth.users table, making them compatible

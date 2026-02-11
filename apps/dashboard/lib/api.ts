@@ -1,7 +1,7 @@
 /**
  * Dashboard API Client
  *
- * Connects to actual AgentGate storage backends or falls back to
+ * Connects to actual AgentDoor storage backends or falls back to
  * in-memory mock data. Provides a unified interface for the dashboard
  * to retrieve statistics, agents, and metrics.
  */
@@ -13,7 +13,7 @@
 export interface DashboardApiConfig {
   /** Storage backend type */
   storageType: "memory" | "api";
-  /** Base URL for the AgentGate API (when storageType is "api") */
+  /** Base URL for the AgentDoor API (when storageType is "api") */
   apiUrl?: string;
   /** API key for authenticating with the backend */
   apiKey?: string;
@@ -296,7 +296,7 @@ class MemoryDashboardStore {
 // Remote API Client
 // ---------------------------------------------------------------------------
 
-/** Fetches data from a remote AgentGate API. */
+/** Fetches data from a remote AgentDoor API. */
 class RemoteDashboardClient {
   private apiUrl: string;
   private apiKey?: string;

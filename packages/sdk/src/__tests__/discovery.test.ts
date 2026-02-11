@@ -7,11 +7,11 @@ import {
 } from "../discovery.js";
 
 const mockDiscoveryDoc = {
-  agentgate_version: "1.0",
+  agentdoor_version: "1.0",
   service_name: "Test Service",
   service_description: "A test service",
-  registration_endpoint: "/agentgate/register",
-  auth_endpoint: "/agentgate/auth",
+  registration_endpoint: "/agentdoor/register",
+  auth_endpoint: "/agentdoor/auth",
   scopes_available: [{ id: "test.read", description: "Read test data" }],
   auth_methods: ["ed25519-challenge", "jwt"],
 };
@@ -39,10 +39,10 @@ describe("discover - successful discovery", () => {
       fetchFn: createMockFetch(mockDiscoveryDoc),
     });
 
-    expect(result.agentgate_version).toBe("1.0");
+    expect(result.agentdoor_version).toBe("1.0");
     expect(result.service_name).toBe("Test Service");
-    expect(result.registration_endpoint).toBe("/agentgate/register");
-    expect(result.auth_endpoint).toBe("/agentgate/auth");
+    expect(result.registration_endpoint).toBe("/agentdoor/register");
+    expect(result.auth_endpoint).toBe("/agentdoor/auth");
     expect(result.scopes_available).toHaveLength(1);
     expect(result.scopes_available[0].id).toBe("test.read");
   });
@@ -71,7 +71,7 @@ describe("discover - successful discovery", () => {
 
     await discover("https://api.test.com", { fetchFn });
 
-    expect(capturedUrl).toBe("https://api.test.com/.well-known/agentgate.json");
+    expect(capturedUrl).toBe("https://api.test.com/.well-known/agentdoor.json");
   });
 
   it("adds https:// scheme when not provided", async () => {
@@ -89,7 +89,7 @@ describe("discover - successful discovery", () => {
 
     await discover("api.test.com", { fetchFn });
 
-    expect(capturedUrl).toBe("https://api.test.com/.well-known/agentgate.json");
+    expect(capturedUrl).toBe("https://api.test.com/.well-known/agentdoor.json");
   });
 });
 
@@ -217,7 +217,7 @@ describe("discover - error handling", () => {
 
   it("throws DiscoveryError when required fields are missing", async () => {
     const incompleteDoc = {
-      agentgate_version: "1.0",
+      agentdoor_version: "1.0",
       service_name: "Test",
       // Missing registration_endpoint, auth_endpoint, scopes_available
     };

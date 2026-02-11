@@ -1,7 +1,7 @@
 /**
  * Integration / E2E tests for cross-adapter compatibility.
  *
- * Verifies that the AgentGate protocol is adapter-agnostic by testing:
+ * Verifies that the AgentDoor protocol is adapter-agnostic by testing:
  * 1. Shared MemoryStore: agents registered on one adapter are visible from another
  * 2. Discovery documents: both adapters produce structurally compatible documents
  * 3. Agent data portability: agent records stored by one adapter can be read by another
@@ -16,14 +16,14 @@ import { describe, it, expect } from "vitest";
 import express from "express";
 import * as http from "node:http";
 import { Hono } from "hono";
-import { agentgate as agentgateExpress } from "@agentgate/express";
-import { agentgate as agentgateHono } from "@agentgate/hono";
-import type { AgentGateVariables } from "@agentgate/hono";
+import { agentdoor as agentdoorExpress } from "@agentdoor/express";
+import { agentdoor as agentdoorHono } from "@agentdoor/hono";
+import type { AgentDoorVariables } from "@agentdoor/hono";
 import {
   MemoryStore,
   generateKeypair,
   signChallenge,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Test helper: HTTP requests to Express
@@ -92,14 +92,14 @@ const TEST_SCOPES = [
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
+describe("AgentDoor E2E: Cross-Adapter Compatibility", () => {
   it("agent registered on Express is visible in shared store used by Hono", async () => {
     const store = new MemoryStore();
 
     // --- Express App ---
     const expressApp = express();
     expressApp.use(
-      agentgateExpress({
+      agentdoorExpress({
         scopes: TEST_SCOPES,
         store,
         service: { name: "Cross-Adapter Test" },
@@ -107,8 +107,8 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
     );
 
     // --- Hono App (same store) ---
-    const honoApp = new Hono<{ Variables: AgentGateVariables }>();
-    agentgateHono(honoApp, {
+    const honoApp = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoorHono(honoApp, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Cross-Adapter Test" },
@@ -116,7 +116,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
 
     // 1. Register on Express
     const keypair = generateKeypair();
-    const regRes = await request(expressApp, "POST", "/agentgate/register", {
+    const regRes = await request(expressApp, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read", "data.write"],
       metadata: { framework: "vitest" },
@@ -126,7 +126,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
 
     // 2. Verify on Express
     const signature = signChallenge(challenge.message, keypair.secretKey);
-    const verifyRes = await request(expressApp, "POST", "/agentgate/register/verify", {
+    const verifyRes = await request(expressApp, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature,
     });
@@ -146,7 +146,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
 
     // 5. Hono's registration endpoint returns 409 for duplicate public key
     //    (proving it can see the agent registered by Express in the shared store)
-    const honoRegRes = await honoApp.request("/agentgate/register", {
+    const honoRegRes = await honoApp.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -164,7 +164,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
     // --- Express App ---
     const expressApp = express();
     expressApp.use(
-      agentgateExpress({
+      agentdoorExpress({
         scopes: TEST_SCOPES,
         store,
         service: { name: "Cross-Adapter Test" },
@@ -172,8 +172,8 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
     );
 
     // --- Hono App ---
-    const honoApp = new Hono<{ Variables: AgentGateVariables }>();
-    agentgateHono(honoApp, {
+    const honoApp = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoorHono(honoApp, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Cross-Adapter Test" },
@@ -184,7 +184,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
     const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
     const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
 
-    const regRes = await honoApp.request("/agentgate/register", {
+    const regRes = await honoApp.request("/agentdoor/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -203,7 +203,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
       new TextEncoder().encode(regBody.challenge.message),
     );
     const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
-    const verifyRes = await honoApp.request("/agentgate/register/verify", {
+    const verifyRes = await honoApp.request("/agentdoor/register/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -221,7 +221,7 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
 
     // 4. Express registration rejects duplicate public key
     //    (proving Express sees the Hono-registered agent via shared store)
-    const expressRegRes = await request(expressApp, "POST", "/agentgate/register", {
+    const expressRegRes = await request(expressApp, "POST", "/agentdoor/register", {
       public_key: publicKeyB64,
       scopes_requested: ["data.read"],
     });
@@ -239,17 +239,17 @@ describe("AgentGate E2E: Cross-Adapter Compatibility", () => {
 
     // Express
     const expressApp = express();
-    expressApp.use(agentgateExpress(config));
-    const expressDiscovery = await request(expressApp, "GET", "/.well-known/agentgate.json");
+    expressApp.use(agentdoorExpress(config));
+    const expressDiscovery = await request(expressApp, "GET", "/.well-known/agentdoor.json");
 
     // Hono
-    const honoApp = new Hono<{ Variables: AgentGateVariables }>();
-    agentgateHono(honoApp, config);
-    const honoDiscovery = await honoApp.request("/.well-known/agentgate.json");
+    const honoApp = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoorHono(honoApp, config);
+    const honoDiscovery = await honoApp.request("/.well-known/agentdoor.json");
     const honoBody = await honoDiscovery.json();
 
     // Core protocol fields should be identical
-    expect(expressDiscovery.body.agentgate_version).toBe(honoBody.agentgate_version);
+    expect(expressDiscovery.body.agentdoor_version).toBe(honoBody.agentdoor_version);
     expect(expressDiscovery.body.service_name).toBe(honoBody.service_name);
     expect(expressDiscovery.body.service_description).toBe(honoBody.service_description);
     expect(expressDiscovery.body.scopes_available).toEqual(honoBody.scopes_available);

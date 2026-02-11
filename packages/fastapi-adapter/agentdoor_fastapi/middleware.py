@@ -1,6 +1,6 @@
-"""AgentGate FastAPI middleware.
+"""AgentDoor FastAPI middleware.
 
-Provides the :class:`AgentGate` class that mounts all AgentGate protocol
+Provides the :class:`AgentDoor` class that mounts all AgentDoor protocol
 endpoints onto a FastAPI application, and the :func:`agent_required`
 dependency for protecting individual routes.
 """
@@ -31,8 +31,8 @@ from .store import AgentStore, InMemoryAgentStore, TokenRecord
 
 
 @dataclass
-class AgentGateConfig:
-    """Configuration for the AgentGate middleware.
+class AgentDoorConfig:
+    """Configuration for the AgentDoor middleware.
 
     Attributes:
         service_name: Human-readable name of this service.
@@ -41,25 +41,25 @@ class AgentGateConfig:
         max_timestamp_drift: Maximum clock drift allowed for signed
             timestamps, in seconds.
         store: The agent store backend.  Defaults to an in-memory store.
-        route_prefix: URL prefix for AgentGate endpoints (without
+        route_prefix: URL prefix for AgentDoor endpoints (without
             trailing slash).
     """
 
-    service_name: str = "AgentGate Service"
+    service_name: str = "AgentDoor Service"
     scopes: list[dict[str, str]] = field(default_factory=list)
     token_ttl_seconds: int = 3600
     max_timestamp_drift: int = 300
     store: AgentStore | None = None
-    route_prefix: str = "/agentgate"
+    route_prefix: str = "/agentdoor"
 
 
-class AgentGate:
-    """Mount AgentGate protocol endpoints onto a FastAPI application.
+class AgentDoor:
+    """Mount AgentDoor protocol endpoints onto a FastAPI application.
 
     Usage::
 
         app = FastAPI()
-        gate = AgentGate(app, config=AgentGateConfig(service_name="My API"))
+        gate = AgentDoor(app, config=AgentDoorConfig(service_name="My API"))
 
         @app.get("/protected")
         async def protected(agent: AgentContext = Depends(gate.agent_required)):
@@ -69,10 +69,10 @@ class AgentGate:
     def __init__(
         self,
         app: FastAPI,
-        config: AgentGateConfig | None = None,
+        config: AgentDoorConfig | None = None,
     ) -> None:
         self._app = app
-        self._config = config or AgentGateConfig()
+        self._config = config or AgentDoorConfig()
         self._store: AgentStore = self._config.store or InMemoryAgentStore()
 
         self._discovery_doc = DiscoveryDocument(
@@ -98,7 +98,7 @@ class AgentGate:
         return self._store
 
     @property
-    def config(self) -> AgentGateConfig:
+    def config(self) -> AgentDoorConfig:
         """The current configuration."""
         return self._config
 
@@ -107,36 +107,36 @@ class AgentGate:
     # ------------------------------------------------------------------
 
     def _mount_routes(self) -> None:
-        """Add all AgentGate routes to the FastAPI application."""
+        """Add all AgentDoor routes to the FastAPI application."""
         router = APIRouter()
 
         router.add_api_route(
-            "/.well-known/agentgate.json",
+            "/.well-known/agentdoor.json",
             self._handle_discovery,
             methods=["GET"],
             response_model=DiscoveryDocument,
-            tags=["agentgate"],
+            tags=["agentdoor"],
         )
         router.add_api_route(
             f"{self._config.route_prefix}/register",
             self._handle_register,
             methods=["POST"],
             response_model=RegistrationResponse,
-            tags=["agentgate"],
+            tags=["agentdoor"],
         )
         router.add_api_route(
             f"{self._config.route_prefix}/register/verify",
             self._handle_verify,
             methods=["POST"],
             response_model=VerifyResponse,
-            tags=["agentgate"],
+            tags=["agentdoor"],
         )
         router.add_api_route(
             f"{self._config.route_prefix}/auth",
             self._handle_auth,
             methods=["POST"],
             response_model=AuthResponse,
-            tags=["agentgate"],
+            tags=["agentdoor"],
         )
 
         self._app.include_router(router)
@@ -146,13 +146,13 @@ class AgentGate:
     # ------------------------------------------------------------------
 
     async def _handle_discovery(self) -> DiscoveryDocument:
-        """GET /.well-known/agentgate.json"""
+        """GET /.well-known/agentdoor.json"""
         return self._discovery_doc
 
     async def _handle_register(
         self, body: RegistrationRequest
     ) -> RegistrationResponse:
-        """POST /agentgate/register
+        """POST /agentdoor/register
 
         Initiates agent registration by creating a pending registration
         with a challenge that the agent must sign.
@@ -179,7 +179,7 @@ class AgentGate:
         )
 
     async def _handle_verify(self, body: VerifyRequest) -> VerifyResponse:
-        """POST /agentgate/register/verify
+        """POST /agentdoor/register/verify
 
         Completes agent registration by verifying the signed challenge.
         """
@@ -215,7 +215,7 @@ class AgentGate:
         )
 
     async def _handle_auth(self, body: AuthRequest) -> AuthResponse:
-        """POST /agentgate/auth
+        """POST /agentdoor/auth
 
         Issues a short-lived bearer token after verifying the agent's
         signed timestamp.

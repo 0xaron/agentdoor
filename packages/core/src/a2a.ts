@@ -1,7 +1,7 @@
 /**
- * @agentgate/core - A2A Agent Card Generation
+ * @agentdoor/core - A2A Agent Card Generation
  *
- * Generates /.well-known/agent-card.json from AgentGateConfig.
+ * Generates /.well-known/agent-card.json from AgentDoorConfig.
  * Follows the A2A (Agent-to-Agent) protocol specification from Google,
  * enabling cross-protocol discovery.
  */
@@ -14,13 +14,13 @@ import type { A2AAgentCard } from "./types.js";
 // ---------------------------------------------------------------------------
 
 /**
- * Generate an A2A agent card (/.well-known/agent-card.json) from AgentGate config.
+ * Generate an A2A agent card (/.well-known/agent-card.json) from AgentDoor config.
  *
  * The A2A agent card format follows Google's Agent-to-Agent protocol,
  * allowing agents that understand A2A to discover this service even if
- * they don't know about AgentGate specifically.
+ * they don't know about AgentDoor specifically.
  *
- * @param config - Resolved AgentGate configuration
+ * @param config - Resolved AgentDoor configuration
  * @param serviceUrl - The base URL of the service (e.g. "https://api.example.com")
  * @returns A2AAgentCard document
  */
@@ -45,7 +45,7 @@ export function generateA2AAgentCard(
   schemes.push("bearer"); // JWT bearer tokens are always supported
 
   // Build supported protocols list
-  const protocols: string[] = ["agentgate"];
+  const protocols: string[] = ["agentdoor"];
   if (config.companion.a2aAgentCard) {
     protocols.push("a2a");
   }
@@ -64,7 +64,7 @@ export function generateA2AAgentCard(
     capabilities,
     authentication: {
       schemes,
-      credentials: "/agentgate/register",
+      credentials: "/agentdoor/register",
     },
     protocols,
   };

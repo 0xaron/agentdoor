@@ -382,7 +382,7 @@ describe("isLikelyAgent", () => {
     ).toBe(true);
   });
 
-  it("returns true for AgentGate auth header", () => {
+  it("returns true for AgentDoor auth header", () => {
     const result = isLikelyAgent(
       makeRequest({
         headers: { authorization: "Bearer agk_live_test123" },

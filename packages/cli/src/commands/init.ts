@@ -1,13 +1,13 @@
 /**
- * `agentgate init` — Interactive setup command.
+ * `agentdoor init` — Interactive setup command.
  *
  * Two modes:
  *   1. Interactive: prompts for framework, scopes, pricing, x402 config.
  *   2. --from-openapi: reads an OpenAPI spec and auto-generates everything.
  *
  * Generates:
- *   - agentgate.config.ts
- *   - public/.well-known/agentgate.json
+ *   - agentdoor.config.ts
+ *   - public/.well-known/agentdoor.json
  *   - public/.well-known/agent-card.json (A2A compat)
  */
 
@@ -61,7 +61,7 @@ async function detectFramework(cwd: string): Promise<FrameworkChoice | null> {
 // ---------------------------------------------------------------------------
 
 async function interactiveInit(cwd: string, options: InitOptions): Promise<void> {
-  console.log(chalk.bold.cyan("\n  AgentGate Setup\n"));
+  console.log(chalk.bold.cyan("\n  AgentDoor Setup\n"));
 
   const detectedFramework = await detectFramework(cwd);
 
@@ -166,7 +166,7 @@ async function interactiveInit(cwd: string, options: InitOptions): Promise<void>
       type: "input",
       name: "serviceDescription",
       message: "Service description:",
-      default: "API with AgentGate integration",
+      default: "API with AgentDoor integration",
     },
   ]);
 
@@ -222,7 +222,7 @@ async function interactiveInit(cwd: string, options: InitOptions): Promise<void>
     }
   }
 
-  // Generate agentgate.config.ts
+  // Generate agentdoor.config.ts
   const configContent = generateConfigFile({
     framework,
     serviceName,
@@ -238,10 +238,10 @@ async function interactiveInit(cwd: string, options: InitOptions): Promise<void>
       : undefined,
   });
 
-  await writeFile(join(outputDir, "agentgate.config.ts"), configContent, "utf-8");
-  console.log(chalk.green("  agentgate.config.ts"));
+  await writeFile(join(outputDir, "agentdoor.config.ts"), configContent, "utf-8");
+  console.log(chalk.green("  agentdoor.config.ts"));
 
-  // Generate .well-known/agentgate.json
+  // Generate .well-known/agentdoor.json
   const wellKnownDir = join(outputDir, "public", ".well-known");
   await mkdir(wellKnownDir, { recursive: true });
 
@@ -259,11 +259,11 @@ async function interactiveInit(cwd: string, options: InitOptions): Promise<void>
   });
 
   await writeFile(
-    join(wellKnownDir, "agentgate.json"),
+    join(wellKnownDir, "agentdoor.json"),
     JSON.stringify(discoveryJson, null, 2),
     "utf-8",
   );
-  console.log(chalk.green("  public/.well-known/agentgate.json"));
+  console.log(chalk.green("  public/.well-known/agentdoor.json"));
 
   // Generate .well-known/agent-card.json (A2A compat)
   const agentCard = generateA2ACard({ serviceName, serviceDescription, scopes: configScopes });
@@ -279,31 +279,31 @@ async function interactiveInit(cwd: string, options: InitOptions): Promise<void>
 
   const snippets: Record<FrameworkChoice, string> = {
     nextjs: `  ${chalk.dim("// middleware.ts")}
-  import { createAgentGateMiddleware } from "@agentgate/next";
-  import config from "./agentgate.config";
+  import { createAgentDoorMiddleware } from "@agentdoor/next";
+  import config from "./agentdoor.config";
 
-  export default createAgentGateMiddleware(config);
+  export default createAgentDoorMiddleware(config);
   export const config = { matcher: ["/(.*)" ] };`,
 
     express: `  ${chalk.dim("// server.ts")}
-  import agentgate from "@agentgate/express";
-  import config from "./agentgate.config";
+  import agentdoor from "@agentdoor/express";
+  import config from "./agentdoor.config";
 
-  app.use(agentgate(config));`,
+  app.use(agentdoor(config));`,
 
     hono: `  ${chalk.dim("// index.ts")}
-  import { agentgate } from "@agentgate/hono";
-  import config from "./agentgate.config";
+  import { agentdoor } from "@agentdoor/hono";
+  import config from "./agentdoor.config";
 
-  agentgate(app, config);`,
+  agentdoor(app, config);`,
 
     fastapi: `  ${chalk.dim("# main.py")}
-  from agentgate_fastapi import AgentGate
-  AgentGate(app, config_path="./agentgate.config.json")`,
+  from agentdoor_fastapi import AgentDoor
+  AgentDoor(app, config_path="./agentdoor.config.json")`,
 
     other: `  ${chalk.dim("// See docs for your framework")}
-  import config from "./agentgate.config";
-  // https://agentgate.dev/docs/frameworks`,
+  import config from "./agentdoor.config";
+  // https://agentdoor.dev/docs/frameworks`,
   };
 
   console.log(snippets[framework]);
@@ -315,7 +315,7 @@ async function interactiveInit(cwd: string, options: InitOptions): Promise<void>
 // ---------------------------------------------------------------------------
 
 async function initFromOpenApi(cwd: string, specPath: string, options: InitOptions): Promise<void> {
-  console.log(chalk.bold.cyan("\n  AgentGate Setup (from OpenAPI)\n"));
+  console.log(chalk.bold.cyan("\n  AgentDoor Setup (from OpenAPI)\n"));
 
   const resolvedPath = resolve(cwd, specPath);
 
@@ -330,7 +330,7 @@ async function initFromOpenApi(cwd: string, specPath: string, options: InitOptio
 
   if (scopes.length === 0) {
     console.error(chalk.yellow("  Warning: No endpoints found in the OpenAPI spec."));
-    console.log(chalk.dim("  Generating config with empty scopes. Edit agentgate.config.ts to add scopes manually.\n"));
+    console.log(chalk.dim("  Generating config with empty scopes. Edit agentdoor.config.ts to add scopes manually.\n"));
   } else {
     console.log(chalk.green(`  Found ${scopes.length} scopes:`));
     for (const s of scopes) {
@@ -365,13 +365,13 @@ async function initFromOpenApi(cwd: string, specPath: string, options: InitOptio
   const configContent = generateConfigFile({
     framework: detectedFramework ?? "express",
     serviceName: "My API",
-    serviceDescription: "API with AgentGate integration",
+    serviceDescription: "API with AgentDoor integration",
     scopes: configScopes,
     pricing,
   });
 
-  await writeFile(join(outputDir, "agentgate.config.ts"), configContent, "utf-8");
-  console.log(chalk.green("  Generated agentgate.config.ts"));
+  await writeFile(join(outputDir, "agentdoor.config.ts"), configContent, "utf-8");
+  console.log(chalk.green("  Generated agentdoor.config.ts"));
 
   // Generate .well-known files.
   const wellKnownDir = join(outputDir, "public", ".well-known");
@@ -379,20 +379,20 @@ async function initFromOpenApi(cwd: string, specPath: string, options: InitOptio
 
   const discoveryJson = generateDiscoveryJson({
     serviceName: "My API",
-    serviceDescription: "API with AgentGate integration",
+    serviceDescription: "API with AgentDoor integration",
     scopes: configScopes,
   });
 
   await writeFile(
-    join(wellKnownDir, "agentgate.json"),
+    join(wellKnownDir, "agentdoor.json"),
     JSON.stringify(discoveryJson, null, 2),
     "utf-8",
   );
-  console.log(chalk.green("  Generated public/.well-known/agentgate.json"));
+  console.log(chalk.green("  Generated public/.well-known/agentdoor.json"));
 
   const agentCard = generateA2ACard({
     serviceName: "My API",
-    serviceDescription: "API with AgentGate integration",
+    serviceDescription: "API with AgentDoor integration",
     scopes: configScopes,
   });
   await writeFile(
@@ -407,17 +407,17 @@ async function initFromOpenApi(cwd: string, specPath: string, options: InitOptio
   console.log(chalk.bold.cyan("\n  Next: Add 3 lines to your server:\n"));
 
   if (framework === "express") {
-    console.log(chalk.white(`  const agentgate = require("@agentgate/express");`));
-    console.log(chalk.white(`  const config = require("./agentgate.config");`));
-    console.log(chalk.white(`  app.use(agentgate(config));`));
+    console.log(chalk.white(`  const agentdoor = require("@agentdoor/express");`));
+    console.log(chalk.white(`  const config = require("./agentdoor.config");`));
+    console.log(chalk.white(`  app.use(agentdoor(config));`));
   } else if (framework === "nextjs") {
-    console.log(chalk.white(`  import { createAgentGateMiddleware } from "@agentgate/next";`));
-    console.log(chalk.white(`  import config from "./agentgate.config";`));
-    console.log(chalk.white(`  export default createAgentGateMiddleware(config);`));
+    console.log(chalk.white(`  import { createAgentDoorMiddleware } from "@agentdoor/next";`));
+    console.log(chalk.white(`  import config from "./agentdoor.config";`));
+    console.log(chalk.white(`  export default createAgentDoorMiddleware(config);`));
   } else if (framework === "hono") {
-    console.log(chalk.white(`  import { agentgate } from "@agentgate/hono";`));
-    console.log(chalk.white(`  import config from "./agentgate.config";`));
-    console.log(chalk.white(`  agentgate(app, config);`));
+    console.log(chalk.white(`  import { agentdoor } from "@agentdoor/hono";`));
+    console.log(chalk.white(`  import config from "./agentdoor.config";`));
+    console.log(chalk.white(`  agentdoor(app, config);`));
   }
 
   console.log();
@@ -430,7 +430,7 @@ async function initFromOpenApi(cwd: string, specPath: string, options: InitOptio
 export function registerInitCommand(program: Command): void {
   program
     .command("init")
-    .description("Initialize AgentGate in your project")
+    .description("Initialize AgentDoor in your project")
     .option("--from-openapi <path>", "Auto-import from an OpenAPI spec file")
     .option("-o, --output <dir>", "Output directory (defaults to current directory)")
     .option("-y, --yes", "Accept all defaults (non-interactive)")

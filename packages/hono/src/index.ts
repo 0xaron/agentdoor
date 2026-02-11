@@ -1,16 +1,16 @@
 /**
- * @agentgate/hono — Hono middleware for AgentGate.
+ * @agentdoor/hono — Hono middleware for AgentDoor.
  *
  * Works on Cloudflare Workers, Deno, Bun, and Node.js.
  *
  * @example Route mounting (recommended)
  * ```ts
  * import { Hono } from "hono";
- * import { agentgate, type AgentGateVariables } from "@agentgate/hono";
+ * import { agentdoor, type AgentDoorVariables } from "@agentdoor/hono";
  *
- * const app = new Hono<{ Variables: AgentGateVariables }>();
+ * const app = new Hono<{ Variables: AgentDoorVariables }>();
  *
- * agentgate(app, {
+ * agentdoor(app, {
  *   scopes: [{ id: "data.read", description: "Read data" }],
  *   pricing: { "data.read": "$0.001/req" },
  * });
@@ -29,23 +29,23 @@
  * @example Standalone middleware
  * ```ts
  * import { Hono } from "hono";
- * import { createAgentGateMiddleware } from "@agentgate/hono";
+ * import { createAgentDoorMiddleware } from "@agentdoor/hono";
  *
  * const app = new Hono();
- * app.use("*", createAgentGateMiddleware({
+ * app.use("*", createAgentDoorMiddleware({
  *   scopes: [{ id: "data.read", description: "Read data" }],
  * }));
  * ```
  */
 
 export {
-  agentgate,
-  createAgentGateMiddleware,
+  agentdoor,
+  createAgentDoorMiddleware,
   createAuthGuardMiddleware,
   buildDiscoveryDocument,
 } from "./middleware.js";
 
 export type {
-  AgentGateVariables,
-  AgentGateHonoConfig,
+  AgentDoorVariables,
+  AgentDoorHonoConfig,
 } from "./middleware.js";

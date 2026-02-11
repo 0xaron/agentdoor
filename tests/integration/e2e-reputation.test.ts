@@ -9,9 +9,9 @@
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { agentgate } from "@agentgate/hono";
-import type { AgentGateVariables } from "@agentgate/hono";
-import { MemoryStore, ReputationManager } from "@agentgate/core";
+import { agentdoor } from "@agentdoor/hono";
+import type { AgentDoorVariables } from "@agentdoor/hono";
+import { MemoryStore, ReputationManager } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,12 +22,12 @@ const TEST_SCOPES = [
   { id: "data.write", description: "Write data" },
 ];
 
-async function registerAndVerify(app: Hono<{ Variables: AgentGateVariables }>) {
+async function registerAndVerify(app: Hono<{ Variables: AgentDoorVariables }>) {
   const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
   const pubRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
   const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubRaw)));
 
-  const regRes = await app.request("/agentgate/register", {
+  const regRes = await app.request("/agentdoor/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -46,7 +46,7 @@ async function registerAndVerify(app: Hono<{ Variables: AgentGateVariables }>) {
   );
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
 
-  const verifyRes = await app.request("/agentgate/register/verify", {
+  const verifyRes = await app.request("/agentdoor/register/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -67,11 +67,11 @@ async function registerAndVerify(app: Hono<{ Variables: AgentGateVariables }>) {
 // Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Reputation Gating", () => {
+describe("AgentDoor E2E: Reputation Gating", () => {
   it("blocks agent with reputation below the block gate threshold", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Reputation Test" },
@@ -99,8 +99,8 @@ describe("AgentGate E2E: Reputation Gating", () => {
 
   it("allows agent with reputation above the block gate threshold", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Reputation Test" },
@@ -126,8 +126,8 @@ describe("AgentGate E2E: Reputation Gating", () => {
 
   it("warns agent with low reputation via header (warn action)", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Reputation Test" },
@@ -145,14 +145,14 @@ describe("AgentGate E2E: Reputation Gating", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("score=40");
-    expect(res.headers.get("x-agentgate-reputation-warning")).toContain("required=60");
+    expect(res.headers.get("x-agentdoor-reputation-warning")).toContain("score=40");
+    expect(res.headers.get("x-agentdoor-reputation-warning")).toContain("required=60");
   });
 
   it("allows all agents when no reputation gates are configured", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Reputation Test" },
@@ -175,8 +175,8 @@ describe("AgentGate E2E: Reputation Gating", () => {
 
   it("reputation updates on successful request (+0.1)", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Reputation Test" },
@@ -196,8 +196,8 @@ describe("AgentGate E2E: Reputation Gating", () => {
 
   it("reputation decreases on blocked request (-0.5)", async () => {
     const store = new MemoryStore();
-    const app = new Hono<{ Variables: AgentGateVariables }>();
-    agentgate(app, {
+    const app = new Hono<{ Variables: AgentDoorVariables }>();
+    agentdoor(app, {
       scopes: TEST_SCOPES,
       store,
       service: { name: "Reputation Test" },

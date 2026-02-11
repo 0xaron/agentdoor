@@ -11,7 +11,7 @@ import {
   verifySignature,
 } from "../keystore.js";
 
-const tmpDir = path.join(os.tmpdir(), `agentgate-test-${Date.now()}`);
+const tmpDir = path.join(os.tmpdir(), `agentdoor-test-${Date.now()}`);
 
 afterEach(() => {
   // Clean up temp directory after each test

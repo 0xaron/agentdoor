@@ -1,11 +1,11 @@
 # Express Weather API Example
 
-A sample weather API built with Express.js and the `@agentgate/express` middleware. Demonstrates the 3-line integration pattern for making any Express API agent-ready.
+A sample weather API built with Express.js and the `@agentdoor/express` middleware. Demonstrates the 3-line integration pattern for making any Express API agent-ready.
 
 ## What This Example Shows
 
-- Mounting AgentGate middleware on an Express app
-- Automatic discovery endpoint at `/.well-known/agentgate.json`
+- Mounting AgentDoor middleware on an Express app
+- Automatic discovery endpoint at `/.well-known/agentdoor.json`
 - Agent registration and authentication endpoints
 - Using `req.isAgent` and `req.agent` in route handlers
 - x402 payment configuration
@@ -30,10 +30,10 @@ pnpm dev
 
 | Endpoint | Description |
 |---|---|
-| `GET /.well-known/agentgate.json` | AgentGate discovery document |
-| `POST /agentgate/register` | Agent registration |
-| `POST /agentgate/register/verify` | Challenge verification |
-| `POST /agentgate/auth` | Agent authentication |
+| `GET /.well-known/agentdoor.json` | AgentDoor discovery document |
+| `POST /agentdoor/register` | Agent registration |
+| `POST /agentdoor/register/verify` | Challenge verification |
+| `POST /agentdoor/auth` | Agent authentication |
 | `GET /api/weather?city=san-francisco` | Current weather data |
 | `GET /api/forecast?city=austin&days=5` | Multi-day forecast |
 
@@ -43,4 +43,4 @@ Start this server, then run the `agent-typescript` example pointing at `http://l
 
 ## Packages Used
 
-- [`@agentgate/express`](../../packages/express) - Express middleware adapter
+- [`@agentdoor/express`](../../packages/express) - Express middleware adapter

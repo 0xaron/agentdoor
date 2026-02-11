@@ -1,7 +1,7 @@
 /**
- * Tests for `agentgate status` command.
+ * Tests for `agentdoor status` command.
  *
- * Covers: config file detection, .well-known/agentgate.json validation,
+ * Covers: config file detection, .well-known/agentdoor.json validation,
  * scope parsing, error handling for missing/invalid files.
  */
 
@@ -13,11 +13,11 @@ import { writeFile, mkdir, rm, readFile } from "node:fs/promises";
 
 // ---------------------------------------------------------------------------
 // Helpers — we test the local file checking logic by replicating the
-// file system state that `agentgate status` would check.
+// file system state that `agentdoor status` would check.
 // ---------------------------------------------------------------------------
 
 function createTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "agentgate-status-test-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "agentdoor-status-test-"));
 }
 
 interface StatusCheck {
@@ -34,20 +34,20 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
 
   const configFile = configPath
     ? path.resolve(cwd, configPath)
-    : path.join(cwd, "agentgate.config.ts");
+    : path.join(cwd, "agentdoor.config.ts");
 
   const configTsExists = fs.existsSync(configFile);
   const configJsExists = !configTsExists && fs.existsSync(configFile.replace(".ts", ".js"));
-  const configJsonExists = !configTsExists && !configJsExists && fs.existsSync(path.join(cwd, "agentgate.config.json"));
+  const configJsonExists = !configTsExists && !configJsExists && fs.existsSync(path.join(cwd, "agentdoor.config.json"));
 
   const configFound = configTsExists || configJsExists || configJsonExists;
   const configName = configTsExists
-    ? "agentgate.config.ts"
+    ? "agentdoor.config.ts"
     : configJsExists
-      ? "agentgate.config.js"
+      ? "agentdoor.config.js"
       : configJsonExists
-        ? "agentgate.config.json"
-        : "agentgate.config.ts";
+        ? "agentdoor.config.json"
+        : "agentdoor.config.ts";
 
   checks.push({
     label: "Config",
@@ -56,9 +56,9 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
   });
 
   const wellKnownPaths = [
-    path.join(cwd, "public", ".well-known", "agentgate.json"),
-    path.join(cwd, ".well-known", "agentgate.json"),
-    path.join(cwd, "static", ".well-known", "agentgate.json"),
+    path.join(cwd, "public", ".well-known", "agentdoor.json"),
+    path.join(cwd, ".well-known", "agentdoor.json"),
+    path.join(cwd, "static", ".well-known", "agentdoor.json"),
   ];
 
   let discoveryFound = false;
@@ -76,8 +76,8 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
     label: "Discovery",
     ok: discoveryFound,
     detail: discoveryFound
-      ? `agentgate.json found at ${discoveryPath}`
-      : "/.well-known/agentgate.json not found in public/, .well-known/, or static/",
+      ? `agentdoor.json found at ${discoveryPath}`
+      : "/.well-known/agentdoor.json not found in public/, .well-known/, or static/",
   });
 
   const a2aPaths = [
@@ -128,7 +128,7 @@ async function checkLocalFiles(cwd: string, configPath?: string): Promise<Status
       checks.push({
         label: "Discovery Parse",
         ok: false,
-        detail: "Failed to parse agentgate.json",
+        detail: "Failed to parse agentdoor.json",
       });
     }
   }
@@ -151,26 +151,26 @@ describe("status - config file detection", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it("finds agentgate.config.ts", async () => {
-    await writeFile(path.join(tmpDir, "agentgate.config.ts"), "export default {};");
+  it("finds agentdoor.config.ts", async () => {
+    await writeFile(path.join(tmpDir, "agentdoor.config.ts"), "export default {};");
 
     const checks = await checkLocalFiles(tmpDir);
     const configCheck = checks.find((c) => c.label === "Config");
     expect(configCheck?.ok).toBe(true);
-    expect(configCheck?.detail).toContain("agentgate.config.ts found");
+    expect(configCheck?.detail).toContain("agentdoor.config.ts found");
   });
 
-  it("finds agentgate.config.js as fallback", async () => {
-    await writeFile(path.join(tmpDir, "agentgate.config.js"), "module.exports = {};");
+  it("finds agentdoor.config.js as fallback", async () => {
+    await writeFile(path.join(tmpDir, "agentdoor.config.js"), "module.exports = {};");
 
     const checks = await checkLocalFiles(tmpDir);
     const configCheck = checks.find((c) => c.label === "Config");
     expect(configCheck?.ok).toBe(true);
-    expect(configCheck?.detail).toContain("agentgate.config.js found");
+    expect(configCheck?.detail).toContain("agentdoor.config.js found");
   });
 
-  it("finds agentgate.config.json as fallback", async () => {
-    await writeFile(path.join(tmpDir, "agentgate.config.json"), "{}");
+  it("finds agentdoor.config.json as fallback", async () => {
+    await writeFile(path.join(tmpDir, "agentdoor.config.json"), "{}");
 
     const checks = await checkLocalFiles(tmpDir);
     const configCheck = checks.find((c) => c.label === "Config");
@@ -193,7 +193,7 @@ describe("status - config file detection", () => {
   });
 });
 
-describe("status - .well-known/agentgate.json detection", () => {
+describe("status - .well-known/agentdoor.json detection", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -208,7 +208,7 @@ describe("status - .well-known/agentgate.json detection", () => {
     const dir = path.join(tmpDir, "public", ".well-known");
     await mkdir(dir, { recursive: true });
     await writeFile(
-      path.join(dir, "agentgate.json"),
+      path.join(dir, "agentdoor.json"),
       JSON.stringify({
         scopes_available: [{ id: "data.read" }],
         payment: { protocol: "x402" },
@@ -224,7 +224,7 @@ describe("status - .well-known/agentgate.json detection", () => {
     const dir = path.join(tmpDir, ".well-known");
     await mkdir(dir, { recursive: true });
     await writeFile(
-      path.join(dir, "agentgate.json"),
+      path.join(dir, "agentdoor.json"),
       JSON.stringify({
         scopes_available: [{ id: "data.read" }],
       }),
@@ -239,7 +239,7 @@ describe("status - .well-known/agentgate.json detection", () => {
     const dir = path.join(tmpDir, "static", ".well-known");
     await mkdir(dir, { recursive: true });
     await writeFile(
-      path.join(dir, "agentgate.json"),
+      path.join(dir, "agentdoor.json"),
       JSON.stringify({
         scopes_available: [{ id: "data.read" }],
       }),
@@ -261,7 +261,7 @@ describe("status - .well-known/agentgate.json detection", () => {
     const dir = path.join(tmpDir, "public", ".well-known");
     await mkdir(dir, { recursive: true });
     await writeFile(
-      path.join(dir, "agentgate.json"),
+      path.join(dir, "agentdoor.json"),
       JSON.stringify({
         scopes_available: [
           { id: "data.read" },
@@ -281,7 +281,7 @@ describe("status - .well-known/agentgate.json detection", () => {
     const dir = path.join(tmpDir, "public", ".well-known");
     await mkdir(dir, { recursive: true });
     await writeFile(
-      path.join(dir, "agentgate.json"),
+      path.join(dir, "agentdoor.json"),
       JSON.stringify({
         scopes_available: [],
       }),
@@ -297,7 +297,7 @@ describe("status - .well-known/agentgate.json detection", () => {
     const dir = path.join(tmpDir, "public", ".well-known");
     await mkdir(dir, { recursive: true });
     await writeFile(
-      path.join(dir, "agentgate.json"),
+      path.join(dir, "agentdoor.json"),
       JSON.stringify({
         scopes_available: [{ id: "data.read" }],
         payment: { protocol: "x402" },
@@ -313,7 +313,7 @@ describe("status - .well-known/agentgate.json detection", () => {
   it("reports malformed JSON gracefully", async () => {
     const dir = path.join(tmpDir, "public", ".well-known");
     await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, "agentgate.json"), "not json {{");
+    await writeFile(path.join(dir, "agentdoor.json"), "not json {{");
 
     const checks = await checkLocalFiles(tmpDir);
     const parseCheck = checks.find((c) => c.label === "Discovery Parse");

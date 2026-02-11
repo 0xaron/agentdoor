@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate/fastapi",
+  "name": "@agentdoor/fastapi",
   "version": "0.1.0",
   "private": true,
   "scripts": {

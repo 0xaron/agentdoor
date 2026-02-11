@@ -1,5 +1,5 @@
 /**
- * Integration Test — Full AgentGate Lifecycle
+ * Integration Test — Full AgentDoor Lifecycle
  *
  * Tests the complete flow in a single coherent sequence:
  *   config → store → challenge → verify → token
@@ -30,7 +30,7 @@ import {
   // Discovery
   generateDiscoveryDocument,
   // Constants
-  AGENTGATE_VERSION,
+  AGENTDOOR_VERSION,
 } from "../index.js";
 
 import type { ResolvedConfig } from "../config.js";
@@ -73,11 +73,11 @@ describe("Integration: config → store → challenge → verify → token", () 
     // Step 2: Discovery — generate a discovery document from config
     // ---------------------------------------------------------------
     const discoveryDoc = generateDiscoveryDocument(config);
-    expect(discoveryDoc.agentgate_version).toBe(AGENTGATE_VERSION);
+    expect(discoveryDoc.agentdoor_version).toBe(AGENTDOOR_VERSION);
     expect(discoveryDoc.service_name).toBe("Integration Test Service");
     expect(discoveryDoc.scopes_available).toHaveLength(2);
-    expect(discoveryDoc.registration_endpoint).toBe("/agentgate/register");
-    expect(discoveryDoc.auth_endpoint).toBe("/agentgate/auth");
+    expect(discoveryDoc.registration_endpoint).toBe("/agentdoor/register");
+    expect(discoveryDoc.auth_endpoint).toBe("/agentdoor/auth");
 
     // ---------------------------------------------------------------
     // Step 3: Agent generates a keypair (client side)
@@ -95,7 +95,7 @@ describe("Integration: config → store → challenge → verify → token", () 
     const challenge = createChallenge(agentId);
     expect(challenge.agentId).toBe(agentId);
     expect(challenge.nonce).toBeDefined();
-    expect(challenge.message).toContain("agentgate:register:");
+    expect(challenge.message).toContain("agentdoor:register:");
     expect(challenge.message).toContain(agentId);
     expect(challenge.expiresAt.getTime()).toBeGreaterThan(Date.now());
 

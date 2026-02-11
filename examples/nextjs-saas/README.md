@@ -1,10 +1,10 @@
 # Next.js SaaS Example
 
-A sample Next.js App Router application with AgentGate middleware. Demonstrates how to add agent authentication to a Next.js SaaS product so that both humans and AI agents can access the same API endpoints.
+A sample Next.js App Router application with AgentDoor middleware. Demonstrates how to add agent authentication to a Next.js SaaS product so that both humans and AI agents can access the same API endpoints.
 
 ## What This Example Shows
 
-- Using `@agentgate/next` middleware in a Next.js App Router project
+- Using `@agentdoor/next` middleware in a Next.js App Router project
 - Agent detection via request headers in API route handlers
 - Serving both human and agent traffic from the same endpoints
 - Customizing responses based on caller type
@@ -31,7 +31,7 @@ The app will be available at `http://localhost:3000`.
 
 ```
 nextjs-saas/
-├── middleware.ts          # AgentGate middleware (intercepts all /api/* routes)
+├── middleware.ts          # AgentDoor middleware (intercepts all /api/* routes)
 ├── app/
 │   └── api/
 │       └── data/
@@ -42,13 +42,13 @@ nextjs-saas/
 
 ## How It Works
 
-The `middleware.ts` file configures AgentGate to intercept all API routes. It:
+The `middleware.ts` file configures AgentDoor to intercept all API routes. It:
 
-1. Serves the discovery document at `/.well-known/agentgate.json`
-2. Handles agent registration and authentication at `/agentgate/*`
+1. Serves the discovery document at `/.well-known/agentdoor.json`
+2. Handles agent registration and authentication at `/agentdoor/*`
 3. Validates agent credentials on `/api/*` routes
-4. Sets `x-agentgate-is-agent` and `x-agentgate-agent-id` headers for downstream route handlers
+4. Sets `x-agentdoor-is-agent` and `x-agentdoor-agent-id` headers for downstream route handlers
 
 ## Packages Used
 
-- [`@agentgate/next`](../../packages/next) - Next.js App Router adapter
+- [`@agentdoor/next`](../../packages/next) - Next.js App Router adapter

@@ -1,7 +1,7 @@
 /**
- * Discovery client for AgentGate-enabled services.
+ * Discovery client for AgentDoor-enabled services.
  *
- * Fetches and parses /.well-known/agentgate.json from a target URL.
+ * Fetches and parses /.well-known/agentdoor.json from a target URL.
  * Validates the response shape.
  * Caches results in memory with configurable TTL.
  */
@@ -39,9 +39,9 @@ export interface DiscoveryCompanionProtocols {
   [key: string]: string | boolean | undefined;
 }
 
-/** Full AgentGate discovery document shape. */
-export interface AgentGateDiscoveryDocument {
-  agentgate_version: string;
+/** Full AgentDoor discovery document shape. */
+export interface AgentDoorDiscoveryDocument {
+  agentdoor_version: string;
   service_name: string;
   service_description?: string;
   registration_endpoint: string;
@@ -57,7 +57,7 @@ export interface AgentGateDiscoveryDocument {
 
 /** Cached discovery entry with expiration. */
 interface CacheEntry {
-  document: AgentGateDiscoveryDocument;
+  document: AgentDoorDiscoveryDocument;
   expiresAt: number;
 }
 
@@ -87,14 +87,14 @@ function normalizeBaseUrl(url: string): string {
 
 /**
  * Validate that a parsed object has the required fields of an
- * AgentGate discovery document.
+ * AgentDoor discovery document.
  *
  * Throws a descriptive error if validation fails.
  */
 function validateDiscoveryDocument(
   data: unknown,
   sourceUrl: string,
-): AgentGateDiscoveryDocument {
+): AgentDoorDiscoveryDocument {
   if (typeof data !== "object" || data === null) {
     throw new DiscoveryError(
       `Discovery document at ${sourceUrl} is not a JSON object`,
@@ -105,8 +105,8 @@ function validateDiscoveryDocument(
   const doc = data as Record<string, unknown>;
 
   // Required string fields
-  const requiredStrings: Array<keyof AgentGateDiscoveryDocument> = [
-    "agentgate_version",
+  const requiredStrings: Array<keyof AgentDoorDiscoveryDocument> = [
+    "agentdoor_version",
     "service_name",
     "registration_endpoint",
     "auth_endpoint",
@@ -152,7 +152,7 @@ function validateDiscoveryDocument(
     }
   }
 
-  return doc as unknown as AgentGateDiscoveryDocument;
+  return doc as unknown as AgentDoorDiscoveryDocument;
 }
 
 /**
@@ -180,9 +180,9 @@ export interface DiscoverOptions {
 }
 
 /**
- * Fetch and parse the AgentGate discovery document from a service URL.
+ * Fetch and parse the AgentDoor discovery document from a service URL.
  *
- * The well-known endpoint is `<baseUrl>/.well-known/agentgate.json`.
+ * The well-known endpoint is `<baseUrl>/.well-known/agentdoor.json`.
  * Results are cached in memory for the specified TTL.
  *
  * @param baseUrl - The target service URL (e.g. "https://api.example.com")
@@ -192,7 +192,7 @@ export interface DiscoverOptions {
 export async function discover(
   baseUrl: string,
   options: DiscoverOptions = {},
-): Promise<AgentGateDiscoveryDocument> {
+): Promise<AgentDoorDiscoveryDocument> {
   const {
     cacheTtlMs = DEFAULT_CACHE_TTL_MS,
     forceRefresh = false,
@@ -210,7 +210,7 @@ export async function discover(
     }
   }
 
-  const discoveryUrl = `${normalized}/.well-known/agentgate.json`;
+  const discoveryUrl = `${normalized}/.well-known/agentdoor.json`;
 
   let response: Response;
   try {
@@ -221,7 +221,7 @@ export async function discover(
       method: "GET",
       headers: {
         Accept: "application/json",
-        "User-Agent": "agentgate-sdk/0.1.0",
+        "User-Agent": "agentdoor-sdk/0.1.0",
       },
       signal: controller.signal,
     });

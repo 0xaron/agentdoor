@@ -1,28 +1,28 @@
 # Agent SDK
 
-The AgentGate SDK is the agent-side client library. It handles the full lifecycle of connecting to AgentGate-enabled services: discovery, registration, challenge-response, credential caching, authenticated requests, and x402 payments.
+The AgentDoor SDK is the agent-side client library. It handles the full lifecycle of connecting to AgentDoor-enabled services: discovery, registration, challenge-response, credential caching, authenticated requests, and x402 payments.
 
-Available for TypeScript (`@agentgate/sdk`) and Python (`agentgate`).
+Available for TypeScript (`@agentdoor/sdk`) and Python (`agentdoor`).
 
 ## TypeScript
 
 ### Installation
 
 ```bash
-npm install @agentgate/sdk
+npm install @agentdoor/sdk
 ```
 
 ### Quick Start
 
 ```typescript
-import { AgentGate } from "@agentgate/sdk";
+import { AgentDoor } from "@agentdoor/sdk";
 
 // Create an agent instance (auto-generates a keypair if none exists)
-const agent = new AgentGate({
-  keyPath: "~/.agentgate/keys.json",
+const agent = new AgentDoor({
+  keyPath: "~/.agentdoor/keys.json",
 });
 
-// Connect to any AgentGate-enabled service
+// Connect to any AgentDoor-enabled service
 const session = await agent.connect("https://api.example.com");
 
 // Make authenticated requests
@@ -34,20 +34,20 @@ console.log(weather); // { temp: 72, unit: "F", ... }
 
 The `connect()` call performs the entire flow automatically:
 
-1. Fetches `/.well-known/agentgate.json` from the target service (cached after first fetch).
-2. Sends `POST /agentgate/register` with the agent's public key and requested scopes.
+1. Fetches `/.well-known/agentdoor.json` from the target service (cached after first fetch).
+2. Sends `POST /agentdoor/register` with the agent's public key and requested scopes.
 3. Signs the challenge nonce with the agent's private key.
-4. Sends `POST /agentgate/register/verify` with the signature.
+4. Sends `POST /agentdoor/register/verify` with the signature.
 5. Stores the returned credentials (API key + JWT) locally.
 6. Returns a `Session` object for making authenticated requests.
 
 Subsequent `connect()` calls to the same service skip registration and reuse cached credentials.
 
-### AgentGate Class
+### AgentDoor Class
 
 ```typescript
-class AgentGate {
-  constructor(options?: AgentGateOptions);
+class AgentDoor {
+  constructor(options?: AgentDoorOptions);
 
   connect(url: string, options?: ConnectOptions): Promise<Session>;
   disconnect(url: string): Promise<void>;
@@ -55,10 +55,10 @@ class AgentGate {
 }
 ```
 
-#### `AgentGateOptions`
+#### `AgentDoorOptions`
 
 ```typescript
-interface AgentGateOptions {
+interface AgentDoorOptions {
   // Path to store the Ed25519 keypair. If the file does not exist,
   // a new keypair is generated and saved. If omitted, an ephemeral
   // keypair is generated in memory (lost on process exit).
@@ -70,7 +70,7 @@ interface AgentGateOptions {
   x402Wallet?: string;
 
   // Override the default credential cache directory.
-  // Default: ~/.agentgate/credentials/
+  // Default: ~/.agentdoor/credentials/
   credentialCachePath?: string;
 
   // Default scopes to request when connecting to any service.
@@ -153,10 +153,10 @@ interface RequestOptions {
 #### Basic Usage
 
 ```typescript
-import { AgentGate } from "@agentgate/sdk";
+import { AgentDoor } from "@agentdoor/sdk";
 
-const agent = new AgentGate({
-  keyPath: "~/.agentgate/keys.json",
+const agent = new AgentDoor({
+  keyPath: "~/.agentdoor/keys.json",
   metadata: {
     framework: "custom",
     name: "my-weather-bot",
@@ -183,8 +183,8 @@ const alert = await session.post("/api/alerts/subscribe", {
 #### x402 Payment Integration
 
 ```typescript
-const agent = new AgentGate({
-  keyPath: "~/.agentgate/keys.json",
+const agent = new AgentDoor({
+  keyPath: "~/.agentdoor/keys.json",
   x402Wallet: "0x1234567890abcdef1234567890abcdef12345678",
 });
 
@@ -204,7 +204,7 @@ When `x402: true` is set, the SDK:
 #### Connecting to Multiple Services
 
 ```typescript
-const agent = new AgentGate({ keyPath: "~/.agentgate/keys.json" });
+const agent = new AgentDoor({ keyPath: "~/.agentdoor/keys.json" });
 
 // Register with multiple services (these run in parallel)
 const [weather, stocks, maps] = await Promise.all([
@@ -259,10 +259,10 @@ The SDK manages Ed25519 keypairs through the keystore.
 If `keyPath` is provided and the file does not exist, a new keypair is generated and saved automatically:
 
 ```typescript
-const agent = new AgentGate({
-  keyPath: "~/.agentgate/keys.json",
+const agent = new AgentDoor({
+  keyPath: "~/.agentdoor/keys.json",
 });
-// First run: generates keypair, saves to ~/.agentgate/keys.json
+// First run: generates keypair, saves to ~/.agentdoor/keys.json
 // Subsequent runs: loads existing keypair
 ```
 
@@ -271,8 +271,8 @@ const agent = new AgentGate({
 Generate a keypair via the CLI:
 
 ```bash
-npx agentgate keygen
-# Saves to ~/.agentgate/keys.json
+npx agentdoor keygen
+# Saves to ~/.agentdoor/keys.json
 # Prints the public key
 ```
 
@@ -294,19 +294,19 @@ Keep the `secretKey` private. Never commit it to version control. The public key
 If `keyPath` is omitted, an ephemeral keypair is generated in memory. This is useful for short-lived agents or testing, but credentials are lost when the process exits:
 
 ```typescript
-const agent = new AgentGate(); // ephemeral key, no persistence
+const agent = new AgentDoor(); // ephemeral key, no persistence
 ```
 
 ### Credential Caching
 
 The SDK caches registration credentials per-service to avoid re-registering on every `connect()` call.
 
-**Cache location:** `~/.agentgate/credentials/` (or the path set via `credentialCachePath`).
+**Cache location:** `~/.agentdoor/credentials/` (or the path set via `credentialCachePath`).
 
 **Cache structure:**
 
 ```
-~/.agentgate/
+~/.agentdoor/
   keys.json                           # Ed25519 keypair
   credentials/
     api.example.com.json            # Cached credentials for example service
@@ -335,12 +335,12 @@ await agent.disconnect("https://api.example.com");
 
 ### Token Refresh
 
-JWTs issued by AgentGate are short-lived (default: 1 hour). The SDK **automatically refreshes tokens** before they expire -- your code never needs to handle token expiry manually.
+JWTs issued by AgentDoor are short-lived (default: 1 hour). The SDK **automatically refreshes tokens** before they expire -- your code never needs to handle token expiry manually.
 
 #### How It Works
 
 1. The `Session` monitors the token's expiration time.
-2. **30 seconds before expiry**, it proactively calls `POST /agentgate/auth` with a fresh Ed25519 signature.
+2. **30 seconds before expiry**, it proactively calls `POST /agentdoor/auth` with a fresh Ed25519 signature.
 3. The server verifies the signature, issues a new JWT, and returns it.
 4. The `Session` swaps in the new token transparently.
 5. If a request receives a `401` (token already expired), the SDK retries once with a fresh token.
@@ -349,7 +349,7 @@ JWTs issued by AgentGate are short-lived (default: 1 hour). The SDK **automatica
 Session                                 SaaS
   │                                       │
   │  (token expires in 30s)               │
-  │── POST /agentgate/auth ─────────────▶│
+  │── POST /agentdoor/auth ─────────────▶│
   │   {agent_id, timestamp, signature}   │
   │◀── {token, expires_at} ─────────────│
   │                                       │
@@ -360,7 +360,7 @@ Session                                 SaaS
 
 #### Why Signature-Based Refresh?
 
-Unlike typical OAuth refresh tokens, AgentGate requires an **Ed25519 signature on every refresh**. This means:
+Unlike typical OAuth refresh tokens, AgentDoor requires an **Ed25519 signature on every refresh**. This means:
 
 - **A stolen JWT cannot be refreshed.** The attacker would need the agent's private key.
 - **Every refresh proves key ownership.** The server verifies the signature against the agent's registered public key.
@@ -384,7 +384,7 @@ session.refresh_token()
 
 #### Concurrent Refresh Handling
 
-If multiple requests trigger a token refresh simultaneously, the SDK coalesces them into a single network call. Only one `POST /agentgate/auth` request is made, and all waiting requests use the new token.
+If multiple requests trigger a token refresh simultaneously, the SDK coalesces them into a single network call. Only one `POST /agentdoor/auth` request is made, and all waiting requests use the new token.
 
 ---
 
@@ -393,15 +393,15 @@ If multiple requests trigger a token refresh simultaneously, the SDK coalesces t
 ### Installation
 
 ```bash
-pip install agentgate
+pip install agentdoor
 ```
 
 ### Quick Start
 
 ```python
-from agentgate import AgentGate
+from agentdoor import AgentDoor
 
-agent = AgentGate(key_path="~/.agentgate/keys.json")
+agent = AgentDoor(key_path="~/.agentdoor/keys.json")
 
 # Connect to a service (discovery + register + auth)
 session = agent.connect("https://api.example.com")
@@ -411,10 +411,10 @@ weather = session.get("/api/weather", params={"city": "sf"})
 print(weather)  # {"temp": 72, "unit": "F"}
 ```
 
-### AgentGate Class
+### AgentDoor Class
 
 ```python
-class AgentGate:
+class AgentDoor:
     def __init__(
         self,
         key_path: str | None = None,
@@ -470,10 +470,10 @@ class Session:
 #### Basic Usage
 
 ```python
-from agentgate import AgentGate
+from agentdoor import AgentDoor
 
-agent = AgentGate(
-    key_path="~/.agentgate/keys.json",
+agent = AgentDoor(
+    key_path="~/.agentdoor/keys.json",
     metadata={
         "framework": "custom",
         "name": "data-collector",
@@ -494,10 +494,10 @@ print(f"Temperature: {data['temp']}F")
 
 ```python
 import asyncio
-from agentgate import AgentGate
+from agentdoor import AgentDoor
 
 async def main():
-    agent = AgentGate(key_path="~/.agentgate/keys.json")
+    agent = AgentDoor(key_path="~/.agentdoor/keys.json")
 
     # Connect to multiple services concurrently
     weather, stocks = await asyncio.gather(
@@ -514,8 +514,8 @@ asyncio.run(main())
 #### x402 Payment
 
 ```python
-agent = AgentGate(
-    key_path="~/.agentgate/keys.json",
+agent = AgentDoor(
+    key_path="~/.agentdoor/keys.json",
     x402_wallet="0x1234567890abcdef1234567890abcdef12345678",
 )
 
@@ -526,9 +526,9 @@ data = session.get("/api/premium/dataset", x402=True)
 #### LangChain Integration
 
 ```python
-from agentgate.integrations.langchain import AgentGateToolkit
+from agentdoor.integrations.langchain import AgentDoorToolkit
 
-toolkit = AgentGateToolkit(key_path="~/.agentgate/keys.json")
+toolkit = AgentDoorToolkit(key_path="~/.agentdoor/keys.json")
 
 # Discover and wrap multiple services as LangChain tools
 tools = toolkit.get_tools([
@@ -547,10 +547,10 @@ result = agent.run("What is the weather in SF and the current price of AAPL?")
 #### CrewAI Integration
 
 ```python
-from agentgate.integrations.crewai import AgentGateTools
+from agentdoor.integrations.crewai import AgentDoorTools
 
-agentgate_tools = AgentGateTools(key_path="~/.agentgate/keys.json")
-tools = agentgate_tools.for_services([
+agentdoor_tools = AgentDoorTools(key_path="~/.agentdoor/keys.json")
+tools = agentdoor_tools.for_services([
     "https://api.example.com",
 ])
 
@@ -587,7 +587,7 @@ Both the TypeScript and Python SDKs raise typed errors for common failure cases.
 ### TypeScript
 
 ```typescript
-import { AgentGate, AgentGateError, RegistrationError, AuthError } from "@agentgate/sdk";
+import { AgentDoor, AgentDoorError, RegistrationError, AuthError } from "@agentdoor/sdk";
 
 try {
   const session = await agent.connect("https://api.example.com");
@@ -597,8 +597,8 @@ try {
     console.error("Code:", error.code);  // e.g. "already_registered"
   } else if (error instanceof AuthError) {
     console.error("Auth failed:", error.message);
-  } else if (error instanceof AgentGateError) {
-    console.error("AgentGate error:", error.message);
+  } else if (error instanceof AgentDoorError) {
+    console.error("AgentDoor error:", error.message);
   }
 }
 ```
@@ -606,8 +606,8 @@ try {
 ### Python
 
 ```python
-from agentgate import AgentGate
-from agentgate.errors import AgentGateError, RegistrationError, AuthError
+from agentdoor import AgentDoor
+from agentdoor.errors import AgentDoorError, RegistrationError, AuthError
 
 try:
     session = agent.connect("https://api.example.com")
@@ -615,18 +615,18 @@ except RegistrationError as e:
     print(f"Registration failed: {e.message} (code: {e.code})")
 except AuthError as e:
     print(f"Auth failed: {e.message}")
-except AgentGateError as e:
-    print(f"AgentGate error: {e.message}")
+except AgentDoorError as e:
+    print(f"AgentDoor error: {e.message}")
 ```
 
 ### Error Types
 
 | Error | When |
 |---|---|
-| `DiscoveryError` | Failed to fetch or parse `/.well-known/agentgate.json`. |
+| `DiscoveryError` | Failed to fetch or parse `/.well-known/agentdoor.json`. |
 | `RegistrationError` | Registration was rejected (invalid key, rate limited, already registered). |
 | `ChallengeError` | Challenge signing or verification failed. |
 | `AuthError` | Authentication failed (invalid credentials, expired token, suspended agent). |
 | `RateLimitError` | Agent exceeded its rate limit. Contains `retryAfter` seconds. |
 | `NetworkError` | HTTP request failed (timeout, DNS, connection refused). |
-| `AgentGateError` | Base error class for all AgentGate errors. |
+| `AgentDoorError` | Base error class for all AgentDoor errors. |

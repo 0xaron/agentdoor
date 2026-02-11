@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from "express";
-import { agentGate, AgentGateRequest } from "@agentgate/express";
+import { agentDoor, AgentDoorRequest } from "@agentdoor/express";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,15 +17,15 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-AgentGate-Token"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-AgentDoor-Token"
   );
   next();
 });
 
-// AgentGate middleware — handles agent discovery, authentication, and x402 payments
+// AgentDoor middleware — handles agent discovery, authentication, and x402 payments
 app.use(
   "/api",
-  agentGate({
+  agentDoor({
     scopes: [
       { id: "data.read", description: "Read application data", price: "$0.001/req" },
       { id: "data.write", description: "Write application data", price: "$0.01/req" },
@@ -33,7 +33,7 @@ app.use(
     ],
     service: {
       name: "Agent-Ready Express API",
-      description: "Express API with AgentGate authentication and x402 payments",
+      description: "Express API with AgentDoor authentication and x402 payments",
     },
     x402: {
       network: "base",
@@ -70,8 +70,8 @@ const dataStore: DataItem[] = [
 app.get("/", (_req: Request, res: Response) => {
   res.json({
     name: "Agent-Ready Express API",
-    description: "Express API powered by AgentGate + x402",
-    discovery: "/.well-known/agentgate",
+    description: "Express API powered by AgentDoor + x402",
+    discovery: "/.well-known/agentdoor",
     endpoints: {
       "GET /api/data": "Read all data (scope: data.read, $0.001/req)",
       "GET /api/data/:id": "Read single item (scope: data.read, $0.001/req)",
@@ -97,9 +97,9 @@ app.get("/api/health", (_req: Request, res: Response) => {
  * GET /api/data — List all data items (requires data.read scope)
  */
 app.get("/api/data", (req: Request, res: Response) => {
-  const agentReq = req as AgentGateRequest;
-  const agentId = agentReq.agentGate?.agentId || "anonymous";
-  const scopes = agentReq.agentGate?.scopes || [];
+  const agentReq = req as AgentDoorRequest;
+  const agentId = agentReq.agentDoor?.agentId || "anonymous";
+  const scopes = agentReq.agentDoor?.scopes || [];
 
   res.json({
     success: true,
@@ -117,8 +117,8 @@ app.get("/api/data", (req: Request, res: Response) => {
  * GET /api/data/:id — Get a single data item (requires data.read scope)
  */
 app.get("/api/data/:id", (req: Request, res: Response) => {
-  const agentReq = req as AgentGateRequest;
-  const agentId = agentReq.agentGate?.agentId || "anonymous";
+  const agentReq = req as AgentDoorRequest;
+  const agentId = agentReq.agentDoor?.agentId || "anonymous";
 
   const item = dataStore.find((d) => d.id === req.params.id);
   if (!item) {
@@ -140,9 +140,9 @@ app.get("/api/data/:id", (req: Request, res: Response) => {
  * POST /api/data — Create a new data item (requires data.write scope)
  */
 app.post("/api/data", (req: Request, res: Response) => {
-  const agentReq = req as AgentGateRequest;
-  const agentId = agentReq.agentGate?.agentId || "anonymous";
-  const scopes = agentReq.agentGate?.scopes || [];
+  const agentReq = req as AgentDoorRequest;
+  const agentId = agentReq.agentDoor?.agentId || "anonymous";
+  const scopes = agentReq.agentDoor?.scopes || [];
 
   if (!scopes.includes("data.write")) {
     res.status(403).json({
@@ -182,9 +182,9 @@ app.post("/api/data", (req: Request, res: Response) => {
  * DELETE /api/data/:id — Delete a data item (requires admin scope)
  */
 app.delete("/api/data/:id", (req: Request, res: Response) => {
-  const agentReq = req as AgentGateRequest;
-  const agentId = agentReq.agentGate?.agentId || "anonymous";
-  const scopes = agentReq.agentGate?.scopes || [];
+  const agentReq = req as AgentDoorRequest;
+  const agentId = agentReq.agentDoor?.agentId || "anonymous";
+  const scopes = agentReq.agentDoor?.scopes || [];
 
   if (!scopes.includes("admin")) {
     res.status(403).json({
@@ -218,7 +218,7 @@ app.delete("/api/data/:id", (req: Request, res: Response) => {
 
 app.listen(PORT, () => {
   console.log(`Agent-Ready Express API running on port ${PORT}`);
-  console.log(`Discovery: http://localhost:${PORT}/.well-known/agentgate`);
+  console.log(`Discovery: http://localhost:${PORT}/.well-known/agentdoor`);
   console.log(`Health:    http://localhost:${PORT}/api/health`);
 });
 

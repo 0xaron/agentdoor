@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Spending Caps
+ * @agentdoor/core - Spending Caps
  *
  * Tracks per-agent spending and enforces daily/monthly caps.
  * Supports hard limits (block requests) and soft limits (warn only).

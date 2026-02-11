@@ -1,5 +1,5 @@
 /**
- * Mock data for the AgentGate dashboard.
+ * Mock data for the AgentDoor dashboard.
  *
  * In production this would come from the AgentStore and request-log
  * analytics backend. For the MVP dashboard we use static seed data

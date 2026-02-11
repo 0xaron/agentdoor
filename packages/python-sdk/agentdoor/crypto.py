@@ -1,4 +1,4 @@
-"""Ed25519 cryptographic utilities for AgentGate authentication.
+"""Ed25519 cryptographic utilities for AgentDoor authentication.
 
 Uses PyNaCl for Ed25519 keypair generation and message signing.
 """

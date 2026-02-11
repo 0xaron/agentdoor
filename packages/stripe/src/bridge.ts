@@ -1,5 +1,5 @@
 /**
- * @agentgate/stripe - Stripe Billing Bridge
+ * @agentdoor/stripe - Stripe Billing Bridge
  *
  * Maps x402 agent payments to Stripe invoice items.
  * Each agent gets a Stripe customer record, and each x402 payment
@@ -52,9 +52,9 @@ export interface PaymentRecord {
   metadata?: Record<string, string>;
 }
 
-/** Mapping between an AgentGate agent and a Stripe customer. */
+/** Mapping between an AgentDoor agent and a Stripe customer. */
 export interface StripeCustomerMapping {
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Stripe customer ID */
   stripeCustomerId: string;
@@ -79,7 +79,7 @@ export interface ReconciliationResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Stripe billing bridge for AgentGate.
+ * Stripe billing bridge for AgentDoor.
  *
  * Maps x402 agent payments to Stripe invoice items so SaaS owners
  * can see all revenue (human + agent) in their existing Stripe dashboard.
@@ -144,10 +144,10 @@ export class StripeBridge {
 
       if (!mapping && this.config.autoCreateCustomers) {
         const customer = await this.stripeClient.createCustomer({
-          name: `AgentGate Agent: ${payment.agentId}`,
+          name: `AgentDoor Agent: ${payment.agentId}`,
           metadata: {
-            agentgate_agent_id: payment.agentId,
-            source: "agentgate",
+            agentdoor_agent_id: payment.agentId,
+            source: "agentdoor",
             ...this.config.metadata,
           },
         });
@@ -178,9 +178,9 @@ export class StripeBridge {
         customer: mapping.stripeCustomerId,
         amount: payment.amount,
         currency: payment.currency || this.config.defaultCurrency,
-        description: `AgentGate x402 payment${payment.scope ? ` - ${payment.scope}` : ""}`,
+        description: `AgentDoor x402 payment${payment.scope ? ` - ${payment.scope}` : ""}`,
         metadata: {
-          agentgate_agent_id: payment.agentId,
+          agentdoor_agent_id: payment.agentId,
           x402_tx_hash: payment.x402TxHash ?? "",
           scope: payment.scope ?? "",
           ...payment.metadata,
@@ -221,7 +221,7 @@ export class StripeBridge {
   /**
    * Manually map an agent to a Stripe customer.
    *
-   * @param agentId - AgentGate agent ID
+   * @param agentId - AgentDoor agent ID
    * @param stripeCustomerId - Stripe customer ID
    */
   mapCustomer(agentId: string, stripeCustomerId: string): void {
@@ -235,7 +235,7 @@ export class StripeBridge {
   /**
    * Get the Stripe customer mapping for an agent.
    *
-   * @param agentId - AgentGate agent ID
+   * @param agentId - AgentDoor agent ID
    * @returns Mapping or undefined if not mapped
    */
   getCustomerMapping(agentId: string): StripeCustomerMapping | undefined {

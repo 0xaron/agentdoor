@@ -1,7 +1,7 @@
 {
-  "name": "@agentgate/express",
+  "name": "@agentdoor/express",
   "version": "0.1.0",
-  "description": "Express.js middleware adapter for AgentGate - make your Express API agent-ready in 3 lines",
+  "description": "Express.js middleware adapter for AgentDoor - make your Express API agent-ready in 3 lines",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentgate/core": "workspace:*"
+    "@agentdoor/core": "workspace:*"
   },
   "peerDependencies": {
     "express": ">=4"
@@ -42,11 +42,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentgate/agentgate",
+    "url": "https://github.com/agentdoor/agentdoor",
     "directory": "packages/express"
   },
   "keywords": [
-    "agentgate",
+    "agentdoor",
     "express",
     "middleware",
     "agent",

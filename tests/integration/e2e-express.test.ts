@@ -1,5 +1,5 @@
 /**
- * Integration / E2E tests for the AgentGate Express middleware.
+ * Integration / E2E tests for the AgentDoor Express middleware.
  *
  * These tests exercise the complete agent lifecycle:
  *   Discovery -> Register -> Verify -> Auth Guard -> Authenticated Request -> Re-Auth
@@ -10,12 +10,12 @@
 import { describe, it, expect } from "vitest";
 import express from "express";
 import * as http from "node:http";
-import { agentgate } from "@agentgate/express";
+import { agentdoor } from "@agentdoor/express";
 import {
   MemoryStore,
   generateKeypair,
   signChallenge,
-} from "@agentgate/core";
+} from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Test helper: make HTTP requests
@@ -85,7 +85,7 @@ function createApp(overrides?: Record<string, unknown>) {
   const store = new MemoryStore();
   const app = express();
   app.use(
-    agentgate({
+    agentdoor({
       scopes: TEST_SCOPES,
       store,
       service: { name: "Integration Test API", description: "E2E test service" },
@@ -107,7 +107,7 @@ async function fullRegistration(
 ) {
   const keypair = generateKeypair();
 
-  const regRes = await request(app, "POST", "/agentgate/register", {
+  const regRes = await request(app, "POST", "/agentdoor/register", {
     public_key: keypair.publicKey,
     scopes_requested: scopes,
     metadata: { framework: "vitest", version: "1.0.0", name: "E2E Test Agent" },
@@ -117,7 +117,7 @@ async function fullRegistration(
   const { agent_id, challenge } = regRes.body;
   const signature = signChallenge(challenge.message, keypair.secretKey);
 
-  const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+  const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
     agent_id,
     signature,
   });
@@ -136,20 +136,20 @@ async function fullRegistration(
 // Integration Tests
 // ===========================================================================
 
-describe("AgentGate E2E: Full Agent Lifecycle", () => {
+describe("AgentDoor E2E: Full Agent Lifecycle", () => {
   it("completes the full lifecycle: discovery -> register -> verify -> auth guard -> re-auth", async () => {
     const { app, store } = createApp();
     const keypair = generateKeypair();
 
     // 1. Discovery
-    const discovery = await request(app, "GET", "/.well-known/agentgate.json");
+    const discovery = await request(app, "GET", "/.well-known/agentdoor.json");
     expect(discovery.status).toBe(200);
-    expect(discovery.body.agentgate_version).toBe("1.0");
+    expect(discovery.body.agentdoor_version).toBe("1.0");
     expect(discovery.body.service_name).toBe("Integration Test API");
     expect(discovery.body.scopes_available).toHaveLength(3);
 
     // 2. Register
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read", "data.write"],
       metadata: { framework: "vitest", version: "1.0.0" },
@@ -159,7 +159,7 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
 
     // 3. Verify
     const sig = signChallenge(challenge.message, keypair.secretKey);
-    const verifyRes = await request(app, "POST", "/agentgate/register/verify", {
+    const verifyRes = await request(app, "POST", "/agentdoor/register/verify", {
       agent_id,
       signature: sig,
     });
@@ -178,9 +178,9 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
 
     // 5. Re-auth with signature
     const ts = new Date().toISOString();
-    const authMsg = `agentgate:auth:${agent_id}:${ts}`;
+    const authMsg = `agentdoor:auth:${agent_id}:${ts}`;
     const authSig = signChallenge(authMsg, keypair.secretKey);
-    const authRes = await request(app, "POST", "/agentgate/auth", {
+    const authRes = await request(app, "POST", "/agentdoor/auth", {
       agent_id,
       timestamp: ts,
       signature: authSig,
@@ -234,7 +234,7 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
     const keypair = generateKeypair();
 
     // First registration succeeds
-    const reg1 = await request(app, "POST", "/agentgate/register", {
+    const reg1 = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
     });
@@ -242,13 +242,13 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
 
     // Verify it
     const sig = signChallenge(reg1.body.challenge.message, keypair.secretKey);
-    await request(app, "POST", "/agentgate/register/verify", {
+    await request(app, "POST", "/agentdoor/register/verify", {
       agent_id: reg1.body.agent_id,
       signature: sig,
     });
 
     // Second registration with same key returns 409
-    const reg2 = await request(app, "POST", "/agentgate/register", {
+    const reg2 = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.write"],
     });
@@ -260,14 +260,14 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
     const { app, store } = createApp();
     const keypair = generateKeypair();
 
-    const regRes = await request(app, "POST", "/agentgate/register", {
+    const regRes = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["data.read"],
       metadata: { framework: "LangChain", version: "0.3.14", name: "Test Agent" },
     });
 
     const sig = signChallenge(regRes.body.challenge.message, keypair.secretKey);
-    await request(app, "POST", "/agentgate/register/verify", {
+    await request(app, "POST", "/agentdoor/register/verify", {
       agent_id: regRes.body.agent_id,
       signature: sig,
     });
@@ -282,7 +282,7 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
     const { app } = createApp();
     const keypair = generateKeypair();
 
-    const res = await request(app, "POST", "/agentgate/register", {
+    const res = await request(app, "POST", "/agentdoor/register", {
       public_key: keypair.publicKey,
       scopes_requested: ["nonexistent.scope"],
     });
@@ -293,13 +293,13 @@ describe("AgentGate E2E: Full Agent Lifecycle", () => {
   it("health endpoint reports healthy status", async () => {
     const { app } = createApp();
 
-    const res = await request(app, "GET", "/agentgate/health");
+    const res = await request(app, "GET", "/agentdoor/health");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("healthy");
   });
 });
 
-describe("AgentGate E2E: Store Persistence", () => {
+describe("AgentDoor E2E: Store Persistence", () => {
   it("challenges are cleaned up after verification", async () => {
     const { app, store } = createApp();
     const reg = await fullRegistration(app, ["data.read"]);

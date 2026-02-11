@@ -1,4 +1,4 @@
-"""Tests for agentgate.agent module."""
+"""Tests for agentdoor.agent module."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from agentgate.agent import Agent, AgentConfig
-from agentgate.credentials import Credential, InMemoryCredentialStore
+from agentdoor.agent import Agent, AgentConfig
+from agentdoor.credentials import Credential, InMemoryCredentialStore
 
 
 # ---------------------------------------------------------------------------
@@ -18,11 +18,11 @@ from agentgate.credentials import Credential, InMemoryCredentialStore
 # ---------------------------------------------------------------------------
 
 DISCOVERY_DOC = {
-    "agentgate_version": "0.1",
+    "agentdoor_version": "0.1",
     "service_name": "Test Service",
-    "registration_endpoint": "/agentgate/register",
-    "verification_endpoint": "/agentgate/register/verify",
-    "auth_endpoint": "/agentgate/auth",
+    "registration_endpoint": "/agentdoor/register",
+    "verification_endpoint": "/agentdoor/register/verify",
+    "auth_endpoint": "/agentdoor/auth",
     "scopes": [{"name": "read", "description": "Read access"}],
     "token_ttl_seconds": 3600,
 }
@@ -67,8 +67,8 @@ class TestAgentConnect:
     @pytest.mark.asyncio
     async def test_connect_fetches_discovery(self) -> None:
         agent = Agent()
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             doc = await agent.connect("https://example.com")
@@ -93,8 +93,8 @@ class TestAgentConnect:
         store.save(cred)
 
         agent = Agent(config=AgentConfig(credential_store=store))
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")
@@ -118,8 +118,8 @@ class TestAgentRegister:
         agent = Agent(config=AgentConfig(agent_name="test-agent"))
 
         # Mock connect
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")
@@ -172,13 +172,13 @@ class TestAgentAuthenticate:
         agent = Agent(config=AgentConfig(agent_name="test-agent"))
 
         # Set up connected + registered state
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")
 
-        from agentgate.crypto import generate_keypair
+        from agentdoor.crypto import generate_keypair
 
         pub, sec = generate_keypair()
         agent._credential = Credential(
@@ -211,13 +211,13 @@ class TestAgentAuthenticate:
     async def test_authenticate_uses_cached_token(self) -> None:
         agent = Agent(config=AgentConfig(agent_name="test-agent"))
 
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")
 
-        from agentgate.crypto import generate_keypair
+        from agentdoor.crypto import generate_keypair
 
         pub, sec = generate_keypair()
         agent._credential = Credential(
@@ -250,13 +250,13 @@ class TestAgentRequest:
     async def test_request_attaches_bearer_token(self) -> None:
         agent = Agent(config=AgentConfig(agent_name="test-agent"))
 
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")
 
-        from agentgate.crypto import generate_keypair
+        from agentdoor.crypto import generate_keypair
 
         pub, sec = generate_keypair()
         agent._credential = Credential(
@@ -289,13 +289,13 @@ class TestAgentRequest:
     async def test_request_retries_on_401(self) -> None:
         agent = Agent(config=AgentConfig(agent_name="test-agent"))
 
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")
 
-        from agentgate.crypto import generate_keypair
+        from agentdoor.crypto import generate_keypair
 
         pub, sec = generate_keypair()
         agent._credential = Credential(
@@ -346,8 +346,8 @@ class TestAgentClose:
     async def test_close_cleans_up_client(self) -> None:
         agent = Agent()
 
-        with patch("agentgate.agent.discover", new_callable=AsyncMock) as mock_discover:
-            from agentgate.discovery import parse_discovery_document
+        with patch("agentdoor.agent.discover", new_callable=AsyncMock) as mock_discover:
+            from agentdoor.discovery import parse_discovery_document
 
             mock_discover.return_value = parse_discovery_document(DISCOVERY_DOC)
             await agent.connect("https://example.com")

@@ -1,8 +1,8 @@
 /**
- * @agentgate/registry
+ * @agentdoor/registry
  *
- * Agent Registry - a searchable index that crawls /.well-known/agentgate.json
- * endpoints to build a directory of AgentGate-enabled services.
+ * Agent Registry - a searchable index that crawls /.well-known/agentdoor.json
+ * endpoints to build a directory of AgentDoor-enabled services.
  *
  * @packageDocumentation
  */
@@ -11,7 +11,7 @@
 // Crawler
 // ---------------------------------------------------------------------------
 
-export { AgentGateCrawler } from "./crawler.js";
+export { AgentDoorCrawler } from "./crawler.js";
 
 export type { CrawlTarget, CrawlerConfig } from "./crawler.js";
 

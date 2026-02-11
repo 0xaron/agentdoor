@@ -1,12 +1,12 @@
 /**
- * @agentgate/next-auth - NextAuth Companion
+ * @agentdoor/next-auth - NextAuth Companion
  *
  * Adds an "agent" credential provider to NextAuth.js.
- * When agents authenticate through AgentGate, they receive sessions
+ * When agents authenticate through AgentDoor, they receive sessions
  * that work within the NextAuth ecosystem.
  */
 
-import type { Agent, AgentContext } from "@agentgate/core";
+import type { Agent, AgentContext } from "@agentdoor/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,7 +44,7 @@ export interface NextAuthAgentUser {
   email: string;
   /** Always "agent" to distinguish from human users */
   type: "agent";
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Granted scopes */
   scopes: string[];
@@ -58,7 +58,7 @@ export interface NextAuthAgentSession {
   user: NextAuthAgentUser;
   /** Session type (always "agent") */
   type: "agent";
-  /** AgentGate agent ID */
+  /** AgentDoor agent ID */
   agentId: string;
   /** Granted scopes */
   scopes: string[];
@@ -69,7 +69,7 @@ export interface NextAuthAgentSession {
 // ---------------------------------------------------------------------------
 
 /**
- * NextAuth companion plugin for AgentGate.
+ * NextAuth companion plugin for AgentDoor.
  *
  * Provides a NextAuth credentials provider that allows agents
  * to authenticate and receive sessions. Agents must first be
@@ -79,7 +79,7 @@ export interface NextAuthAgentSession {
  * ```ts
  * const companion = new NextAuthCompanion();
  *
- * // Register agents as they come from AgentGate
+ * // Register agents as they come from AgentDoor
  * companion.registerAgent(agent);
  *
  * // Use the provider in NextAuth config
@@ -103,8 +103,8 @@ export class NextAuthCompanion {
    */
   createProvider(): NextAuthProviderResult {
     return {
-      id: "agentgate",
-      name: "AgentGate Agent",
+      id: "agentdoor",
+      name: "AgentDoor Agent",
       type: "credentials",
       credentials: {
         agentId: { label: "Agent ID", type: "text" },
@@ -129,7 +129,7 @@ export class NextAuthCompanion {
         return {
           id: agent.id,
           name: agent.metadata.name ?? `Agent ${agent.id}`,
-          email: `${agent.id}@agentgate.local`,
+          email: `${agent.id}@agentdoor.local`,
           type: "agent",
           agentId: agent.id,
           scopes: agent.scopesGranted,
@@ -177,7 +177,7 @@ export class NextAuthCompanion {
     const user: NextAuthAgentUser = {
       id: agent.id,
       name: agent.metadata.name ?? `Agent ${agent.id}`,
-      email: `${agent.id}@agentgate.local`,
+      email: `${agent.id}@agentdoor.local`,
       type: "agent",
       agentId: agent.id,
       scopes: agent.scopesGranted,

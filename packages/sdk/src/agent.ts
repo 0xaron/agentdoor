@@ -1,16 +1,16 @@
 /**
- * Main AgentGate class -- the primary entry point for the agent-side SDK.
+ * Main AgentDoor class -- the primary entry point for the agent-side SDK.
  *
  * Provides a single `connect(url)` method that performs the full flow:
- *   1. Discovery -- fetch /.well-known/agentgate.json
+ *   1. Discovery -- fetch /.well-known/agentdoor.json
  *   2. Check credential cache -- skip registration if valid credentials exist
- *   3. Register -- POST /agentgate/register with public key + scopes
- *   4. Challenge-response -- sign the server's nonce, POST /agentgate/register/verify
+ *   3. Register -- POST /agentdoor/register with public key + scopes
+ *   4. Challenge-response -- sign the server's nonce, POST /agentdoor/register/verify
  *   5. Cache credentials -- store api_key, token, scopes on disk
  *   6. Return a Session -- ready for authenticated requests
  *
  * Usage:
- *   const agent = new AgentGate({ keyPath: "~/.agentgate/keys.json" });
+ *   const agent = new AgentDoor({ keyPath: "~/.agentdoor/keys.json" });
  *   const session = await agent.connect("https://api.example.com");
  *   const data = await session.get("/weather/forecast", { params: { city: "sf" } });
  */
@@ -23,7 +23,7 @@ import {
 } from "./keystore.js";
 import {
   discover,
-  type AgentGateDiscoveryDocument,
+  type AgentDoorDiscoveryDocument,
   type DiscoverOptions,
 } from "./discovery.js";
 import {
@@ -34,11 +34,11 @@ import {
 import { Session, type SessionConfig, type TokenRefresher } from "./session.js";
 import { type X402WalletConfig, validateWalletConfig } from "./x402.js";
 
-/** Configuration for the AgentGate SDK client. */
-export interface AgentGateOptions {
-  /** Path to the keypair file. Defaults to ~/.agentgate/keys.json */
+/** Configuration for the AgentDoor SDK client. */
+export interface AgentDoorOptions {
+  /** Path to the keypair file. Defaults to ~/.agentdoor/keys.json */
   keyPath?: string;
-  /** Path to the credentials cache file. Defaults to ~/.agentgate/credentials.json */
+  /** Path to the credentials cache file. Defaults to ~/.agentdoor/credentials.json */
   credentialsPath?: string;
   /** x402 wallet configuration for payment-enabled requests. */
   x402Wallet?: X402WalletConfig | string;
@@ -55,7 +55,7 @@ export interface AgentGateOptions {
 }
 
 /**
- * Registration response from POST /agentgate/register.
+ * Registration response from POST /agentdoor/register.
  */
 interface RegisterResponse {
   agent_id: string;
@@ -67,7 +67,7 @@ interface RegisterResponse {
 }
 
 /**
- * Verification response from POST /agentgate/register/verify.
+ * Verification response from POST /agentdoor/register/verify.
  */
 interface VerifyResponse {
   agent_id: string;
@@ -87,7 +87,7 @@ interface VerifyResponse {
 }
 
 /**
- * Auth response from POST /agentgate/auth (token refresh).
+ * Auth response from POST /agentdoor/auth (token refresh).
  */
 interface AuthResponse {
   token: string;
@@ -126,12 +126,12 @@ function resolveWalletConfig(
 }
 
 /**
- * AgentGate is the main SDK class for connecting to AgentGate-enabled services.
+ * AgentDoor is the main SDK class for connecting to AgentDoor-enabled services.
  *
  * It manages keypairs, discovers services, registers the agent, and returns
  * authenticated Session objects for making API requests.
  */
-export class AgentGate {
+export class AgentDoor {
   private readonly keypair: Keypair;
   private readonly credentialStore: CredentialStore | null;
   private readonly walletConfig: X402WalletConfig | undefined;
@@ -140,7 +140,7 @@ export class AgentGate {
   private readonly discoveryOptions: DiscoverOptions;
   private readonly fetchFn: typeof globalThis.fetch;
 
-  constructor(options: AgentGateOptions = {}) {
+  constructor(options: AgentDoorOptions = {}) {
     // Load or generate keypair
     this.keypair = loadOrCreateKeypair(options.keyPath ?? DEFAULT_KEY_PATH);
 
@@ -154,7 +154,7 @@ export class AgentGate {
 
     // Agent metadata
     this.metadata = {
-      sdk: "agentgate-sdk",
+      sdk: "agentdoor-sdk",
       sdk_version: "0.1.0",
       ...options.metadata,
     };
@@ -165,7 +165,7 @@ export class AgentGate {
   }
 
   /**
-   * Connect to an AgentGate-enabled service.
+   * Connect to an AgentDoor-enabled service.
    *
    * Performs the full discovery -> registration -> challenge-response flow,
    * or uses cached credentials if available.
@@ -214,7 +214,7 @@ export class AgentGate {
    */
   private async register(
     baseUrl: string,
-    discovery: AgentGateDiscoveryDocument,
+    discovery: AgentDoorDiscoveryDocument,
   ): Promise<ServiceCredentials> {
     // Determine which scopes to request
     const availableScopeIds = discovery.scopes_available.map((s) => s.id);
@@ -223,13 +223,13 @@ export class AgentGate {
       availableScopeIds;
 
     if (requestedScopes.length === 0) {
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `No matching scopes found at ${baseUrl}. Available: [${availableScopeIds.join(", ")}]`,
         "NO_MATCHING_SCOPES",
       );
     }
 
-    // Step 3a: POST /agentgate/register
+    // Step 3a: POST /agentdoor/register
     const registrationEndpoint = `${baseUrl}${discovery.registration_endpoint}`;
 
     const registerBody: Record<string, unknown> = {
@@ -251,7 +251,7 @@ export class AgentGate {
     );
 
     if (!registerRes.agent_id || !registerRes.challenge?.message) {
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `Invalid registration response from ${baseUrl}: missing agent_id or challenge`,
         "INVALID_REGISTER_RESPONSE",
       );
@@ -263,7 +263,7 @@ export class AgentGate {
       this.keypair.secretKey,
     );
 
-    // Step 4: POST /agentgate/register/verify
+    // Step 4: POST /agentdoor/register/verify
     const verifyEndpoint = `${baseUrl}${discovery.registration_endpoint}/verify`;
 
     const verifyRes = await this.fetchJson<VerifyResponse>(verifyEndpoint, {
@@ -275,7 +275,7 @@ export class AgentGate {
     });
 
     if (!verifyRes.api_key) {
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `Invalid verify response from ${baseUrl}: missing api_key`,
         "INVALID_VERIFY_RESPONSE",
       );
@@ -312,7 +312,7 @@ export class AgentGate {
   private createSession(
     baseUrl: string,
     credentials: ServiceCredentials,
-    discovery: AgentGateDiscoveryDocument,
+    discovery: AgentDoorDiscoveryDocument,
   ): Session {
     // Build the token refresh callback
     const onTokenRefresh: TokenRefresher = async () => {
@@ -349,10 +349,10 @@ export class AgentGate {
   private async refreshToken(
     baseUrl: string,
     agentId: string,
-    discovery: AgentGateDiscoveryDocument,
+    discovery: AgentDoorDiscoveryDocument,
   ): Promise<{ token: string; expiresAt: string }> {
     const timestamp = new Date().toISOString();
-    const message = `agentgate:auth:${agentId}:${timestamp}`;
+    const message = `agentdoor:auth:${agentId}:${timestamp}`;
     const signature = signMessage(message, this.keypair.secretKey);
 
     const authEndpoint = `${baseUrl}${discovery.auth_endpoint}`;
@@ -367,7 +367,7 @@ export class AgentGate {
     });
 
     if (!response.token || !response.expires_at) {
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `Invalid auth response from ${baseUrl}: missing token or expires_at`,
         "INVALID_AUTH_RESPONSE",
       );
@@ -408,7 +408,7 @@ export class AgentGate {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "agentgate-sdk/0.1.0",
+      "User-Agent": "agentdoor-sdk/0.1.0",
     };
 
     const controller = new AbortController();
@@ -425,13 +425,13 @@ export class AgentGate {
     } catch (err) {
       clearTimeout(timer);
       if (err instanceof DOMException && err.name === "AbortError") {
-        throw new AgentGateError(
+        throw new AgentDoorError(
           `Request to ${url} timed out after ${timeoutMs}ms`,
           "TIMEOUT",
         );
       }
       const message = err instanceof Error ? err.message : String(err);
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `Request to ${url} failed: ${message}`,
         "NETWORK_ERROR",
       );
@@ -449,27 +449,27 @@ export class AgentGate {
 
       // Specific error handling by status code
       if (response.status === 409) {
-        throw new AgentGateError(
+        throw new AgentDoorError(
           `Agent already registered at ${url}. Use cached credentials or clear them.`,
           "ALREADY_REGISTERED",
         );
       }
 
       if (response.status === 429) {
-        throw new AgentGateError(
+        throw new AgentDoorError(
           `Rate limited by ${url}. Try again later.`,
           "RATE_LIMITED",
         );
       }
 
       if (response.status === 410) {
-        throw new AgentGateError(
+        throw new AgentDoorError(
           `Challenge expired at ${url}. Restart registration.`,
           "CHALLENGE_EXPIRED",
         );
       }
 
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `HTTP ${response.status} from ${url}: ${errorBody}`,
         "HTTP_ERROR",
       );
@@ -478,7 +478,7 @@ export class AgentGate {
     try {
       return (await response.json()) as T;
     } catch {
-      throw new AgentGateError(
+      throw new AgentDoorError(
         `Invalid JSON response from ${url}`,
         "INVALID_JSON",
       );
@@ -486,8 +486,8 @@ export class AgentGate {
   }
 }
 
-/** Error codes for AgentGate SDK errors. */
-export type AgentGateErrorCode =
+/** Error codes for AgentDoor SDK errors. */
+export type AgentDoorErrorCode =
   | "NO_MATCHING_SCOPES"
   | "INVALID_REGISTER_RESPONSE"
   | "INVALID_VERIFY_RESPONSE"
@@ -501,14 +501,14 @@ export type AgentGateErrorCode =
   | "INVALID_JSON";
 
 /**
- * Error thrown by the AgentGate SDK.
+ * Error thrown by the AgentDoor SDK.
  */
-export class AgentGateError extends Error {
-  public readonly code: AgentGateErrorCode;
+export class AgentDoorError extends Error {
+  public readonly code: AgentDoorErrorCode;
 
-  constructor(message: string, code: AgentGateErrorCode) {
+  constructor(message: string, code: AgentDoorErrorCode) {
     super(message);
-    this.name = "AgentGateError";
+    this.name = "AgentDoorError";
     this.code = code;
   }
 }

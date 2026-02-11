@@ -1,13 +1,13 @@
 # Agent-Ready API Starter (Vercel)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/agentgate/agentgate/tree/main/packages/template-vercel/template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/agentdoor/agentdoor/tree/main/packages/template-vercel/template)
 
-Deploy an agent-ready API to Vercel in one click. Built with Next.js, AgentGate, and x402 micropayments.
+Deploy an agent-ready API to Vercel in one click. Built with Next.js, AgentDoor, and x402 micropayments.
 
 ## What You Get
 
-- **AgentGate middleware** that handles agent authentication, capability discovery, and x402 payments
-- **`.well-known/agentgate`** endpoint auto-served for agent discovery
+- **AgentDoor middleware** that handles agent authentication, capability discovery, and x402 payments
+- **`.well-known/agentdoor`** endpoint auto-served for agent discovery
 - **x402 micropayments** via USDC on Base network
 - **Sample API routes** with scope-based access control
 
@@ -48,7 +48,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the landing page.
 │   │       └── route.ts      # Sample API endpoint
 │   ├── layout.tsx             # Root layout
 │   └── page.tsx               # Landing page
-├── middleware.ts               # AgentGate middleware configuration
+├── middleware.ts               # AgentDoor middleware configuration
 ├── next.config.js             # Next.js configuration
 ├── vercel.json                # Vercel configuration
 └── tsconfig.json              # TypeScript configuration
@@ -56,8 +56,8 @@ Open [http://localhost:3000](http://localhost:3000) to see the landing page.
 
 ## How It Works
 
-1. **Agent Discovery**: Agents find your API via `/.well-known/agentgate`
-2. **Authentication**: AgentGate middleware validates agent credentials and scopes
+1. **Agent Discovery**: Agents find your API via `/.well-known/agentdoor`
+2. **Authentication**: AgentDoor middleware validates agent credentials and scopes
 3. **Payment**: x402 handles micropayments for API access (USDC on Base)
 4. **Access**: Authenticated agents can call your API endpoints
 
@@ -70,7 +70,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the landing page.
 
 ## Learn More
 
-- [AgentGate Documentation](https://github.com/agentgate/agentgate)
+- [AgentDoor Documentation](https://github.com/agentdoor/agentdoor)
 - [x402 Protocol](https://www.x402.org/)
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Vercel Documentation](https://vercel.com/docs)

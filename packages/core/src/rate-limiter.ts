@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Token Bucket Rate Limiter
+ * @agentdoor/core - Token Bucket Rate Limiter
  *
  * In-memory token bucket implementation with per-agent limits.
  * Configurable window size and request counts.

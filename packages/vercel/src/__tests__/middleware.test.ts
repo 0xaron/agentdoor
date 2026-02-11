@@ -36,21 +36,21 @@ function makeRequest(method: string, path: string, body?: unknown, headers?: Rec
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("@agentgate/vercel edge middleware", () => {
+describe("@agentdoor/vercel edge middleware", () => {
   describe("discovery endpoint", () => {
-    it("serves /.well-known/agentgate.json", async () => {
+    it("serves /.well-known/agentdoor.json", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await middleware(req);
 
       expect(res).not.toBeNull();
       expect(res!.status).toBe(200);
 
       const body = await res!.json();
-      expect(body.agentgate_version).toBe("1.0");
-      expect(body.service_name).toBe("AgentGate Service");
-      expect(body.registration_endpoint).toBe("/agentgate/register");
-      expect(body.auth_endpoint).toBe("/agentgate/auth");
+      expect(body.agentdoor_version).toBe("1.0");
+      expect(body.service_name).toBe("AgentDoor Service");
+      expect(body.registration_endpoint).toBe("/agentdoor/register");
+      expect(body.auth_endpoint).toBe("/agentdoor/auth");
       expect(body.scopes_available).toHaveLength(2);
       expect(body.scopes_available[0].id).toBe("data.read");
       expect(body.auth_methods).toContain("ed25519-challenge");
@@ -58,7 +58,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
     it("includes Cache-Control header", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await middleware(req);
 
       expect(res!.headers.get("cache-control")).toBe("public, max-age=3600");
@@ -68,7 +68,7 @@ describe("@agentgate/vercel edge middleware", () => {
       const middleware = createMiddleware({
         service: { name: "My Service", description: "Test service" },
       });
-      const req = makeRequest("GET", "/.well-known/agentgate.json");
+      const req = makeRequest("GET", "/.well-known/agentdoor.json");
       const res = await middleware(req);
       const body = await res!.json();
 
@@ -80,7 +80,7 @@ describe("@agentgate/vercel edge middleware", () => {
   describe("registration validation", () => {
     it("rejects missing public_key", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         scopes_requested: ["data.read"],
       });
       const res = await middleware(req);
@@ -92,7 +92,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
     it("rejects missing scopes_requested", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "dGVzdHB1YmtleQ==",
       });
       const res = await middleware(req);
@@ -104,7 +104,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
     it("rejects empty scopes_requested array", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "dGVzdHB1YmtleQ==",
         scopes_requested: [],
       });
@@ -115,7 +115,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
     it("rejects invalid scopes", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "dGVzdHB1YmtleXVuaXF1ZTE=",
         scopes_requested: ["nonexistent.scope"],
       });
@@ -128,7 +128,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
     it("accepts valid registration and returns challenge", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register", {
+      const req = makeRequest("POST", "/agentdoor/register", {
         public_key: "cmVnaXN0cmF0aW9udGVzdGtleTI=",
         scopes_requested: ["data.read"],
         metadata: { framework: "test" },
@@ -140,13 +140,13 @@ describe("@agentgate/vercel edge middleware", () => {
       expect(body.agent_id).toMatch(/^ag_/);
       expect(body.challenge).toBeDefined();
       expect(body.challenge.nonce).toBeDefined();
-      expect(body.challenge.message).toContain("agentgate:register:");
+      expect(body.challenge.message).toContain("agentdoor:register:");
       expect(body.challenge.expires_at).toBeDefined();
     });
 
     it("rejects invalid JSON body", async () => {
       const middleware = createMiddleware();
-      const req = new Request("https://example.com/agentgate/register", {
+      const req = new Request("https://example.com/agentdoor/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "not valid json{{{",
@@ -160,9 +160,9 @@ describe("@agentgate/vercel edge middleware", () => {
   });
 
   describe("auth validation", () => {
-    it("rejects missing fields on /agentgate/auth", async () => {
+    it("rejects missing fields on /agentdoor/auth", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/auth", {
+      const req = makeRequest("POST", "/agentdoor/auth", {
         agent_id: "ag_test",
       });
       const res = await middleware(req);
@@ -172,9 +172,9 @@ describe("@agentgate/vercel edge middleware", () => {
       expect(body.error).toContain("agent_id, signature, and timestamp are required");
     });
 
-    it("rejects unknown agent_id on /agentgate/auth", async () => {
+    it("rejects unknown agent_id on /agentdoor/auth", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/auth", {
+      const req = makeRequest("POST", "/agentdoor/auth", {
         agent_id: "ag_doesnotexist12345678",
         signature: "dGVzdHNpZw==",
         timestamp: new Date().toISOString(),
@@ -188,9 +188,9 @@ describe("@agentgate/vercel edge middleware", () => {
   });
 
   describe("verify validation", () => {
-    it("rejects missing fields on /agentgate/register/verify", async () => {
+    it("rejects missing fields on /agentdoor/register/verify", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register/verify", {
+      const req = makeRequest("POST", "/agentdoor/register/verify", {
         agent_id: "ag_test",
       });
       const res = await middleware(req);
@@ -200,9 +200,9 @@ describe("@agentgate/vercel edge middleware", () => {
       expect(body.error).toContain("agent_id and signature are required");
     });
 
-    it("rejects unknown agent_id on /agentgate/register/verify", async () => {
+    it("rejects unknown agent_id on /agentdoor/register/verify", async () => {
       const middleware = createMiddleware();
-      const req = makeRequest("POST", "/agentgate/register/verify", {
+      const req = makeRequest("POST", "/agentdoor/register/verify", {
         agent_id: "ag_doesnotexist12345678",
         signature: "dGVzdHNpZw==",
       });
@@ -254,7 +254,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
       expect(res).not.toBeNull();
       expect(res!.status).toBe(200);
-      expect(res!.headers.get("x-agentgate-authenticated")).toBe("false");
+      expect(res!.headers.get("x-agentdoor-authenticated")).toBe("false");
     });
 
     it("returns passthrough response for protected path with invalid token", async () => {
@@ -266,7 +266,7 @@ describe("@agentgate/vercel edge middleware", () => {
 
       expect(res).not.toBeNull();
       expect(res!.status).toBe(200);
-      expect(res!.headers.get("x-agentgate-authenticated")).toBe("false");
+      expect(res!.headers.get("x-agentdoor-authenticated")).toBe("false");
     });
   });
 });

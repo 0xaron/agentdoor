@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import Fastify, { type FastifyInstance } from "fastify";
-import { agentgatePlugin } from "../index.js";
+import { agentdoorPlugin } from "../index.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -13,7 +13,7 @@ const TEST_SCOPES = [
 
 function createApp(opts: Record<string, unknown> = {}): FastifyInstance {
   const app = Fastify();
-  app.register(agentgatePlugin, {
+  app.register(agentdoorPlugin, {
     scopes: TEST_SCOPES,
     ...opts,
   });
@@ -41,7 +41,7 @@ function createApp(opts: Record<string, unknown> = {}): FastifyInstance {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("@agentgate/fastify plugin", () => {
+describe("@agentdoor/fastify plugin", () => {
   describe("discovery endpoint", () => {
     let app: FastifyInstance;
 
@@ -50,18 +50,18 @@ describe("@agentgate/fastify plugin", () => {
       await app.ready();
     });
 
-    it("serves /.well-known/agentgate.json", async () => {
+    it("serves /.well-known/agentdoor.json", async () => {
       const res = await app.inject({
         method: "GET",
-        url: "/.well-known/agentgate.json",
+        url: "/.well-known/agentdoor.json",
       });
 
       expect(res.statusCode).toBe(200);
       const body = res.json();
-      expect(body.agentgate_version).toBe("1.0");
-      expect(body.service_name).toBe("AgentGate Service");
-      expect(body.registration_endpoint).toBe("/agentgate/register");
-      expect(body.auth_endpoint).toBe("/agentgate/auth");
+      expect(body.agentdoor_version).toBe("1.0");
+      expect(body.service_name).toBe("AgentDoor Service");
+      expect(body.registration_endpoint).toBe("/agentdoor/register");
+      expect(body.auth_endpoint).toBe("/agentdoor/auth");
       expect(body.scopes_available).toHaveLength(2);
       expect(body.scopes_available[0].id).toBe("data.read");
       expect(body.auth_methods).toContain("ed25519-challenge");
@@ -70,7 +70,7 @@ describe("@agentgate/fastify plugin", () => {
     it("includes Cache-Control header", async () => {
       const res = await app.inject({
         method: "GET",
-        url: "/.well-known/agentgate.json",
+        url: "/.well-known/agentdoor.json",
       });
 
       expect(res.headers["cache-control"]).toBe("public, max-age=3600");
@@ -88,7 +88,7 @@ describe("@agentgate/fastify plugin", () => {
     it("rejects missing public_key", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register",
+        url: "/agentdoor/register",
         payload: { scopes_requested: ["data.read"] },
       });
 
@@ -98,7 +98,7 @@ describe("@agentgate/fastify plugin", () => {
     it("rejects missing scopes_requested", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register",
+        url: "/agentdoor/register",
         payload: { public_key: "dGVzdHB1YmtleQ==" },
       });
 
@@ -108,7 +108,7 @@ describe("@agentgate/fastify plugin", () => {
     it("rejects empty scopes_requested array", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register",
+        url: "/agentdoor/register",
         payload: {
           public_key: "dGVzdHB1YmtleQ==",
           scopes_requested: [],
@@ -121,7 +121,7 @@ describe("@agentgate/fastify plugin", () => {
     it("rejects invalid scopes", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register",
+        url: "/agentdoor/register",
         payload: {
           public_key: "dGVzdHB1YmtleXVuaXF1ZTE=",
           scopes_requested: ["nonexistent.scope"],
@@ -136,7 +136,7 @@ describe("@agentgate/fastify plugin", () => {
     it("accepts valid registration and returns challenge", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register",
+        url: "/agentdoor/register",
         payload: {
           public_key: "cmVnaXN0cmF0aW9udGVzdGtleQ==",
           scopes_requested: ["data.read"],
@@ -149,7 +149,7 @@ describe("@agentgate/fastify plugin", () => {
       expect(body.agent_id).toMatch(/^ag_/);
       expect(body.challenge).toBeDefined();
       expect(body.challenge.nonce).toBeDefined();
-      expect(body.challenge.message).toContain("agentgate:register:");
+      expect(body.challenge.message).toContain("agentdoor:register:");
       expect(body.challenge.expires_at).toBeDefined();
     });
   });
@@ -162,20 +162,20 @@ describe("@agentgate/fastify plugin", () => {
       await app.ready();
     });
 
-    it("rejects missing fields on /agentgate/auth", async () => {
+    it("rejects missing fields on /agentdoor/auth", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/auth",
+        url: "/agentdoor/auth",
         payload: { agent_id: "ag_test" },
       });
 
       expect(res.statusCode).toBe(400);
     });
 
-    it("rejects unknown agent_id on /agentgate/auth", async () => {
+    it("rejects unknown agent_id on /agentdoor/auth", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/auth",
+        url: "/agentdoor/auth",
         payload: {
           agent_id: "ag_doesnotexist12345678",
           signature: "dGVzdHNpZw==",
@@ -197,20 +197,20 @@ describe("@agentgate/fastify plugin", () => {
       await app.ready();
     });
 
-    it("rejects missing fields on /agentgate/register/verify", async () => {
+    it("rejects missing fields on /agentdoor/register/verify", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register/verify",
+        url: "/agentdoor/register/verify",
         payload: { agent_id: "ag_test" },
       });
 
       expect(res.statusCode).toBe(400);
     });
 
-    it("rejects unknown agent_id on /agentgate/register/verify", async () => {
+    it("rejects unknown agent_id on /agentdoor/register/verify", async () => {
       const res = await app.inject({
         method: "POST",
-        url: "/agentgate/register/verify",
+        url: "/agentdoor/register/verify",
         payload: {
           agent_id: "ag_doesnotexist12345678",
           signature: "dGVzdHNpZw==",

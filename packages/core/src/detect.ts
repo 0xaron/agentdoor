@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - Agent Traffic Detection & Fingerprinting
+ * @agentdoor/core - Agent Traffic Detection & Fingerprinting
  *
  * Classifies HTTP requests as human or agent traffic based on multiple
  * signals: User-Agent strings, header patterns, timing, IP ranges,
@@ -501,7 +501,7 @@ export function isLikelyAgent(request: RequestInfo): boolean {
     }
   }
 
-  // 3. AgentGate auth headers (definitely an agent)
+  // 3. AgentDoor auth headers (definitely an agent)
   if (
     request.headers["authorization"]?.toString().startsWith("Bearer agk_")
   ) {

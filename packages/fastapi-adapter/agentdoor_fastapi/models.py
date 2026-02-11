@@ -1,6 +1,6 @@
-"""Pydantic models for AgentGate FastAPI adapter.
+"""Pydantic models for AgentDoor FastAPI adapter.
 
-Defines request/response schemas for the AgentGate registration,
+Defines request/response schemas for the AgentDoor registration,
 verification, and authentication endpoints, as well as the discovery
 document and agent context models.
 """
@@ -23,13 +23,13 @@ class ScopeDefinition(BaseModel):
 
 
 class DiscoveryDocument(BaseModel):
-    """The ``/.well-known/agentgate.json`` response body."""
+    """The ``/.well-known/agentdoor.json`` response body."""
 
-    agentgate_version: str = "0.1"
+    agentdoor_version: str = "0.1"
     service_name: str
-    registration_endpoint: str = "/agentgate/register"
-    verification_endpoint: str = "/agentgate/register/verify"
-    auth_endpoint: str = "/agentgate/auth"
+    registration_endpoint: str = "/agentdoor/register"
+    verification_endpoint: str = "/agentdoor/register/verify"
+    auth_endpoint: str = "/agentdoor/auth"
     scopes: list[ScopeDefinition] = Field(default_factory=list)
     token_ttl_seconds: int = 3600
 
@@ -40,7 +40,7 @@ class DiscoveryDocument(BaseModel):
 
 
 class RegistrationRequest(BaseModel):
-    """POST /agentgate/register request body."""
+    """POST /agentdoor/register request body."""
 
     agent_name: str
     public_key: str
@@ -48,7 +48,7 @@ class RegistrationRequest(BaseModel):
 
 
 class RegistrationResponse(BaseModel):
-    """POST /agentgate/register response body."""
+    """POST /agentdoor/register response body."""
 
     registration_id: str
     challenge: str
@@ -60,7 +60,7 @@ class RegistrationResponse(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    """POST /agentgate/register/verify request body."""
+    """POST /agentdoor/register/verify request body."""
 
     registration_id: str
     challenge: str
@@ -68,7 +68,7 @@ class VerifyRequest(BaseModel):
 
 
 class VerifyResponse(BaseModel):
-    """POST /agentgate/register/verify response body."""
+    """POST /agentdoor/register/verify response body."""
 
     agent_id: str
     api_key: str
@@ -80,7 +80,7 @@ class VerifyResponse(BaseModel):
 
 
 class AuthRequest(BaseModel):
-    """POST /agentgate/auth request body."""
+    """POST /agentdoor/auth request body."""
 
     agent_id: str
     api_key: str
@@ -89,7 +89,7 @@ class AuthRequest(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    """POST /agentgate/auth response body."""
+    """POST /agentdoor/auth response body."""
 
     token: str
     expires_in: int

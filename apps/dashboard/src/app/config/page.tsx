@@ -1,7 +1,7 @@
 /**
  * Configuration Page (Phase 3.4)
  *
- * Displays the current AgentGate configuration:
+ * Displays the current AgentDoor configuration:
  * - Service info
  * - Scopes and pricing
  * - Rate limits
@@ -182,8 +182,8 @@ async function getConfig(): Promise<ConfigData> {
   // to avoid fetching from ourselves. This mirrors what /api/config returns.
   return {
     service: {
-      name: "AgentGate Service",
-      description: "An AgentGate-enabled API service",
+      name: "AgentDoor Service",
+      description: "An AgentDoor-enabled API service",
       version: "1.0",
       mode: "live",
     },
@@ -255,7 +255,7 @@ export default async function ConfigPage() {
         &larr; Back to Dashboard
       </a>
 
-      <h1 style={styles.title}>AgentGate Configuration</h1>
+      <h1 style={styles.title}>AgentDoor Configuration</h1>
       <p style={styles.subtitle}>
         Current configuration for scopes, rate limits, payments, and security settings.
       </p>

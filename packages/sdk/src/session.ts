@@ -1,5 +1,5 @@
 /**
- * Session class for making authenticated requests to an AgentGate-enabled service.
+ * Session class for making authenticated requests to an AgentDoor-enabled service.
  *
  * Wraps the native fetch API with convenience methods (get/post/put/delete).
  * Auto-attaches the Authorization header (Bearer token or API key).
@@ -8,7 +8,7 @@
  */
 
 import type { ServiceCredentials } from "./credentials.js";
-import type { AgentGateDiscoveryDocument } from "./discovery.js";
+import type { AgentDoorDiscoveryDocument } from "./discovery.js";
 import { buildPaymentHeader, type X402WalletConfig } from "./x402.js";
 
 /** Options for individual requests made through a Session. */
@@ -54,7 +54,7 @@ export interface SessionConfig {
   /** Stored credentials for this service. */
   credentials: ServiceCredentials;
   /** The discovery document for this service. */
-  discovery: AgentGateDiscoveryDocument;
+  discovery: AgentDoorDiscoveryDocument;
   /** Optional x402 wallet config for payment headers. */
   walletConfig?: X402WalletConfig;
   /** Optional callback invoked to refresh an expired token. */
@@ -64,8 +64,8 @@ export interface SessionConfig {
 }
 
 /**
- * Session represents an authenticated connection to an AgentGate-enabled service.
- * Created by `AgentGate.connect()` and used to make API requests.
+ * Session represents an authenticated connection to an AgentDoor-enabled service.
+ * Created by `AgentDoor.connect()` and used to make API requests.
  */
 export class Session {
   /** Base URL of the connected service. */
@@ -75,7 +75,7 @@ export class Session {
   /** Agent ID at this service. */
   public readonly agentId: string;
   /** The discovery document for this service. */
-  public readonly discovery: AgentGateDiscoveryDocument;
+  public readonly discovery: AgentDoorDiscoveryDocument;
 
   private apiKey: string;
   private token: string | undefined;
@@ -175,7 +175,7 @@ export class Session {
 
     // Build headers
     const headers: Record<string, string> = {
-      "User-Agent": "agentgate-sdk/0.1.0",
+      "User-Agent": "agentdoor-sdk/0.1.0",
       ...extraHeaders,
     };
 

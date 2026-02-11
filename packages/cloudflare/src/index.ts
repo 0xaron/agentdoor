@@ -1,5 +1,5 @@
 /**
- * @agentgate/cloudflare — Cloudflare Workers adapter for AgentGate.
+ * @agentdoor/cloudflare — Cloudflare Workers adapter for AgentDoor.
  *
  * Provides a fetch handler for Cloudflare Workers and a Durable Object class
  * for persistent agent state. Falls back to in-memory Maps when Durable
@@ -7,9 +7,9 @@
  *
  * @example Basic Worker
  * ```ts
- * import { createAgentGateWorker } from "@agentgate/cloudflare";
+ * import { createAgentDoorWorker } from "@agentdoor/cloudflare";
  *
- * const handler = createAgentGateWorker({
+ * const handler = createAgentDoorWorker({
  *   scopes: [{ id: "data.read", description: "Read data" }],
  * });
  *
@@ -20,9 +20,9 @@
  *
  * @example With Durable Objects
  * ```ts
- * import { createAgentGateWorker, AgentGateDurableObject } from "@agentgate/cloudflare";
+ * import { createAgentDoorWorker, AgentDoorDurableObject } from "@agentdoor/cloudflare";
  *
- * export { AgentGateDurableObject };
+ * export { AgentDoorDurableObject };
  *
  * export default {
  *   fetch(request, env) {
@@ -35,9 +35,9 @@
  */
 
 export {
-  createAgentGateWorker,
+  createAgentDoorWorker,
   handleRequest,
-  AgentGateDurableObject,
+  AgentDoorDurableObject,
 } from "./worker.js";
 
-export type { AgentGateCloudflareConfig, CloudflareEnv } from "./worker.js";
+export type { AgentDoorCloudflareConfig, CloudflareEnv } from "./worker.js";

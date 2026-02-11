@@ -1,17 +1,17 @@
-import { createAgentGateMiddleware } from "@agentgate/next";
+import { createAgentDoorMiddleware } from "@agentdoor/next";
 
-// AgentGate Next.js middleware — 3 lines to make your SaaS agent-ready.
+// AgentDoor Next.js middleware — 3 lines to make your SaaS agent-ready.
 //
 // This middleware intercepts all API route requests and:
-//   1. Serves /.well-known/agentgate.json for agent discovery
-//   2. Handles /agentgate/register and /agentgate/register/verify for agent onboarding
-//   3. Handles /agentgate/auth for returning agents
+//   1. Serves /.well-known/agentdoor.json for agent discovery
+//   2. Handles /agentdoor/register and /agentdoor/register/verify for agent onboarding
+//   3. Handles /agentdoor/auth for returning agents
 //   4. Validates agent credentials on protected /api/* routes
 //   5. Sets req.isAgent and req.agent on incoming requests
 //
 // Human traffic passes through unaffected. Agents get full self-service onboarding.
 
-export default createAgentGateMiddleware({
+export default createAgentDoorMiddleware({
   scopes: [
     {
       id: "data.read",
@@ -38,7 +38,7 @@ export default createAgentGateMiddleware({
   },
 });
 
-// Apply AgentGate middleware to all API routes and well-known paths
+// Apply AgentDoor middleware to all API routes and well-known paths
 export const config = {
-  matcher: ["/api/:path*", "/.well-known/:path*", "/agentgate/:path*"],
+  matcher: ["/api/:path*", "/.well-known/:path*", "/agentdoor/:path*"],
 };

@@ -1,13 +1,13 @@
 import type {
-  AgentGateConfig,
+  AgentDoorConfig,
   AgentContext,
   ScopeDefinition,
   AgentStore,
   ChallengeData,
   WebhooksConfig,
   ReputationConfig,
-} from "@agentgate/core";
-import { MemoryStore, WebhookEmitter, ReputationManager } from "@agentgate/core";
+} from "@agentdoor/core";
+import { MemoryStore, WebhookEmitter, ReputationManager } from "@agentdoor/core";
 
 /**
  * Shape of the Next.js request object from `next/server`.
@@ -89,7 +89,7 @@ async function issueJwt(
     scopes: agent.scopes,
     public_key: agent.publicKey,
     metadata: agent.metadata,
-    iss: "agentgate",
+    iss: "agentdoor",
     iat: now,
     exp,
   };
@@ -192,7 +192,7 @@ const agentSpending = new Map<string, number>();
  * Check whether an agent has exceeded any configured spending cap.
  */
 function checkSpendingCap(
-  config: AgentGateNextConfig,
+  config: AgentDoorNextConfig,
   agentId: string,
 ): { currentSpend: number; cap: number } | null {
   const caps = config.spendingCaps?.defaultCaps;
@@ -214,13 +214,13 @@ function checkSpendingCap(
 // Discovery document generation
 // ---------------------------------------------------------------------------
 
-function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown> {
+function buildDiscoveryDocument(config: AgentDoorConfig): Record<string, unknown> {
   return {
-    agentgate_version: "1.0",
-    service_name: config.service?.name ?? "AgentGate Service",
+    agentdoor_version: "1.0",
+    service_name: config.service?.name ?? "AgentDoor Service",
     service_description: config.service?.description ?? "",
-    registration_endpoint: "/agentgate/register",
-    auth_endpoint: "/agentgate/auth",
+    registration_endpoint: "/agentdoor/register",
+    auth_endpoint: "/agentdoor/auth",
     scopes_available: (config.scopes ?? []).map((s: ScopeDefinition) => ({
       id: s.id,
       description: s.description,
@@ -245,10 +245,10 @@ function buildDiscoveryDocument(config: AgentGateConfig): Record<string, unknown
 }
 
 // ---------------------------------------------------------------------------
-// AgentGate Next.js edge middleware factory
+// AgentDoor Next.js edge middleware factory
 // ---------------------------------------------------------------------------
 
-export interface AgentGateNextConfig extends AgentGateConfig {
+export interface AgentDoorNextConfig extends AgentDoorConfig {
   /**
    * Path patterns that require agent auth verification.
    * Defaults to `["/api/"]` — any request whose pathname starts with one of
@@ -258,7 +258,7 @@ export interface AgentGateNextConfig extends AgentGateConfig {
 
   /**
    * When `true`, unauthenticated requests to protected paths are allowed
-   * through but `x-agentgate-authenticated` will be `"false"`.
+   * through but `x-agentdoor-authenticated` will be `"false"`.
    * When `false` (default), unauthenticated requests receive a 401.
    */
   passthrough?: boolean;
@@ -268,7 +268,7 @@ export interface AgentGateNextConfig extends AgentGateConfig {
    * store is created automatically (suitable for development and testing).
    *
    * For production, supply a persistent store (SQLite, Postgres, etc.)
-   * from @agentgate/core.
+   * from @agentdoor/core.
    */
   store?: AgentStore;
 }
@@ -276,24 +276,24 @@ export interface AgentGateNextConfig extends AgentGateConfig {
 /**
  * Creates a Next.js edge middleware that:
  *
- * 1. Serves `/.well-known/agentgate.json` (discovery).
- * 2. Handles `POST /agentgate/register` (agent registration + challenge).
- * 3. Handles `POST /agentgate/register/verify` (challenge verification).
- * 4. Handles `POST /agentgate/auth` (returning agent authentication).
+ * 1. Serves `/.well-known/agentdoor.json` (discovery).
+ * 2. Handles `POST /agentdoor/register` (agent registration + challenge).
+ * 3. Handles `POST /agentdoor/register/verify` (challenge verification).
+ * 4. Handles `POST /agentdoor/auth` (returning agent authentication).
  * 5. Validates `Authorization` headers on protected `/api/*` routes.
  *
  * Usage in `middleware.ts`:
  * ```ts
- * import { createAgentGateMiddleware } from "@agentgate/next";
+ * import { createAgentDoorMiddleware } from "@agentdoor/next";
  *
- * export default createAgentGateMiddleware({
+ * export default createAgentDoorMiddleware({
  *   scopes: [{ id: "data.read", description: "Read data" }],
  * });
  *
  * export const config = { matcher: ["/(.*)" ] };
  * ```
  */
-export function createAgentGateMiddleware(config: AgentGateNextConfig) {
+export function createAgentDoorMiddleware(config: AgentDoorNextConfig) {
   const protectedPrefixes = config.protectedPaths ?? ["/api/"];
   const passthrough = config.passthrough ?? false;
   const store: AgentStore = config.store ?? new MemoryStore();
@@ -304,12 +304,12 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
   let lastCleanup = Date.now();
   const CLEANUP_INTERVAL = 5 * 60 * 1000;
 
-  return async function agentGateMiddleware(request: NextRequest): Promise<NextResponse> {
+  return async function agentDoorMiddleware(request: NextRequest): Promise<NextResponse> {
     const NR = await getNextResponse();
     const { pathname } = request.nextUrl;
 
     // ---- Discovery ----
-    if (pathname === "/.well-known/agentgate.json" && request.method === "GET") {
+    if (pathname === "/.well-known/agentdoor.json" && request.method === "GET") {
       return NR.json(buildDiscoveryDocument(config), {
         status: 200,
         headers: {
@@ -320,17 +320,17 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
     }
 
     // ---- Registration ----
-    if (pathname === "/agentgate/register" && request.method === "POST") {
+    if (pathname === "/agentdoor/register" && request.method === "POST") {
       return handleRegister(request, config, store, NR);
     }
 
     // ---- Registration verify ----
-    if (pathname === "/agentgate/register/verify" && request.method === "POST") {
+    if (pathname === "/agentdoor/register/verify" && request.method === "POST") {
       return handleRegisterVerify(request, config, store, webhookEmitter, NR);
     }
 
     // ---- Auth (returning agents) ----
-    if (pathname === "/agentgate/auth" && request.method === "POST") {
+    if (pathname === "/agentdoor/auth" && request.method === "POST") {
       return handleAuth(request, config, store, webhookEmitter, NR);
     }
 
@@ -346,7 +346,7 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
       return handleAuthGuard(request, config, store, passthrough, reputationManager, NR);
     }
 
-    // Non-AgentGate routes — pass through.
+    // Non-AgentDoor routes — pass through.
     return NR.next();
   };
 }
@@ -357,7 +357,7 @@ export function createAgentGateMiddleware(config: AgentGateNextConfig) {
 
 async function handleRegister(
   request: NextRequest,
-  config: AgentGateNextConfig,
+  config: AgentDoorNextConfig,
   store: AgentStore,
   NR: typeof _NextResponse,
 ): Promise<NextResponse> {
@@ -403,7 +403,7 @@ async function handleRegister(
   const agentId = generateId("ag_");
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = `agentgate:register:${agentId}:${timestamp}:${nonce}`;
+  const message = `agentdoor:register:${agentId}:${timestamp}:${nonce}`;
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
   // Persist challenge to AgentStore
@@ -437,7 +437,7 @@ async function handleRegister(
 
 async function handleRegisterVerify(
   request: NextRequest,
-  config: AgentGateNextConfig,
+  config: AgentDoorNextConfig,
   store: AgentStore,
   webhookEmitter: WebhookEmitter,
   NR: typeof _NextResponse,
@@ -526,7 +526,7 @@ async function handleRegisterVerify(
   }).catch(() => {});
 
   // Issue a JWT token for immediate use.
-  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtSecret = config.jwt?.secret ?? "agentdoor-edge-default-secret";
   const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
   const agentCtx: AgentContext = {
     id: agentId,
@@ -563,7 +563,7 @@ async function handleRegisterVerify(
 
 async function handleAuth(
   request: NextRequest,
-  config: AgentGateNextConfig,
+  config: AgentDoorNextConfig,
   store: AgentStore,
   webhookEmitter: WebhookEmitter,
   NR: typeof _NextResponse,
@@ -592,14 +592,14 @@ async function handleAuth(
     return NR.json({ error: "Unknown agent_id" }, { status: 404 });
   }
 
-  const message = `agentgate:auth:${agentId}:${timestamp}`;
+  const message = `agentdoor:auth:${agentId}:${timestamp}`;
   const valid = await verifyEd25519(message, signature, agent.publicKey);
   if (!valid) {
     return NR.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   // Issue a JWT token.
-  const jwtSecret = config.jwt?.secret ?? "agentgate-edge-default-secret";
+  const jwtSecret = config.jwt?.secret ?? "agentdoor-edge-default-secret";
   const jwtExpiresIn = config.jwt?.expiresIn ?? "1h";
   const agentCtx: AgentContext = {
     id: agentId,
@@ -651,7 +651,7 @@ async function handleAuth(
 
 async function handleAuthGuard(
   request: NextRequest,
-  config: AgentGateNextConfig,
+  config: AgentDoorNextConfig,
   store: AgentStore,
   passthrough: boolean,
   reputationManager: ReputationManager,
@@ -662,7 +662,7 @@ async function handleAuthGuard(
   if (!authHeader) {
     if (passthrough) {
       const response = NR.next();
-      response.headers.set("x-agentgate-authenticated", "false");
+      response.headers.set("x-agentdoor-authenticated", "false");
       return response;
     }
     return NR.json(
@@ -680,7 +680,7 @@ async function handleAuthGuard(
   if (!matchedAgent) {
     if (passthrough) {
       const response = NR.next();
-      response.headers.set("x-agentgate-authenticated", "false");
+      response.headers.set("x-agentdoor-authenticated", "false");
       return response;
     }
     return NR.json({ error: "Invalid or expired token" }, { status: 401 });
@@ -734,13 +734,13 @@ async function handleAuthGuard(
   };
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-agentgate-agent", JSON.stringify(agentContext));
-  requestHeaders.set("x-agentgate-authenticated", "true");
-  requestHeaders.set("x-agentgate-agent-id", matchedAgent.id);
+  requestHeaders.set("x-agentdoor-agent", JSON.stringify(agentContext));
+  requestHeaders.set("x-agentdoor-authenticated", "true");
+  requestHeaders.set("x-agentdoor-agent-id", matchedAgent.id);
 
   // Add reputation warning header if gate returned a "warn" action
   if (reputationResult.action === "warn") {
-    requestHeaders.set("x-agentgate-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
+    requestHeaders.set("x-agentdoor-reputation-warning", `score=${reputationResult.currentScore},required=${reputationResult.requiredScore}`);
   }
 
   const response = NR.next({ headers: requestHeaders });

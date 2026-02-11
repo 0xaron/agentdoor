@@ -1,5 +1,5 @@
 /**
- * @agentgate/core - AgentStore Interface
+ * @agentdoor/core - AgentStore Interface
  *
  * Defines the storage interface that all backends must implement.
  * Includes methods for agents, challenges, and cleanup.
@@ -54,7 +54,7 @@ export interface UpdateAgentInput {
 // ---------------------------------------------------------------------------
 
 /**
- * Storage interface for AgentGate.
+ * Storage interface for AgentDoor.
  *
  * Implementations include:
  * - MemoryStore (in-memory Map, for dev/testing)

@@ -1,10 +1,10 @@
 # Python FastAPI Example
 
-A sample API built with FastAPI and the `agentgate-fastapi` adapter. Demonstrates how to add AgentGate agent authentication to a Python FastAPI application.
+A sample API built with FastAPI and the `agentdoor-fastapi` adapter. Demonstrates how to add AgentDoor agent authentication to a Python FastAPI application.
 
 ## What This Example Shows
 
-- Mounting the AgentGate middleware on a FastAPI app
+- Mounting the AgentDoor middleware on a FastAPI app
 - Automatic discovery, registration, verification, and auth endpoints
 - Protecting routes with the `agent_required` dependency
 - Accessing agent context (agent ID, name, scopes) in route handlers
@@ -35,17 +35,17 @@ uvicorn main:app --reload --port 3000
 
 | Endpoint | Description |
 |---|---|
-| `GET /.well-known/agentgate.json` | AgentGate discovery document |
-| `POST /agentgate/register` | Agent registration |
-| `POST /agentgate/register/verify` | Challenge verification |
-| `POST /agentgate/auth` | Agent authentication |
+| `GET /.well-known/agentdoor.json` | AgentDoor discovery document |
+| `POST /agentdoor/register` | Agent registration |
+| `POST /agentdoor/register/verify` | Challenge verification |
+| `POST /agentdoor/auth` | Agent authentication |
 | `GET /api/items` | List items (public) |
 | `GET /api/protected` | Protected route (requires agent auth) |
 
 ## Testing with the Python SDK
 
 ```python
-from agentgate import Agent, AgentConfig
+from agentdoor import Agent, AgentConfig
 
 agent = Agent(config=AgentConfig(agent_name="my-agent"))
 await agent.connect("http://localhost:3000")
@@ -56,5 +56,5 @@ print(response.json())
 
 ## Packages Used
 
-- [`agentgate-fastapi`](../../packages/fastapi-adapter) - FastAPI middleware adapter
-- [`agentgate`](../../packages/python-sdk) - Python Agent SDK (for client-side testing)
+- [`agentdoor-fastapi`](../../packages/fastapi-adapter) - FastAPI middleware adapter
+- [`agentdoor`](../../packages/python-sdk) - Python Agent SDK (for client-side testing)
