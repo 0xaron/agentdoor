@@ -675,7 +675,7 @@ async function handleAuthGuard(
 
   // Look up agent by API key hash via store.
   const apiKeyHash = await sha256(token);
-  let matchedAgent = await store.getAgentByApiKeyHash(apiKeyHash);
+  const matchedAgent = await store.getAgentByApiKeyHash(apiKeyHash);
 
   if (!matchedAgent) {
     if (passthrough) {

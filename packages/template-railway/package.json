@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Railway deployment template - Agent-Ready Express API with AgentGate",
+  "license": "MIT",
   "scripts": {
     "build": "echo 'Template package - deploy with Railway'",
     "test": "echo 'Template package'",

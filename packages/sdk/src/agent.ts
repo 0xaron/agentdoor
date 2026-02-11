@@ -11,7 +11,7 @@
  *
  * Usage:
  *   const agent = new AgentGate({ keyPath: "~/.agentgate/keys.json" });
- *   const session = await agent.connect("https://api.weatherco.com");
+ *   const session = await agent.connect("https://api.example.com");
  *   const data = await session.get("/weather/forecast", { params: { city: "sf" } });
  */
 
@@ -170,7 +170,7 @@ export class AgentGate {
    * Performs the full discovery -> registration -> challenge-response flow,
    * or uses cached credentials if available.
    *
-   * @param url - The base URL of the service (e.g. "https://api.weatherco.com")
+   * @param url - The base URL of the service (e.g. "https://api.example.com")
    * @returns An authenticated Session for making API requests
    */
   async connect(url: string): Promise<Session> {

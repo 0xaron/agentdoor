@@ -27,7 +27,7 @@ function makeConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig {
     service: {
       name: "Weather API",
       description: "Provides weather forecasts",
-      docsUrl: "https://docs.weatherco.com",
+      docsUrl: "https://docs.example.com",
     },
     registrationRateLimit: { requests: 10, window: "1h" },
     challengeExpirySeconds: 300,
@@ -43,17 +43,17 @@ function makeConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig {
 describe("generateA2AAgentCard", () => {
   it("generates a valid agent card from config", () => {
     const config = makeConfig();
-    const card = generateA2AAgentCard(config, "https://api.weatherco.com");
+    const card = generateA2AAgentCard(config, "https://api.example.com");
 
     expect(card.schema_version).toBe("1.0");
     expect(card.name).toBe("Weather API");
     expect(card.description).toBe("Provides weather forecasts");
-    expect(card.url).toBe("https://api.weatherco.com");
+    expect(card.url).toBe("https://api.example.com");
   });
 
   it("maps scopes to capabilities", () => {
     const config = makeConfig();
-    const card = generateA2AAgentCard(config, "https://api.weatherco.com");
+    const card = generateA2AAgentCard(config, "https://api.example.com");
 
     expect(card.capabilities).toHaveLength(2);
     expect(card.capabilities[0]).toEqual({

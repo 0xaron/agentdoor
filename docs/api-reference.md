@@ -44,7 +44,7 @@ Cache-Control: public, max-age=3600
 ```json
 {
   "agentgate_version": "1.0",
-  "service_name": "WeatherCo API",
+  "service_name": "Example API",
   "service_description": "Real-time weather data and forecasts",
   "registration_endpoint": "/agentgate/register",
   "auth_endpoint": "/agentgate/auth",
@@ -80,8 +80,8 @@ Cache-Control: public, max-age=3600
     "mcp_server": "/mcp",
     "x402_bazaar": true
   },
-  "docs_url": "https://docs.weatherco.com/agents",
-  "support_email": "agents@weatherco.com"
+  "docs_url": "https://docs.example.com/agents",
+  "support_email": "agents@example.com"
 }
 ```
 

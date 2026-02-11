@@ -126,7 +126,7 @@ const agent = new AgentGate({
 });
 
 // Discover + register + auth in ONE call
-const session = await agent.connect("https://api.weatherco.com");
+const session = await agent.connect("https://api.example.com");
 
 // Make authenticated + paid requests
 const data = await session.get("/weather/forecast", {
@@ -231,7 +231,7 @@ AgentGate uses `/.well-known/agentgate.json` for agent discovery (similar to `/.
 ```json
 {
   "agentgate_version": "1.0",
-  "service_name": "WeatherCo API",
+  "service_name": "Example API",
   "service_description": "Real-time weather data and forecasts",
   "registration_endpoint": "/agentgate/register",
   "auth_endpoint": "/agentgate/auth",
