@@ -7,7 +7,8 @@
  */
 
 import nacl from "tweetnacl";
-import { decodeBase64, encodeBase64, decodeUTF8 } from "tweetnacl-util";
+import _tweetnaclUtil from "tweetnacl-util";
+const { decodeBase64, encodeBase64, decodeUTF8 } = _tweetnaclUtil;
 import * as secp256k1 from "@noble/secp256k1";
 import { nanoid } from "nanoid";
 import {
