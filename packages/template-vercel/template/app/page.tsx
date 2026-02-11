@@ -62,7 +62,7 @@ export default function Home() {
       <footer style={{ color: "#999", fontSize: "0.875rem", borderTop: "1px solid #eee", paddingTop: "1rem" }}>
         Built with{" "}
         <a
-          href="https://github.com/agentdoor/agentdoor"
+          href="https://github.com/0xaron/agentdoor"
           style={{ color: "#0070f3" }}
         >
           AgentDoor

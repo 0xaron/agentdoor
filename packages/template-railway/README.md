@@ -71,7 +71,7 @@ The server will be available at [http://localhost:3000](http://localhost:3000).
 
 ## Learn More
 
-- [AgentDoor Documentation](https://github.com/agentdoor/agentdoor)
+- [AgentDoor Documentation](https://github.com/0xaron/agentdoor)
 - [x402 Protocol](https://www.x402.org/)
 - [Express Documentation](https://expressjs.com/)
 - [Railway Documentation](https://docs.railway.app/)
