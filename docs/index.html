@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgentDoor — Make your API agent-ready in 3 lines of code</title>
+  <title>AgentDoor — Make your website agent-ready in 3 lines of code</title>
   <meta name="description" content="Drop-in middleware for Express, Next.js, Hono, FastAPI. Let AI agents register, authenticate, and pay for your API programmatically. No browser, no forms, no CAPTCHA. Under 500ms.">
   <meta property="og:title" content="AgentDoor — The pre-auth layer for the agentic internet">
   <meta property="og:description" content="Make your API agent-ready in 3 lines of code. AI agents register and authenticate in under 500ms.">
@@ -889,7 +889,7 @@
   <section class="hero">
     <div class="container">
       <div class="hero-badge">Open Source &middot; MIT Licensed &middot; TypeScript + Python</div>
-      <h1>Make your API<br><span class="gradient">agent-ready</span></h1>
+      <h1>Make your website<br><span class="gradient">agent-ready</span></h1>
       <p class="sub">Drop-in middleware that lets AI agents register, authenticate, and pay for your API. No browser, no forms, no CAPTCHA. Under 500ms.</p>
       
       <div class="install-bar">
@@ -1090,7 +1090,7 @@ gate <span class="op">=</span> <span class="fn">AgentDoor</span>(app, config<spa
   <section class="discovery-section">
     <div class="container">
       <div class="section-label">Discovery</div>
-      <h2 class="section-title">Auto-generated. CDN-cacheable.</h2>
+      <h2 class="section-title">Auto-generated. Standards-based.</h2>
       <p class="section-desc">AgentDoor auto-generates a discovery endpoint so agents can find your API's capabilities, pricing, and auth methods with a single GET request.</p>
 
       <div class="discovery-box">
@@ -1108,11 +1108,12 @@ gate <span class="op">=</span> <span class="fn">AgentDoor</span>(app, config<spa
       <span class="key">"rate_limit"</span>: <span class="str">"1000/hour"</span>
     }
   ],
-  <span class="key">"auth_methods"</span>: [<span class="str">"ed25519-challenge"</span>, <span class="str">"x402-wallet"</span>],
+  <span class="key">"auth_methods"</span>: [<span class="str">"ed25519-challenge"</span>, <span class="str">"x402-wallet"</span>, <span class="str">"jwt"</span>],
   <span class="key">"payment"</span>: {
     <span class="key">"protocol"</span>: <span class="str">"x402"</span>,
-    <span class="key">"network"</span>: <span class="str">"base"</span>,
-    <span class="key">"currency"</span>: <span class="str">"USDC"</span>
+    <span class="key">"version"</span>: <span class="str">"2.0"</span>,
+    <span class="key">"networks"</span>: [<span class="str">"base"</span>],
+    <span class="key">"currency"</span>: [<span class="str">"USDC"</span>]
   }
 }</pre>
       </div>
