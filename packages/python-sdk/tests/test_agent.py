@@ -88,7 +88,6 @@ class TestAgentConnect:
             agent_id="agent-1",
             public_key="pub",
             secret_key="sec",
-            api_key="key-123",
         )
         store.save(cred)
 
@@ -100,7 +99,7 @@ class TestAgentConnect:
             await agent.connect("https://example.com")
 
         assert agent.credential is not None
-        assert agent.credential.api_key == "key-123"
+        assert agent.credential.agent_id == "agent-1"
         await agent.close()
 
 
@@ -130,12 +129,10 @@ class TestAgentRegister:
             "registration_id": "reg-abc",
         })
         verify_response = _make_response(200, {
-            "api_key": "apikey-xyz",
             "agent_id": "agent-42",
         })
 
         assert agent._client is not None
-        original_post = agent._client.post
         call_count = 0
 
         async def mock_post(url: str, **kwargs):
@@ -149,7 +146,6 @@ class TestAgentRegister:
 
         cred = await agent.register(scopes=["read"])
 
-        assert cred.api_key == "apikey-xyz"
         assert cred.agent_id == "agent-42"
         assert cred.scopes == ["read"]
         assert agent.is_registered is True
@@ -186,7 +182,6 @@ class TestAgentAuthenticate:
             agent_id="agent-42",
             public_key=pub,
             secret_key=sec,
-            api_key="apikey-xyz",
         )
 
         auth_response = _make_response(200, {
@@ -225,7 +220,6 @@ class TestAgentAuthenticate:
             agent_id="agent-42",
             public_key=pub,
             secret_key=sec,
-            api_key="apikey-xyz",
             token="cached-token",
             token_expires_at=time.time() + 3600,
         )
@@ -264,7 +258,6 @@ class TestAgentRequest:
             agent_id="agent-42",
             public_key=pub,
             secret_key=sec,
-            api_key="apikey-xyz",
             token="existing-token",
             token_expires_at=time.time() + 3600,
         )
@@ -303,7 +296,6 @@ class TestAgentRequest:
             agent_id="agent-42",
             public_key=pub,
             secret_key=sec,
-            api_key="apikey-xyz",
             token="stale-token",
             token_expires_at=time.time() + 3600,
         )
