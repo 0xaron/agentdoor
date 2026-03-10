@@ -81,7 +81,7 @@ class Agent:
     @property
     def is_registered(self) -> bool:
         """Whether :meth:`register` has completed successfully."""
-        return self._credential is not None and self._credential.api_key is not None
+        return self._credential is not None and self._credential.agent_id is not None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -137,8 +137,8 @@ class Agent:
         if self._discovery is None or self._client is None or self._base_url is None:
             raise RuntimeError("Must call connect() before register()")
 
-        # Return cached credential if it already has an api_key
-        if self._credential is not None and self._credential.api_key is not None:
+        # Return cached credential if it already has an agent_id
+        if self._credential is not None and self._credential.agent_id is not None:
             return self._credential
 
         # Generate a fresh keypair
@@ -170,7 +170,6 @@ class Agent:
         verify_response.raise_for_status()
         verify_data = verify_response.json()
 
-        api_key: str = verify_data["api_key"]
         agent_id: str = verify_data["agent_id"]
 
         # Build and persist the credential
@@ -179,7 +178,6 @@ class Agent:
             agent_id=agent_id,
             public_key=public_key,
             secret_key=secret_key,
-            api_key=api_key,
             scopes=scopes or [],
         )
         self._config.credential_store.save(self._credential)
@@ -200,7 +198,7 @@ class Agent:
         """
         if (
             self._credential is None
-            or self._credential.api_key is None
+            or self._credential.agent_id is None
             or self._client is None
             or self._discovery is None
         ):
@@ -217,7 +215,6 @@ class Agent:
         auth_url = self._discovery.auth_endpoint
         auth_payload = {
             "agent_id": self._credential.agent_id,
-            "api_key": self._credential.api_key,
             "timestamp": timestamp,
             "signature": signature,
         }
