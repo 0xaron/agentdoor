@@ -33,7 +33,10 @@ class PostgresAgentStore:
         """Lazy init: create connection pool + tables on first call."""
         if self._initialized:
             return
-        self._pool = await asyncpg.create_pool(self._database_url)
+        self._pool = await asyncpg.create_pool(
+            self._database_url,
+            statement_cache_size=0,
+        )
         await self._create_tables()
         self._initialized = True
 
