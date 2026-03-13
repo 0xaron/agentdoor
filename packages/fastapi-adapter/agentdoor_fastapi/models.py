@@ -71,19 +71,20 @@ class VerifyResponse(BaseModel):
     """POST /agentdoor/register/verify response body."""
 
     agent_id: str
-    api_key: str
 
 
 # ---------------------------------------------------------------------------
-# Authentication
+# Authentication (token request)
 # ---------------------------------------------------------------------------
 
 
-class AuthRequest(BaseModel):
-    """POST /agentdoor/auth request body."""
+class TokenRequest(BaseModel):
+    """POST /agentdoor/auth request body.
+
+    No api_key — Ed25519 signature is the proof.
+    """
 
     agent_id: str
-    api_key: str
     timestamp: str
     signature: str
 

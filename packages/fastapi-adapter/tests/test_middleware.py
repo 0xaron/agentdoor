@@ -121,6 +121,35 @@ class TestRegistration:
         assert resp.status_code == 400
         assert "Invalid scopes" in resp.json()["detail"]
 
+    def test_register_duplicate_key(self) -> None:
+        """Registering same public key twice returns 409."""
+        app, _ = _create_app()
+        client = TestClient(app)
+        pub, _, signing_key = _generate_keypair()
+
+        # First registration + verify
+        reg_resp = client.post("/agentdoor/register", json={
+            "agent_name": "test-agent",
+            "public_key": pub,
+            "scopes": ["read"],
+        })
+        reg_data = reg_resp.json()
+        challenge = reg_data["challenge"]
+        signature = _sign(challenge, signing_key)
+        client.post("/agentdoor/register/verify", json={
+            "registration_id": reg_data["registration_id"],
+            "challenge": challenge,
+            "signature": signature,
+        })
+
+        # Second registration with same key
+        resp = client.post("/agentdoor/register", json={
+            "agent_name": "test-agent-2",
+            "public_key": pub,
+            "scopes": ["read"],
+        })
+        assert resp.status_code == 409
+
 
 class TestVerification:
     """Tests for the verification endpoint."""
@@ -151,7 +180,6 @@ class TestVerification:
         assert verify_resp.status_code == 200
         verify_data = verify_resp.json()
         assert "agent_id" in verify_data
-        assert "api_key" in verify_data
 
     def test_verify_invalid_registration_id(self) -> None:
         app, _ = _create_app()
@@ -242,7 +270,6 @@ class TestAuthentication:
 
         auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": agent_data["agent_id"],
-            "api_key": agent_data["api_key"],
             "timestamp": timestamp,
             "signature": signature,
         })
@@ -250,23 +277,6 @@ class TestAuthentication:
         auth_data = auth_resp.json()
         assert "token" in auth_data
         assert auth_data["expires_in"] == 3600
-
-    def test_auth_wrong_api_key(self) -> None:
-        app, _ = _create_app()
-        client = TestClient(app)
-        pub, _, signing_key = _generate_keypair()
-        agent_data = self._register_agent(client, signing_key, pub)
-
-        timestamp = str(int(time.time()))
-        signature = _sign(timestamp, signing_key)
-
-        auth_resp = client.post("/agentdoor/auth", json={
-            "agent_id": agent_data["agent_id"],
-            "api_key": "wrong-key",
-            "timestamp": timestamp,
-            "signature": signature,
-        })
-        assert auth_resp.status_code == 401
 
     def test_auth_stale_timestamp(self) -> None:
         app, _ = _create_app()
@@ -280,7 +290,6 @@ class TestAuthentication:
 
         auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": agent_data["agent_id"],
-            "api_key": agent_data["api_key"],
             "timestamp": stale_timestamp,
             "signature": signature,
         })
@@ -296,7 +305,25 @@ class TestAuthentication:
 
         auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": "nonexistent",
-            "api_key": "whatever",
+            "timestamp": timestamp,
+            "signature": signature,
+        })
+        assert auth_resp.status_code == 401
+
+    def test_auth_wrong_signature(self) -> None:
+        """Auth with a different key's signature is rejected."""
+        app, _ = _create_app()
+        client = TestClient(app)
+        pub, _, signing_key = _generate_keypair()
+        agent_data = self._register_agent(client, signing_key, pub)
+
+        # Sign with a different key
+        _, _, wrong_key = _generate_keypair()
+        timestamp = str(int(time.time()))
+        signature = _sign(timestamp, wrong_key)
+
+        auth_resp = client.post("/agentdoor/auth", json={
+            "agent_id": agent_data["agent_id"],
             "timestamp": timestamp,
             "signature": signature,
         })
@@ -329,7 +356,6 @@ class TestProtectedRoutes:
         ts_sig = _sign(timestamp, signing_key)
         auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": verify_data["agent_id"],
-            "api_key": verify_data["api_key"],
             "timestamp": timestamp,
             "signature": ts_sig,
         })
@@ -418,7 +444,6 @@ class TestProtectedRoutes:
         ts_sig = _sign(timestamp, signing_key)
         auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": verify_data["agent_id"],
-            "api_key": verify_data["api_key"],
             "timestamp": timestamp,
             "signature": ts_sig,
         })
@@ -470,7 +495,6 @@ class TestProtectedRoutes:
         ts_sig = _sign(timestamp, signing_key)
         auth_resp = client.post("/agentdoor/auth", json={
             "agent_id": verify_data["agent_id"],
-            "api_key": verify_data["api_key"],
             "timestamp": timestamp,
             "signature": ts_sig,
         })
@@ -516,3 +540,88 @@ class TestCustomRoutePrefix:
             "scopes": ["read"],
         })
         assert reg_resp.status_code == 200
+
+
+class TestMountRoutes:
+    """Tests for mount_routes=False."""
+
+    def test_no_routes_mounted(self) -> None:
+        """When mount_routes=False, no routes should be added."""
+        app = FastAPI()
+        gate = AgentDoor(
+            app,
+            config=AgentDoorConfig(service_name="Test"),
+            mount_routes=False,
+        )
+
+        client = TestClient(app)
+
+        # Discovery route should not exist
+        resp = client.get("/.well-known/agentdoor.json")
+        assert resp.status_code == 404
+
+        # But engine should still be accessible
+        assert gate.engine is not None
+
+
+class TestEngine:
+    """Tests for the AgentEngine directly (no HTTP)."""
+
+    @pytest.mark.asyncio
+    async def test_engine_start_registration(self) -> None:
+        from agentdoor_fastapi.engine import AgentEngine
+
+        engine = AgentEngine(AgentDoorConfig(service_name="Test"))
+        pub, _, _ = _generate_keypair()
+        pending = await engine.start_registration("bot", pub)
+        assert pending.registration_id.startswith("reg_")
+        assert pending.challenge
+
+    @pytest.mark.asyncio
+    async def test_engine_full_flow(self) -> None:
+        from agentdoor_fastapi.engine import AgentEngine
+
+        engine = AgentEngine(AgentDoorConfig(service_name="Test"))
+        pub, _, signing_key = _generate_keypair()
+
+        # Register
+        pending = await engine.start_registration("bot", pub)
+
+        # Verify
+        sig = _sign(pending.challenge, signing_key)
+        agent = await engine.verify_registration(
+            pending.registration_id, pending.challenge, sig
+        )
+        assert agent.agent_id.startswith("agent_")
+
+        # Issue token
+        ts = str(int(time.time()))
+        ts_sig = _sign(ts, signing_key)
+        token_record = await engine.issue_token(agent.agent_id, ts, ts_sig)
+        assert token_record.token.startswith("agt_")
+
+        # Validate token
+        tr, ar = await engine.validate_token(token_record.token)
+        assert tr.agent_id == agent.agent_id
+        assert ar.agent_name == "bot"
+
+    @pytest.mark.asyncio
+    async def test_engine_update_metadata(self) -> None:
+        from agentdoor_fastapi.engine import AgentEngine
+
+        engine = AgentEngine(AgentDoorConfig(service_name="Test"))
+        pub, _, signing_key = _generate_keypair()
+
+        pending = await engine.start_registration("bot", pub)
+        sig = _sign(pending.challenge, signing_key)
+        agent = await engine.verify_registration(
+            pending.registration_id, pending.challenge, sig
+        )
+
+        await engine.update_agent_metadata(
+            agent.agent_id, {"friday_user_id": "uuid-123"}
+        )
+
+        updated = await engine.store.get_agent(agent.agent_id)
+        assert updated is not None
+        assert updated.metadata["friday_user_id"] == "uuid-123"

@@ -22,7 +22,6 @@ class Credential:
     agent_id: str
     public_key: str
     secret_key: str
-    api_key: str | None = None
     token: str | None = None
     token_expires_at: float | None = None
     scopes: list[str] = field(default_factory=list)
